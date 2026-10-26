@@ -14,6 +14,7 @@ Then generate the catalogue, because the build clears old output:
 
 ```powershell
 python scripts/generate_json.py config.ini
+python scripts/generate_thumbs.py config.ini
 ```
 
 Deploy the resulting `dist/` directory as a single unit. Configure Nginx to

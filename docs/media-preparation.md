@@ -10,6 +10,8 @@ Configure `config.ini`, then run:
 
 `ffmpeg` and `ffprobe` must be available on `PATH`.
 
+It only creates missing thumbnails, from the frame 20 seconds in, through a temporary file so that an interrupted run leaves none half-written. A video it cannot make a thumbnail for, such as one shorter than 20 seconds, is reported, and the script exits with an error after the others.
+
 ## Make MP4s stream efficiently
 
 Large MP4 files load promptly only when their `moov` metadata atom precedes

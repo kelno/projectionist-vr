@@ -11,7 +11,7 @@ npm version minor   # updates package.json and package-lock.json, commits, and t
 git push --follow-tags
 ```
 
-The release holds `web_vr_video_player-<tag>.tar.gz` and its `.sha256` checksum. The tarball contains:
+The release holds `web_vr_video_player-<tag>.tar.gz`, which contains:
 
 - `dist/`: the built site, without `files.json`.
 - `scripts/`: the catalogue and thumbnail generators, which need only Python 3 and, for thumbnails, FFmpeg. The other media preparation scripts come along.

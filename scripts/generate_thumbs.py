@@ -14,7 +14,9 @@ from common import is_video_file
 
 
 # Seconds into the video of the thumbnail frame, past most intros and fades.
-THUMBNAIL_SEEK_SECONDS = "20"
+THUMBNAIL_SEEK_SECONDS = 20.0
+# For a video too short for that, the fraction of its duration to take the frame at instead.
+SHORT_VIDEO_SEEK_FRACTION = 0.5
 # Keep the left eye of a side-by-side video, 512 pixels wide.
 THUMBNAIL_FILTER = "crop=in_w/2:in_h:0:0,scale=512:-1"
 
@@ -33,6 +35,38 @@ def load_library_paths(config_path: Path) -> tuple[Path, Path]:
     return Path(library["videos_path"]), Path(library["thumbnails_path"])
 
 
+def read_duration(video_file: Path) -> float | None:
+    """Return the video's duration in seconds, from its header, or None when ffprobe cannot tell."""
+    result = subprocess.run(
+        [
+            "ffprobe",
+            "-loglevel", "error",
+            "-show_entries", "format=duration",
+            "-output_format", "csv=print_section=0",
+            str(video_file),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    try:
+        duration = float(result.stdout.strip())
+    except ValueError:
+        return None
+    return duration if duration > 0 else None
+
+
+def thumbnail_seek_seconds(duration: float | None) -> float:
+    """Return where to take the thumbnail frame: THUMBNAIL_SEEK_SECONDS, or earlier in a shorter video.
+
+    Without a duration, THUMBNAIL_SEEK_SECONDS is kept, so that a video ffmpeg
+    cannot read still fails and gets reported.
+    """
+    if duration is None or duration > THUMBNAIL_SEEK_SECONDS:
+        return THUMBNAIL_SEEK_SECONDS
+    return duration * SHORT_VIDEO_SEEK_FRACTION
+
+
 def generate_thumbnail(video_file: Path, thumb_file: Path) -> bool:
     """Write one thumbnail through a temporary file, and return whether it was created.
 
@@ -40,12 +74,16 @@ def generate_thumbnail(video_file: Path, thumb_file: Path) -> bool:
     that later runs would treat as done.
     """
     partial_file = thumb_file.with_name(f"{thumb_file.stem}.partial.jpg")
+    duration = read_duration(video_file)
+    seek_seconds = thumbnail_seek_seconds(duration)
+    if duration is None:
+        print(f"WARNING: unknown duration, taking the frame at {seek_seconds:g} s: {video_file}", file=sys.stderr)
     result = subprocess.run(
         [
             "ffmpeg",
             "-loglevel", "error",
             "-nostdin",
-            "-ss", THUMBNAIL_SEEK_SECONDS,
+            "-ss", f"{seek_seconds:.3f}",
             "-i", str(video_file),
             "-filter:v", THUMBNAIL_FILTER,
             "-frames:v", "1",

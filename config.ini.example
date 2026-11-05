@@ -6,6 +6,7 @@ thumbnails_path=/mnt/hdd/thumbnails
 [web]
 ; Browser and Nginx URL contract. These values contain no local filesystem paths.
 ; site_url_prefix is where Nginx serves dist/. Use / for a dedicated host.
+; Production builds work at any site path: the catalogue and npm run dev use it.
 site_url_prefix=/vr-player
 ; Media mounts below site_url_prefix. These must start with /.
 videos_url_prefix=/media

@@ -81,9 +81,10 @@ module.exports = (env) => {
     output: {
       filename: "[name].js",
       path: DIST_DIRECTORY,
-      // Assets must remain beneath the configured site path when Nginx serves
-      // the player from a subpath such as /vr-player/.
-      publicPath: assetPublicPath,
+      // Production bundles find their assets relative to the loaded script, so
+      // one release works at any site path, such as /vr-player/. The
+      // development server serves them at the configured site path.
+      publicPath: isDevelopment ? assetPublicPath : "auto",
       // Production releases are rebuilt from scratch. Development must retain
       // dist/files.json, which is generated independently from source code.
       clean: !isDevelopment,

@@ -123,7 +123,10 @@ def write_catalogue(category_map: dict[str, list[dict[str, str]]], output_path: 
         ]
     }
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(json.dumps(video_data, indent=4, ensure_ascii=False), encoding="utf-8")
+    # Replace the catalogue in one step, so a web server never serves a half-written file.
+    partial_path = output_path.with_name(f"{output_path.name}.partial")
+    partial_path.write_text(json.dumps(video_data, indent=4, ensure_ascii=False), encoding="utf-8")
+    partial_path.replace(output_path)
     return sum(len(category["list"]) for category in video_data["videos"])
 
 

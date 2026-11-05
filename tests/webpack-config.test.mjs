@@ -3,7 +3,8 @@ import { createRequire } from "node:module";
 import test from "node:test";
 
 const require = createRequire(import.meta.url);
-const { parseIni, playerConfig } = require("../webpack.config.js");
+const webpackConfig = require("../webpack.config.js");
+const { parseIni, playerConfig } = webpackConfig;
 
 test("keeps local library paths separate from web and player settings", () => {
     const config = parseIni(`
@@ -28,4 +29,10 @@ test("uses the established SBS zoom when the setting is absent or invalid", () =
         playerConfig({ player: { default_sbs_zoom: "181" } }),
         { defaultSbsZoom: 100 }
     );
+});
+
+test("builds production releases that work at any site path", () => {
+    const [config] = webpackConfig({ production: true });
+
+    assert.equal(config.output.publicPath, "auto");
 });

@@ -1,0 +1,99 @@
+# Build the player and publish it as a GitHub release when a version tag is pushed.
+#
+# The release asset is a tarball holding everything a server needs to run the player:
+#   dist/      the built static site, to serve as is (it works at any site path)
+#   scripts/   the catalogue and thumbnail generators (standard library Python 3, plus ffmpeg for thumbnails)
+#   LICENSE
+# Next to it, a .sha256 file holds its checksum, for deployments that pin it.
+#
+# Run by hand (workflow_dispatch), it builds and tests without publishing; the tarball is then kept as a workflow artifact.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  # Node.js used for the build, and the oldest Python that runs the scripts on the deployment server.
+  NODE_VERSION: "26"
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Name the release
+        id: version
+        run: |
+          package_version="v$(node --print 'require("./package.json").version')"
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            if [ "$GITHUB_REF_NAME" != "$package_version" ]; then
+              echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $package_version"
+              exit 1
+            fi
+            version="$GITHUB_REF_NAME"
+          else
+            version="$package_version-$(git rev-parse --short HEAD)"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "asset=web_vr_video_player-$version.tar.gz" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: |
+          npm test
+          python -m unittest discover --start-directory scripts/tests
+
+      - name: Build
+        run: npm run build
+
+      - name: Package
+        run: |
+          staging="$RUNNER_TEMP/package"
+          mkdir --parents "$staging/scripts"
+          cp --recursive dist "$staging/dist"
+          cp scripts/*.py "$staging/scripts/"
+          cp LICENSE "$staging/"
+          tar --create --gzip --file "${{ steps.version.outputs.asset }}" --directory "$staging" --owner=0 --group=0 --numeric-owner dist scripts LICENSE
+          sha256sum "${{ steps.version.outputs.asset }}" > "${{ steps.version.outputs.asset }}.sha256"
+          cat "${{ steps.version.outputs.asset }}.sha256"
+
+      - name: Keep the build (manual runs)
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.version.outputs.asset }}
+          path: |
+            ${{ steps.version.outputs.asset }}
+            ${{ steps.version.outputs.asset }}.sha256
+
+      - name: Publish the release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME"
+          "${{ steps.version.outputs.asset }}"
+          "${{ steps.version.outputs.asset }}.sha256"
+          --title "$GITHUB_REF_NAME"
+          --generate-notes

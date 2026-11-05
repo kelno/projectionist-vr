@@ -4,7 +4,6 @@
 #   dist/      the built static site, to serve as is (it works at any site path)
 #   scripts/   the catalogue and thumbnail generators (standard library Python 3, plus ffmpeg for thumbnails)
 #   LICENSE
-# Next to it, a .sha256 file holds its checksum, for deployments that pin it.
 #
 # Run by hand (workflow_dispatch), it builds and tests without publishing; the tarball is then kept as a workflow artifact.
 name: Release
@@ -75,17 +74,13 @@ jobs:
           cp scripts/*.py "$staging/scripts/"
           cp LICENSE "$staging/"
           tar --create --gzip --file "${{ steps.version.outputs.asset }}" --directory "$staging" --owner=0 --group=0 --numeric-owner dist scripts LICENSE
-          sha256sum "${{ steps.version.outputs.asset }}" > "${{ steps.version.outputs.asset }}.sha256"
-          cat "${{ steps.version.outputs.asset }}.sha256"
 
       - name: Keep the build (manual runs)
         if: github.ref_type != 'tag'
         uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.version.outputs.asset }}
-          path: |
-            ${{ steps.version.outputs.asset }}
-            ${{ steps.version.outputs.asset }}.sha256
+          path: ${{ steps.version.outputs.asset }}
 
       - name: Publish the release
         if: github.ref_type == 'tag'
@@ -94,6 +89,5 @@ jobs:
         run: >
           gh release create "$GITHUB_REF_NAME"
           "${{ steps.version.outputs.asset }}"
-          "${{ steps.version.outputs.asset }}.sha256"
           --title "$GITHUB_REF_NAME"
           --generate-notes

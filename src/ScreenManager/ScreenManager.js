@@ -56,13 +56,17 @@ export function registerObjectToDrag(obj, view, panelName) {
     });
 }
 
+// Leaving VR (the headset sleeping, for instance) puts every panel back in
+// place, but keeps the zoom the user was watching with.
 export function vrsessionend() {
+    const zoomInUse = currentZoom;
     resetZoomPosition();
     resetPosition("cameras");
     resetPosition("playMenuPanel");
     resetPosition("fileBrowserPanel");
     resetPosition("sourcesSelectorPanel");
     resetPosition("meshes");
+    setZoom(zoomInUse, false);
 }
 
 export function resetPosition(ui) {

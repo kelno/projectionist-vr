@@ -4,6 +4,10 @@ import {
     isCurrentMediaSource,
     setMediaSource,
 } from "./mediaSource.mjs";
+import {
+    rememberPlaybackPosition,
+    restorePlaybackPosition,
+} from "./playbackPositions.mjs";
 
 const LANG = require("./lang.json");
 
@@ -14,7 +18,16 @@ export function videoSrcExists() {
 }
 
 export function setVideoSrc(src) {
-    return setMediaSource(document.getElementById("video"), src);
+    const video = document.getElementById("video");
+    if (video.getAttribute("src") !== src) {
+        rememberPlaybackPosition(video);
+    }
+    return setMediaSource(video, src);
+}
+
+// Resume where this video was left earlier in the page's life, if anywhere.
+export function restoreVideoPosition(src) {
+    restorePlaybackPosition(document.getElementById("video"), src);
 }
 
 export function isCurrentVideoSrc(src) {
@@ -22,7 +35,9 @@ export function isCurrentVideoSrc(src) {
 }
 
 export function removeVideoSrc() {
-    clearMediaSource(document.getElementById("video"));
+    const video = document.getElementById("video");
+    rememberPlaybackPosition(video);
+    clearMediaSource(video);
 }
 
 export function getWordFromLang(key) {

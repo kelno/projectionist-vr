@@ -659,8 +659,9 @@ function startPendingVideoPlayback() {
     return;
   }
 
-  const { screenType } = pendingVideoPlayback;
+  const { source, screenType } = pendingVideoPlayback;
   pendingVideoPlayback = null;
+  Helpers.restoreVideoPosition(source);
   hidePopupMessage();
   fileBrowserPanel.hideFileMenuPanel(screenType);
 }

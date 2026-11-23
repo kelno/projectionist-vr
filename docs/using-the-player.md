@@ -7,6 +7,9 @@
 - Play SBS, top-bottom, 360°, fisheye, and flat entries from `files.json`.
 - Select a video, then wait for browser media metadata before switching into
   the player.
+- A video you leave and open again resumes where you left it, as long as the
+  page stays open. Reloading the page forgets every position; a video watched
+  to the end starts again from the beginning.
 
 ### Search and sorting
 
@@ -38,8 +41,10 @@ to their default position when you exit the current video.
 
 ### Playback
 
-Use the thumbstick up or down to zoom; SBS playback starts at 180° zoom. Use
-left or right to rewind or fast-forward by 10 seconds. If two controllers are
+Use the thumbstick up or down to zoom. The browser remembers your zoom for
+later videos; before you first change it, SBS playback starts at the
+configured `default_sbs_zoom`. Leaving VR, for instance when the headset
+sleeps, keeps the zoom. Use left or right to rewind or fast-forward by 10 seconds. If two controllers are
 connected, press the trigger to switch the active controller.
 
 ### Folders view

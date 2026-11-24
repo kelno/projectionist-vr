@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import ClassVar
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -105,6 +106,32 @@ class GenerateTests(unittest.TestCase):
             with mock.patch("generate_seek_thumbs.subprocess.run", side_effect=fake_ffmpeg(duration="N/A")) as run:
                 self.assertEqual(generate_seek_thumbnails(videos, thumbnails), [videos / "Music" / "clip.mp4"])
             self.assertEqual(frame_times(run), [])
+
+
+class StoreTests(unittest.TestCase):
+    LAYOUT: ClassVar[dict[str, int]] = {"interval": 10, "columns": 1, "count": 1}
+
+    def test_two_runs_at_once_keep_each_other_s_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            seek_run, catalogue_run = LibraryStore(Path(directory)), LibraryStore(Path(directory))
+            seek_run.add_seek("one", self.LAYOUT)
+            catalogue_run.remove_seek({"one", "two"})
+            seek_run.add_seek("two", self.LAYOUT)
+            catalogue_run.remove_seek({"two"})
+            seek_run.add_seek("three", self.LAYOUT)
+            self.assertEqual(sorted(LibraryStore(Path(directory)).seek), ["three", "two"])
+
+
+class GrabTests(unittest.TestCase):
+    def test_decodes_only_the_keyframe_and_keeps_it(self):
+        with tempfile.TemporaryDirectory() as directory:
+            videos, thumbnails = GenerateTests().make_library(Path(directory))
+            with mock.patch("generate_seek_thumbs.subprocess.run", side_effect=fake_ffmpeg()) as run:
+                generate_seek_thumbnails(videos, thumbnails)
+            grab = next(call.args[0] for call in run.call_args_list if "-ss" in call.args[0])
+            self.assertLess(grab.index("-skip_frame"), grab.index("-i"))
+            self.assertEqual(grab[grab.index("-skip_frame") + 1], "nokey")
+            self.assertEqual(grab[grab.index("-fps_mode") + 1], "passthrough")
 
 
 class CatalogueTests(unittest.TestCase):

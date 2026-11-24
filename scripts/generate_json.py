@@ -256,7 +256,6 @@ def main() -> int:
             category_map = generate_category_entries(settings, store, probe_media=not args.no_media_info, slow_start=slow_start)
             if args.prune:
                 removed = store.prune()
-                store.save_seek()
                 print(
                     f"Pruned {removed['thumbnails']} thumbnails, {removed['seek']} seek thumbnail images,"
                     f" {removed['media']} media info entries and {removed['paths']} cached fingerprints"

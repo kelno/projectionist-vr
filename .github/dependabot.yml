@@ -1,0 +1,29 @@
+# Pull requests that keep the dependencies current: npm packages, the Python
+# dev tools (uv.lock) and the GitHub Actions the workflows use. Checked weekly;
+# updates of one kind are grouped into a single pull request, which the Check
+# workflow tests.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        patterns: ["*"]
+
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      python-tools:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

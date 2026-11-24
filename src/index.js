@@ -18,6 +18,11 @@ import FontJSON from "../assets/fonts/Roboto-Regular-msdf.json";
 import FontImage from "../assets/fonts/Roboto-Regular.png";
 import { JsonLoader } from "./jsonLoader.js";
 import { watchVideoTexture } from "./videoTextureWatchdog.mjs";
+import {
+  GRIP_LIBRARY_CONTROLS,
+  GRIP_PLAYER_CONTROLS,
+  makeGripPopup,
+} from "./ui/controlHints.js";
 
 export let scene,
   camera,
@@ -510,6 +515,7 @@ function init() {
   vrControlCurrentlyUsedController = 0;
   scene.add(vrControl.controllerGrips[0], vrControl.controllers[0]);
   scene.add(vrControl.controllerGrips[1], vrControl.controllers[1]);
+  createGripPopups();
 
   vrControl.controllers[0].addEventListener("selectstart", () => {
     vrControlSelected(0);
@@ -588,6 +594,7 @@ function init() {
   camToSave.controlCenter = orbitControls.target.clone();
 
   renderer.xr.addEventListener("sessionend", ScreenManager.vrsessionend);
+  renderer.xr.addEventListener("sessionend", () => showGripPopup(false));
 
   //
   // FILES
@@ -648,6 +655,23 @@ export function requestVideoPlayback(source, screenType) {
   if (!sourceChanged && Number.isFinite(video.duration) && video.duration > 0) {
     startPendingVideoPlayback();
   }
+}
+
+// Play an entry of the catalogue, from the library or from the player's
+// next and previous buttons.
+export function playCatalogueVideo(file) {
+  const aspect = (file.frame_width ?? 1) / (file.frame_height ?? 1);
+  if (file.screen_type === "screen") {
+    scaleScreenMesh(aspect);
+  }
+  if (file.screen_type === "tb_screen") {
+    scaleTBScreenMesh(aspect);
+  }
+  requestVideoPlayback(file.src, file.screen_type);
+}
+
+export function leaveVR() {
+  renderer.xr.getSession()?.end();
 }
 
 export function cancelVideoPlaybackRequest() {
@@ -752,6 +776,33 @@ export function playbackChange(is_active = false, screen_type = null) {
   }
 }
 
+// The grip popup floats above the controller in use while its grip is held,
+// and lists what the grip does where the user is: player or library.
+const gripPopups = {};
+
+function createGripPopups() {
+  gripPopups.player = makeGripPopup(GRIP_PLAYER_CONTROLS);
+  gripPopups.library = makeGripPopup(GRIP_LIBRARY_CONTROLS);
+  for (const popup of Object.values(gripPopups)) {
+    popup.scale.setScalar(0.15);
+    popup.position.set(0, 0.12, 0.02);
+    popup.rotation.x = -0.7;
+    popup.visible = false;
+  }
+}
+
+function showGripPopup(held) {
+  const shown = playbackIsActive ? gripPopups.player : gripPopups.library;
+  const grip = vrControl.controllerGrips[vrControlCurrentlyUsedController];
+  for (const popup of Object.values(gripPopups)) {
+    const visible = held && popup === shown;
+    if (visible && popup.parent !== grip) {
+      grip.add(popup);
+    }
+    popup.visible = visible;
+  }
+}
+
 function gamepadControlsUpdate() {
   if (renderer.xr.isPresenting) {
     if (renderer.xr.getSession() !== null) {
@@ -766,6 +817,7 @@ function gamepadControlsUpdate() {
             ].gamepad;
           if (typeof gamepad !== "undefined" && gamepad !== null) {
             if (gamepad.mapping === "xr-standard") {
+              showGripPopup(gamepad.buttons[1].pressed);
               if (
                 gamepad.buttons[1].pressed &&
                 gamepad.axes[3] < -0.35 &&
@@ -784,6 +836,21 @@ function gamepadControlsUpdate() {
                   ScreenManager.tilt("down", 0.005);
                 }
                 gamepadAxisActive = "down";
+              } else if (
+                gamepad.buttons[1].pressed &&
+                Math.abs(gamepad.axes[2]) > 0.35 &&
+                gamepadAxisActive === false
+              ) {
+                // Grip + left/right: previous or next video; pages in the library.
+                const forward = gamepad.axes[2] > 0;
+                if (playbackIsActive) {
+                  playMenuPanel.playAdjacentVideo(forward ? 1 : -1);
+                } else if (forward) {
+                  fileBrowserPanel.NextPage();
+                } else {
+                  fileBrowserPanel.PreviousPage();
+                }
+                gamepadAxisActive = true;
               } else if (
                 gamepad.axes[2] > 0.35 &&
                 gamepadAxisActive === false
@@ -837,16 +904,15 @@ let buttonABXYexitVR = false;
 let buttonABXYexitVRstart = null;
 
 function gamepadButtonsCheck(buttons) {
+  // Grip + B held for a second leaves VR, from the library or the player.
   if (
     buttons[1].pressed &&
     buttons[5].pressed &&
-    !playbackIsActive &&
     (buttonABXYpressed === false || buttonABXYexitVR)
   ) {
     if (buttonABXYexitVRstart === null) {
       buttonABXYexitVRstart = Date.now();
-      showPopupMessage("Hold Grip + B for 3 seconds to exit.");
-    } else if (Date.now() - buttonABXYexitVRstart > 3000) {
+    } else if (Date.now() - buttonABXYexitVRstart > 1000) {
       let session = renderer.xr.getSession();
       session.end();
     }
@@ -947,6 +1013,12 @@ function updateButtons() {
   // Update non-targeted buttons state
 
   UI.objsToTest.forEach((obj) => {
+    // The sphere catching clicks outside the panels isn't a Block, but must
+    // also go idle, or its next click is ignored as a repeat.
+    if (obj === hiddenSphere && (!intersect || obj !== intersect.object)) {
+      obj.setState("idle");
+      return;
+    }
     if (
       obj instanceof ThreeMeshUI.Block &&
       (!intersect || obj !== intersect.object) &&

@@ -31,16 +31,12 @@ export default class ThumbnailBlock extends Block {
             state: "selected",
             attributes: selectedAttributes,
             onSet: () => {
-                if (screen_type === "screen")
-                    MAIN.scaleScreenMesh(
-                        this.frame_width / this.frame_height
-                    );
-                if (screen_type === "tb_screen")
-                    MAIN.scaleTBScreenMesh(
-                        this.frame_width / this.frame_height
-                    );
-
-                MAIN.requestVideoPlayback(this.fileSRC, this.screen_type);
+                MAIN.playCatalogueVideo({
+                    src: this.fileSRC,
+                    screen_type: this.screen_type,
+                    frame_width: this.frame_width,
+                    frame_height: this.frame_height,
+                });
             },
         });
 

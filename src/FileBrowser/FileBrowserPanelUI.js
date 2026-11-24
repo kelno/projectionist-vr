@@ -39,6 +39,15 @@ import * as ScreenManager from "../ScreenManager/ScreenManager.js";
 import LeftIcon from "../../assets/icons/left-arrow.png";
 import RightIcon from "../../assets/icons/right-arrow.png";
 import VideoIcon from "../../assets/icons/video.png";
+import PowerIcon from "../../assets/icons/power.png";
+
+import { adjacentVideo } from "../adjacentVideo.mjs";
+import {
+    GRIP_PLAYER_CONTROLS,
+    LIBRARY_CONTROLS,
+    PLAYER_CONTROLS,
+    makeControlsColumn,
+} from "../ui/controlHints.js";
 
 export class FileBrowserPanel {
     fileBrowserContainer;
@@ -834,6 +843,89 @@ export class FileBrowserPanel {
         });
         this.defaultObjsToTest.push(this.draggingBox);
 
+        // Either side of the bar: the controls help and leaving VR.
+        this.controlsButton = this.makeTextButton(
+            Helpers.getWordFromLang("controls"),
+            () => this.showControlsHelp()
+        );
+        this.controlsButton.position.set(-1.75, -0.35, this.CENTERPANELZDISTANCE);
+        MAIN.scene.add(this.controlsButton);
+
+        this.leaveVRButton = this.makeIconButton(PowerIcon, () => MAIN.leaveVR());
+        this.leaveVRButton.position.set(1.4, -0.35, this.CENTERPANELZDISTANCE);
+        MAIN.scene.add(this.leaveVRButton);
+
+        this.defaultObjsToTest.push(this.controlsButton, this.leaveVRButton);
+
+        // The controls help, over the library until closed.
+        this.controlsHelpClose = this.makeTextButton(
+            Helpers.getWordFromLang("close"),
+            () => this.hideControlsHelp()
+        );
+        this.controlsHelp = new Block({
+            justifyContent: "space-between",
+            contentDirection: "column",
+            fontFamily: FontJSON,
+            fontTexture: FontImage,
+            fontColor: new Color(0xffffff),
+            padding: 0.08,
+            borderRadius: 0.08,
+            backgroundOpacity: 1,
+            backgroundColor: new Color(0x1e1e1e),
+            width: 3.9,
+            height: 1.6,
+        });
+        this.controlsHelp.add(
+            new Block({
+                width: 3.7,
+                height: 0.14,
+                justifyContent: "center",
+                backgroundOpacity: 0,
+            }).add(
+                new Text({
+                    fontSize: 0.1,
+                    content: Helpers.getWordFromLang("controls").toUpperCase(),
+                })
+            ),
+            new Block({
+                width: 3.7,
+                height: 0.95,
+                contentDirection: "row",
+                justifyContent: "space-between",
+                backgroundOpacity: 0,
+            }).add(
+                makeControlsColumn("LIBRARY", LIBRARY_CONTROLS, 1.2),
+                makeControlsColumn("PLAYER", PLAYER_CONTROLS, 1.2),
+                makeControlsColumn("HOLD GRIP +", GRIP_PLAYER_CONTROLS, 1.2)
+            ),
+            new Block({
+                width: 3.7,
+                height: 0.22,
+                contentDirection: "row",
+                justifyContent: "space-between",
+                backgroundOpacity: 0,
+            }).add(
+                new Block({
+                    width: 2.6,
+                    height: 0.2,
+                    justifyContent: "center",
+                    textAlign: "left",
+                    backgroundOpacity: 0,
+                    fontColor: new Color(0xaaaaaa),
+                }).add(
+                    new Text({
+                        fontSize: 0.06,
+                        content: "Left controller: X and Y instead of A and B.",
+                    })
+                ),
+                this.controlsHelpClose
+            )
+        );
+        this.controlsHelp.position.set(0, 1.4, this.CENTERPANELZDISTANCE + 0.3);
+        this.controlsHelp.scale.setScalar(1.35);
+        this.controlsHelp.visible = false;
+        MAIN.scene.add(this.controlsHelp);
+
         this.defaultObjsToTest.push(this.searchContainer);
         this.defaultObjsToTest.push(this.clearSearch);
         this.defaultObjsToTest.push(this.sortByDate);
@@ -956,9 +1048,96 @@ export class FileBrowserPanel {
             "fileBrowserPanel"
         );
 
+        for (const name of ["controlsButton", "leaveVRButton", "controlsHelp"]) {
+            ScreenManager.registerPanel(this[name], "fileBrowserPanel", name, name);
+            ScreenManager.registerObjectToDrag(this[name], "files", "fileBrowserPanel");
+        }
+
         if (this.FILES.length > 0 && this.defaultVideoThumbnail !== undefined) {
             this.generateView();
         }
+    }
+
+    makeTextButton(label, onSelect) {
+        const idle = {
+            backgroundColor: new Color(0x5c5c5c),
+            backgroundOpacity: 1,
+            fontColor: new Color(0xffffff),
+        };
+        const button = new Block({
+            justifyContent: "center",
+            contentDirection: "row",
+            fontFamily: FontJSON,
+            fontTexture: FontImage,
+            padding: 0.02,
+            borderRadius: 0.08,
+            width: 0.9,
+            height: 0.2,
+            hiddenOverflow: true,
+            ...idle,
+        });
+        button.add(new Text({ fontSize: 0.12, content: label }));
+        button.setupState({ state: "selected", onSet: onSelect });
+        button.setupState({
+            state: "hovered",
+            attributes: {
+                backgroundColor: new Color(0xffff00),
+                backgroundOpacity: 1,
+                fontColor: new Color(0x000000),
+            },
+        });
+        button.setupState({ state: "idle", attributes: idle });
+        return button;
+    }
+
+    makeIconButton(icon, onSelect) {
+        const idle = {
+            backgroundColor: new Color(0x999999),
+            backgroundOpacity: 1,
+        };
+        const button = new Block({
+            justifyContent: "center",
+            contentDirection: "row",
+            padding: 0.02,
+            borderRadius: 0.08,
+            width: 0.24,
+            height: 0.24,
+            ...idle,
+        });
+        this.loader.load(icon, (texture) => {
+            button.add(
+                new InlineBlock({
+                    width: 0.2,
+                    height: 0.2,
+                    backgroundTexture: texture,
+                    borderRadius: 0,
+                })
+            );
+        });
+        button.setupState({ state: "selected", onSet: onSelect });
+        button.setupState({
+            state: "hovered",
+            attributes: {
+                backgroundColor: new Color(0xffff00),
+                backgroundOpacity: 1,
+            },
+        });
+        button.setupState({ state: "idle", attributes: idle });
+        return button;
+    }
+
+    adjacentFile(offset) {
+        return adjacentVideo(this.FILES, MAIN.video.getAttribute("src"), offset);
+    }
+
+    showControlsHelp() {
+        this.controlsHelp.visible = true;
+        UI.registerNewObjectsToTest([this.controlsHelpClose]);
+    }
+
+    hideControlsHelp() {
+        this.controlsHelp.visible = false;
+        UI.registerNewObjectsToTest(this.fileBrowserObjectsToTest);
     }
 
     prepareFilesWithSearchPhrase() {
@@ -1345,6 +1524,8 @@ export class FileBrowserPanel {
                 this.searchContainer,
                 this.clearSearch,
                 this.sortContainer,
+                this.controlsButton,
+                this.leaveVRButton,
             ],
             this.fileBrowserObjectsToTest,
             true
@@ -1362,6 +1543,9 @@ export class FileBrowserPanel {
                 this.clearSearch,
                 this.keyboard,
                 this.sortContainer,
+                this.controlsButton,
+                this.leaveVRButton,
+                this.controlsHelp,
             ],
             [],
             true

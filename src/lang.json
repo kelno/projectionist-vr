@@ -23,6 +23,9 @@
         "next_page": "Next Page",
         "refresh": "Refresh",
         "close": "Close",
-        "sources": "Sources"
+        "sources": "Sources",
+        "controls": "Controls",
+        "no_next_video": "This is the last video in this list.",
+        "no_previous_video": "This is the first video in this list."
     }
 }

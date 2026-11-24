@@ -1,0 +1,25 @@
+{
+  // Type checking only (npm run typecheck): webpack builds the bundle, and Node
+  // runs the tests and scripts/make_icons.ts by stripping the types. So imports
+  // name the .ts file, and only syntax that strips away is allowed.
+  "compilerOptions": {
+    "target": "es2023",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["es2023", "dom", "dom.iterable"],
+    "types": ["node", "webxr"],
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "strict": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    // three-mesh-ui ships a stub; src/types/three-mesh-ui.d.ts says what it does.
+    "paths": { "three-mesh-ui": ["./src/types/three-mesh-ui.d.ts"] }
+  },
+  "include": ["src", "tests", "scripts/make_icons.ts"]
+}

@@ -52,7 +52,7 @@ module.exports = (env) => {
 
   const indexConfig = {
     entry: {
-      index: "./src/index.js",
+      index: "./src/index.ts",
     },
     mode: isDevelopment ? "development" : "production",
     // Production writes index.js.map without linking it from the bundle: it
@@ -73,10 +73,20 @@ module.exports = (env) => {
     module: {
       rules: [
         {
+          // Type checking is `npm run typecheck`'s job; the build only strips the types.
+          test: /\.ts$/,
+          loader: "ts-loader",
+          options: { transpileOnly: true },
+          exclude: /node_modules/,
+        },
+        {
           test: /\.(png|svg|jpg|gif)$/,
           use: ["file-loader"],
         },
       ],
+    },
+    resolve: {
+      extensions: [".ts", ".js"],
     },
     plugins: [
       // config.toml is local deployment configuration. Embed only browser-safe

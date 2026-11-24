@@ -105,7 +105,7 @@ window.addEventListener("touchend", () => {
 //
 
 function init() {
-  loadJsonLoader();
+  const libraryLoading = loadJsonLoader();
 
   ////////////////////////
   //  Basic Three Setup
@@ -607,7 +607,27 @@ function init() {
   //
 
   setTimeout(setLoop, 500);
-  setTimeout(selectFirst, 3000);
+
+  // Say the library is loading, then open it as soon as files.json arrives.
+  sourcesSelectorPanel.sourcesSelectorContainer.visible = false;
+  showPopupMessage(Helpers.getWordFromLang("loading_library"), 0);
+  Promise.all([
+    libraryLoading,
+    fileBrowserPanel.defaultVideoThumbnailReady,
+  ]).then(([jsonLoader]) => {
+    fileBrowserPanel.libraryLoading = false;
+    if (jsonLoader.status !== "success") {
+      showPopupMessage(Helpers.getWordFromLang("library_load_failed"), 0);
+      return;
+    }
+    hidePopupMessage();
+    sourcesSelectorPanel.refreshSources();
+    if (sourcesSelectorPanel.sources.length === 1) {
+      selectFirst();
+    } else {
+      sourcesSelectorPanel.showSourcesSelectorPanel();
+    }
+  });
 }
 
 function setLoop() {
@@ -902,23 +922,11 @@ function gamepadControlsUpdate() {
 }
 
 let buttonABXYpressed = false;
-let buttonABXYexitVR = false;
-let buttonABXYexitVRstart = null;
 
 function gamepadButtonsCheck(buttons) {
-  // Grip + B held for a second leaves VR, from the library or the player.
-  if (
-    buttons[1].pressed &&
-    buttons[5].pressed &&
-    (buttonABXYpressed === false || buttonABXYexitVR)
-  ) {
-    if (buttonABXYexitVRstart === null) {
-      buttonABXYexitVRstart = Date.now();
-    } else if (Date.now() - buttonABXYexitVRstart > 1000) {
-      let session = renderer.xr.getSession();
-      session.end();
-    }
-    buttonABXYexitVR = true;
+  // Grip + B leaves VR at once, from the library or the player.
+  if (buttons[1].pressed && buttons[5].pressed && buttonABXYpressed === false) {
+    leaveVR();
     buttonABXYpressed = true;
   } else if (
     buttons[4].pressed &&
@@ -936,8 +944,6 @@ function gamepadButtonsCheck(buttons) {
     buttonABXYpressed = true;
   } else if (!buttons[4].pressed && !buttons[5].pressed) {
     buttonABXYpressed = false;
-    buttonABXYexitVR = false;
-    buttonABXYexitVRstart = null;
   }
 }
 
@@ -1103,4 +1109,5 @@ async function loadJsonLoader() {
   const jsonFile = "files.json";
   const jsonLoader = new JsonLoader(jsonFile);
   await jsonLoader.load();
+  return jsonLoader;
 }

@@ -7,6 +7,8 @@
 - Play SBS, top-bottom, 360°, fisheye, and flat entries from `files.json`.
 - Select a video, then wait for browser media metadata before switching into
   the player.
+- While the catalogue loads, a spinner and "Loading library..." show; the
+  library opens as soon as it has loaded.
 - A video you leave and open again resumes where you left it, as long as the
   page stays open. Reloading the page forgets every position; a video watched
   to the end starts again from the beginning.
@@ -51,7 +53,7 @@ are connected, pull the trigger on the other one to point with it instead.
 
 - Trigger: select. On the bar under the library, hold it to move the library.
 - Thumbstick left or right: previous or next page.
-- Grip + B, held for a second, or the power button under the library: leave VR.
+- Grip + B, or the power button at the top-right of the library: leave VR.
 
 ### Player
 
@@ -67,7 +69,7 @@ are connected, pull the trigger on the other one to point with it instead.
 - Grip + thumbstick left or right: previous or next video in the library's
   current list, as searched and sorted. The arrow buttons at either end of the
   playback buttons do the same.
-- Grip + B, held for a second: leave VR.
+- Grip + B: leave VR.
 - The reset button puts the screen and the controls back in place, with the
   configured default zoom.
 

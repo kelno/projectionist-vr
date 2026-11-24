@@ -298,7 +298,16 @@ export class FileBrowserPanel {
     //////////////////////////////////////////////////////////////////////////////
 
     constructor(files) {
-        this.defaultVideoThumbnail = this.loader.load(VideoIcon);
+        // The placeholder thumbnail must have loaded before the library
+        // shows: a texture without its image breaks the UI's layout.
+        this.defaultVideoThumbnailReady = new Promise((resolve) => {
+            this.defaultVideoThumbnail = this.loader.load(
+                VideoIcon,
+                resolve,
+                undefined,
+                resolve
+            );
+        });
         this.rebuildFiles(files);
 
         const circle = new CircleGeometry(2, 32);
@@ -846,7 +855,7 @@ export class FileBrowserPanel {
         });
         this.defaultObjsToTest.push(this.draggingBox);
 
-        // Either side of the bar: the controls help and leaving VR.
+        // The controls help, left of the bar; leaving VR, in the top-right corner.
         this.controlsButton = this.makeTextButton(
             Helpers.getWordFromLang("controls"),
             () => this.showControlsHelp()
@@ -856,7 +865,8 @@ export class FileBrowserPanel {
 
         this.leaveVRButton = this.makeIconButton(PowerIcon, () => MAIN.leaveVR());
         this.leaveVRButton.tooltip = "Leave VR";
-        this.leaveVRButton.position.set(1.4, -0.35, this.CENTERPANELZDISTANCE);
+        // Top-right corner, beside the sorting.
+        this.leaveVRButton.position.set(3.1, 3.2, this.CENTERPANELZDISTANCE);
         MAIN.scene.add(this.leaveVRButton);
 
         this.defaultObjsToTest.push(this.controlsButton, this.leaveVRButton);
@@ -1739,8 +1749,11 @@ export class FileBrowserPanel {
         this.sortByDate.set({ backgroundColor: this.sortByDateColorRef });
     }
 
+    // True until the catalogue has loaded, to show the spinner meanwhile.
+    libraryLoading = true;
+
     loadingAnimation() {
-        if (this.viewGeneratorFinished === false) {
+        if (this.viewGeneratorFinished === false || this.libraryLoading) {
             this.loadingAnimatedObj.visible = true;
             this.loadingAnimatedObjBackground.visible = true;
             this.loadingAnimatedObj.rotation.z =

@@ -26,6 +26,8 @@
         "sources": "Sources",
         "controls": "Controls",
         "no_next_video": "This is the last video in this list.",
-        "no_previous_video": "This is the first video in this list."
+        "no_previous_video": "This is the first video in this list.",
+        "loading_library": "Loading library...",
+        "library_load_failed": "Could not load the library (files.json)."
     }
 }

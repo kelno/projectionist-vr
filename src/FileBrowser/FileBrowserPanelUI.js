@@ -57,6 +57,10 @@ export class FileBrowserPanel {
     CELL_HEIGHT = this.GRID_HEIGHT / this.ROWS;
     TILE_MARGIN = 0.03;
     PAGE_BUTTON_SIZE = 0.32;
+    // The rows above and below the library: their height, and their distance
+    // from it.
+    ROW_HEIGHT = 0.22;
+    ROW_GAP = space(5);
     FOLDER_ROWS = 12;
     // The most characters of a folder's name that fit on its button.
     FOLDER_NAME_LENGTH = 24;
@@ -195,7 +199,16 @@ export class FileBrowserPanel {
         this.generateFoldersButtons();
     }
 
-    // Top row: search on the left; sorting and leaving VR on the right.
+    // The library's edges, which the rows above and below line up with.
+    libraryEdges() {
+        const width = this.fileBrowserContainer.getWidth();
+        const height = this.fileBrowserContainer.getHeight();
+        const { x, y } = this.fileBrowserContainer.position;
+        return { left: x - width / 2, right: x + width / 2, top: y + height / 2, bottom: y - height / 2 };
+    }
+
+    // Top row: search on the left; sorting and leaving VR on the right, each
+    // row's ends at the library's edges.
     buildTopRow() {
         this.search = new SearchBar({
             onSearch: (phrase) => {
@@ -208,27 +221,29 @@ export class FileBrowserPanel {
         // ScreenManager finds panels by these property names.
         this.searchBar = this.search.bar;
         this.keyboard = this.search.keyboard;
-        this.searchBar.position.set(-1.77, 3.2, this.CENTER_Z);
+        const { left, right, top } = this.libraryEdges();
+        const y = top + this.ROW_GAP + this.ROW_HEIGHT / 2;
+        this.searchBar.position.set(left + this.searchBar.getWidth() / 2, y, this.CENTER_Z);
         this.keyboard.position.set(0, 2, this.KEYBOARD_Z);
 
+        const size = this.ROW_HEIGHT;
         this.sortButton = iconButton({
             icon: SortIcon,
             tooltip: "Sort",
-            size: 0.26,
+            size,
             onSelect: () => this.openLibraryWindow(this.sortWindow),
         });
-        this.sortButton.position.set(2.5, 3.2, this.CENTER_Z);
-
         this.leaveVRButton = iconButton({
             icon: PowerIcon,
             tooltip: "Leave VR",
-            size: 0.26,
+            size,
             hovered: "danger",
             onSelect: () => MAIN.leaveVR(),
         });
-        this.leaveVRButton.position.set(2.82, 3.2, this.CENTER_Z);
+        this.leaveVRButton.position.set(right - size / 2, y, this.CENTER_Z);
+        this.sortButton.position.set(right - size * 1.5 - space(3), y, this.CENTER_Z);
 
-        // The sort menu opens under its button.
+        // The sort menu opens under its button, over the library's top right.
         this.sortWindow = buildSortMenu({
             onChoose: (sortId) => {
                 this.sort = sortId;
@@ -239,43 +254,49 @@ export class FileBrowserPanel {
         });
         this.sortWindow.setCurrent(this.sort);
         this.sortMenu = this.sortWindow.block;
-        this.sortMenu.position.set(2.47, 2.52, this.CENTER_Z + 0.15);
+        const menuWidth = this.sortMenu.getWidth();
+        const menuHeight = this.sortMenu.getHeight();
+        this.sortMenu.position.set(right - menuWidth / 2, top - menuHeight / 2, this.CENTER_Z + 0.15);
 
         MAIN.scene.add(this.searchBar, this.keyboard, this.sortButton, this.leaveVRButton, this.sortMenu);
         this.defaultObjsToTest.push(this.sortButton, this.leaveVRButton);
     }
 
-    // Bottom row: the Controls button, the bar to move the library, and the
-    // player's version, small and muted, under the library's right edge.
+    // Bottom row: the Controls button under the library's left edge, the bar
+    // to move the library in the middle, and the player's version, small and
+    // muted, under its right edge.
     buildBottomRow() {
+        const { left, right, bottom } = this.libraryEdges();
+        const y = bottom - this.ROW_GAP - this.ROW_HEIGHT / 2;
         this.draggingBox = dragHandle({
             width: this.GRID_WIDTH / 2,
-            height: 0.2,
+            height: this.ROW_HEIGHT,
             tooltip: "Move the library",
             onStart: () => ScreenManager.startDrag("files"),
             onStop: () => ScreenManager.stopDrag("files"),
         });
-        this.draggingBox.position.set(0, -0.35, this.CENTER_Z);
+        this.draggingBox.position.set(this.fileBrowserContainer.position.x, y, this.CENTER_Z);
 
+        const controlsWidth = 0.7;
         this.controlsButton = textButton({
             label: Helpers.getWordFromLang("controls"),
             tooltip: "What the controller buttons do",
-            width: 0.7,
-            fontSize: 0.08,
+            width: controlsWidth,
+            height: this.ROW_HEIGHT,
+            fontSize: 0.09,
             onSelect: () => this.openLibraryWindow(this.controlsWindow),
         });
-        this.controlsButton.position.set(-1.75, -0.35, this.CENTER_Z);
+        this.controlsButton.position.set(left + controlsWidth / 2, y, this.CENTER_Z);
 
         const versionWidth = 0.8;
         this.versionLabel = label(`v${playerVersion}`, {
             width: versionWidth,
-            height: 0.2,
+            height: this.ROW_HEIGHT,
             fontSize: 0.06,
             align: "right",
             color: "mutedText",
         });
-        const libraryRightEdge = this.fileBrowserContainer.getWidth() / 2;
-        this.versionLabel.position.set(libraryRightEdge - versionWidth / 2, -0.35, this.CENTER_Z);
+        this.versionLabel.position.set(right - versionWidth / 2, y, this.CENTER_Z);
 
         MAIN.scene.add(this.draggingBox, this.controlsButton, this.versionLabel);
         this.defaultObjsToTest.push(this.draggingBox, this.controlsButton);

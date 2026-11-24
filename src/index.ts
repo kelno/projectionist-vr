@@ -475,7 +475,9 @@ function renderFrame(): void {
 
     gamepadControlsUpdate();
 
-    updateTooltip(pointer.update(), renderer.xr.isPresenting ? renderer.xr.getCamera() : camera);
+    const pointed = pointer.update();
+    updateTooltip(pointed, renderer.xr.isPresenting ? renderer.xr.getCamera() : camera);
+    playMenuPanel.updateSeekPreview(pointed);
 
     playMenuPanel.progressBarAndDuration();
 

@@ -1,44 +1,24 @@
-import {
-    Color,
-    TextureLoader,
-    RingGeometry,
-    MeshBasicMaterial,
-    DoubleSide,
-    Mesh,
-    CircleGeometry,
-} from "three";
-import { Block, Text, InlineBlock } from "../ui/meshUi.js";
+import { Block } from "../ui/meshUi.js";
+import { Color, TextureLoader } from "three";
 
 import ThumbnailBlock from "./ThumbnailBlock.js";
 import { SearchBar } from "./SearchBar.js";
 import { buildSortMenu } from "./sortMenu.js";
 import { DEFAULT_SORT, listFiles } from "./libraryList.mjs";
+import { folderPage } from "./folderPages.mjs";
 
 import clearUiChildren from "../ui/clearUiChildren.mjs";
-import { iconButton, label, panel, row, textButton } from "../ui/kit.js";
-
-import FontJSON from "../../assets/fonts/Roboto-Regular-msdf.json";
-import FontImage from "../../assets/fonts/Roboto-Regular.png";
-
-import * as MAIN from "../index.js";
-
-import * as UI from "../UI.js";
-
-import * as Helpers from "../Helpers.js";
-
-import { sanitizeFontText } from "../font.js";
-
-import * as ScreenManager from "../ScreenManager/ScreenManager.js";
-
-// Import Icons
-import LeftIcon from "../../assets/icons/left-arrow.png";
-import RightIcon from "../../assets/icons/right-arrow.png";
-import VideoIcon from "../../assets/icons/video.png";
-import PowerIcon from "../../assets/icons/power.png";
-import SortIcon from "../../assets/icons/sort.png";
-
-import { adjacentVideo } from "../adjacentVideo.mjs";
-import { playerVersion } from "../playerConfig.js";
+import {
+    FONT,
+    dragHandle,
+    iconButton,
+    label,
+    markActive,
+    panel,
+    row,
+    textButton,
+} from "../ui/kit.js";
+import { createSpinner } from "../ui/spinner.js";
 import {
     GRIP_PLAYER_CONTROLS,
     LIBRARY_CONTROLS,
@@ -46,309 +26,174 @@ import {
     makeControlsColumn,
 } from "../ui/controlHints.js";
 
+import * as MAIN from "../index.js";
+import * as UI from "../UI.js";
+import * as Helpers from "../Helpers.js";
+import * as ScreenManager from "../ScreenManager/ScreenManager.js";
+import { sanitizeFontText } from "../font.js";
+import { adjacentVideo } from "../adjacentVideo.mjs";
+import { playerVersion } from "../playerConfig.js";
+
+import LeftIcon from "../../assets/icons/left-arrow.png";
+import RightIcon from "../../assets/icons/right-arrow.png";
+import VideoIcon from "../../assets/icons/video.png";
+import PowerIcon from "../../assets/icons/power.png";
+import SortIcon from "../../assets/icons/sort.png";
+
+// The library: the current folder's videos as a grid of thumbnails, a page at
+// a time, between previous and next page buttons; the folders listed on the
+// left; search, sort and leave VR above; the Controls help and the bar to
+// move it all below.
 export class FileBrowserPanel {
-    fileBrowserContainer;
-    foldersContainer;
-    folderPageIndex = 0;
-    currentFolderPageIndex = 0;
-    MAXFOLDERSPERPAGE = 12;
-    thumbsContainer;
-    draggingBox;
+    GRID_WIDTH = 4.5;
+    GRID_HEIGHT = 3.2;
+    COLUMNS = 4;
+    ROWS = 3;
+    TILES_PER_PAGE = this.COLUMNS * this.ROWS;
+    CELL_WIDTH = this.GRID_WIDTH / this.COLUMNS;
+    CELL_HEIGHT = this.GRID_HEIGHT / this.ROWS;
+    TILE_MARGIN = 0.03;
+    PAGE_BUTTON_SIZE = this.GRID_HEIGHT / this.ROWS - 0.5;
+    FOLDER_ROWS = 12;
 
-    defaultVideoThumbnail;
-    listOfVideoThumbnailTextures = [];
+    // Distances from the viewer.
+    CENTER_Z = -5.2;
+    SIDE_Z = -5;
+    KEYBOARD_Z = -5;
 
-    // The search bar and its keyboard, and the phrase last searched for.
-    search;
-    keyboard;
+    THUMBNAIL_LOAD_CONCURRENCY = 4;
+
+    // The catalogue's folders, the one shown, and the folder list's page.
+    VIDEOS = [];
+    FOLDER = 0;
+    folderListPage = 0;
+
+    // The shown folder's videos, searched and sorted, and the grid's page.
+    FILES = [];
+    currentPage = 0;
+
     searchPhrase = "";
-
-    sortButton;
-    sortMenu;
     sort = DEFAULT_SORT;
 
     // The window open over the library (the sort menu or the controls
     // help), as { block, targets }, or null.
     openWindow = null;
 
-    buttonLeft;
-    buttonRight;
+    // True until the catalogue has loaded, to show the spinner meanwhile.
+    libraryLoading = true;
 
-    loadingAnimatedObj;
-    loadingAnimatedObjBackground;
-
+    // What can be clicked, besides the search bar, folders and thumbnails.
+    defaultObjsToTest = [];
     foldersButtons = [];
     thumbTargets = [];
-    defaultObjsToTest = [];
 
-    VIDEOS = [];
-    FILES = [];
-    FOLDER;
-    ACTIVEFOLDER;
-
-    FILES_PER_ROW = 4;
-    FILES_ROWS = 3;
-
-    CURRENT_PAGE = 0;
-    TOTAL_PAGES;
-
-    viewGeneratorThumbs = [];
-    viewGeneratorThumbsIterator = 0;
-    viewGeneratorPending = 0;
-    viewGeneratorFinished = true;
-    thumbnailViewGeneration = 0;
-    THUMBNAIL_LOAD_CONCURRENCY = 4;
+    // The thumbnails still to load for the shown page, and those loaded,
+    // to free when the page changes.
+    pendingTiles = [];
+    loadingThumbnails = 0;
+    loadedTextures = [];
+    pageGeneration = 0;
 
     loader = new TextureLoader();
-
-    PANELMAXWIDTH = 4.5;
-    PANELMAXHEIGHT = 3.2;
-    CENTERPANELZDISTANCE = -5.2;
-    SIDEPANELZDISTANCE = -5;
-    KEYBOARDZDISTANCE = -5;
-
-    BUTTONWIDTHHEIGHT = this.PANELMAXHEIGHT / this.FILES_ROWS - 0.5;
-
-    // The grid: FILES_ROWS rows of FILES_PER_ROW cells filling the panel,
-    // filled from the top left; each cell holds one tile.
-    CELL_WIDTH = this.PANELMAXWIDTH / this.FILES_PER_ROW;
-    CELL_HEIGHT = this.PANELMAXHEIGHT / this.FILES_ROWS;
-    TILE_MARGIN = 0.03;
-
-    thumbRowContainerAttributes = {
-        width: this.PANELMAXWIDTH,
-        height: this.CELL_HEIGHT,
-        contentDirection: "row",
-        justifyContent: "start",
-        backgroundOpacity: 0,
-    };
-
-    thumbsContainerAttributes = {
-        justifyContent: "start",
-        contentDirection: "column",
-        fontFamily: FontJSON,
-        fontTexture: FontImage,
-        padding: 0,
-        borderRadius: 0,
-        backgroundOpacity: 0,
-        width: this.PANELMAXWIDTH,
-        height: this.PANELMAXHEIGHT,
-    };
-
-    bigButtonAttributes = {
-        height: this.BUTTONWIDTHHEIGHT,
-        width: this.BUTTONWIDTHHEIGHT,
-        justifyContent: "center",
-        offset: 0.05,
-        margin: 0.02,
-        backgroundColor: new Color(0x999999),
-        backgroundOpacity: 1,
-        borderRadius: 0.075,
-    };
-
-    bigButtonAttributesTextureAttributes(texture) {
-        return {
-            height: this.BUTTONWIDTHHEIGHT,
-            width: this.BUTTONWIDTHHEIGHT,
-            backgroundTexture: texture,
-            borderRadius: 0,
-        };
-    }
-
-    // Options for component.setupState().
-    // It must contain a 'state' parameter, which you will refer to with component.setState( 'name-of-the-state' ).
-
-    hoveredStateAttributes = {
-        offset: 0.035,
-        backgroundColor: new Color(0xffff00),
-        backgroundOpacity: 1,
-        fontColor: new Color(0x000000),
-    };
-
-    hoveredState = {
-        state: "hovered",
-        attributes: this.hoveredStateAttributes,
-    };
-
-    idleStateAttributes = {
-        offset: 0.035,
-        backgroundColor: new Color(0x4f4f4f),
-        backgroundOpacity: 1,
-        fontColor: new Color(0xffffff),
-    };
-
-    idleState = {
-        state: "idle",
-        attributes: this.idleStateAttributes,
-    };
-
-    folderActiveIdleStateAttributes = {
-        offset: 0.035,
-        backgroundColor: new Color(0x008e7f),
-        backgroundOpacity: 1,
-        fontColor: new Color(0xffffff),
-    };
-
-    folderActiveIdleState = {
-        state: "idle",
-        attributes: this.folderActiveIdleStateAttributes,
-    };
-
-    selectedAttributes = {
-        offset: 0.02,
-        backgroundColor: new Color(0x777777),
-        backgroundOpacity: 1,
-        fontColor: new Color(0x222222),
-    };
-
-    foldersContainerAttributes = {
-        justifyContent: "start",
-        contentDirection: "column",
-        fontFamily: FontJSON,
-        fontTexture: FontImage,
-        fontSize: 0.12,
-        padding: 0.02,
-        borderRadius: 0,
-        backgroundOpacity: 1,
-        backgroundColor: new Color(0x292929),
-        width: this.PANELMAXWIDTH / 3,
-        height: this.PANELMAXHEIGHT,
-    };
-
-    //////////////////////////////////////////////////////////////////////////////
-    // CONSTRUCT
-    //////////////////////////////////////////////////////////////////////////////
 
     constructor(files) {
         // The placeholder thumbnail must have loaded before the library
         // shows: a texture without its image breaks the UI's layout.
         this.defaultVideoThumbnailReady = new Promise((resolve) => {
-            this.defaultVideoThumbnail = this.loader.load(
-                VideoIcon,
-                resolve,
-                undefined,
-                resolve
-            );
+            this.defaultVideoThumbnail = this.loader.load(VideoIcon, resolve, undefined, resolve);
         });
         this.rebuildFiles(files);
 
-        const circle = new CircleGeometry(2, 32);
-        const loadingAnimatedObjBackgroundMaterial = new MeshBasicMaterial({
-            color: 0x000000,
-        });
-        this.loadingAnimatedObjBackground = new Mesh(
-            circle,
-            loadingAnimatedObjBackgroundMaterial
-        );
-        MAIN.scene.add(this.loadingAnimatedObjBackground);
-        this.loadingAnimatedObjBackground.position.set(
-            0,
-            1.4,
-            this.CENTERPANELZDISTANCE + 0.18
-        );
-        this.loadingAnimatedObjBackground.scale.set(0.1, 0.1, 0.1);
-        this.loadingAnimatedObjBackground.visible = false;
+        this.buildGrid();
+        this.buildFolderList();
+        this.buildTopRow();
+        this.buildBottomRow();
+        this.buildControlsHelp();
 
-        const ring = new RingGeometry(
-            1,
-            1.5,
-            32,
-            1,
-            Math.PI * 0.5,
-            Math.PI * 1.5
-        );
-        const loadingAnimatedObjMaterial = new MeshBasicMaterial({
-            color: 0xffff00,
-            side: DoubleSide,
-        });
-        this.loadingAnimatedObj = new Mesh(ring, loadingAnimatedObjMaterial);
-        MAIN.scene.add(this.loadingAnimatedObj);
-        this.loadingAnimatedObj.position.set(
-            0,
-            1.4,
-            this.CENTERPANELZDISTANCE + 0.2
-        );
-        this.loadingAnimatedObj.scale.set(0.1, 0.1, 0.1);
-        this.loadingAnimatedObj.visible = false;
+        // Everything moves with the library, and goes back in place when it
+        // resets.
+        for (const name of [
+            "fileBrowserContainer",
+            "foldersContainer",
+            "searchBar",
+            "keyboard",
+            "sortButton",
+            "sortMenu",
+            "leaveVRButton",
+            "loadingSpinner",
+            "draggingBox",
+            "controlsButton",
+            "controlsHelp",
+        ]) {
+            ScreenManager.registerPanel(this[name], "fileBrowserPanel", name, name);
+            ScreenManager.registerObjectToDrag(this[name], "files", "fileBrowserPanel");
+        }
+    }
 
-        // Buttons
+    ////////////////////////////////////////////////////////////////////////////
+    // Building
 
-        // Left
-        this.buttonLeft = new Block(this.bigButtonAttributes);
-        this.buttonLeft.tooltip = "Previous page";
+    buildGrid() {
+        const pageButton = (icon, tooltip, onSelect) =>
+            iconButton({ icon, tooltip, onSelect, size: this.PAGE_BUTTON_SIZE });
+        this.buttonLeft = pageButton(LeftIcon, "Previous page", () => this.previousPage());
+        this.buttonRight = pageButton(RightIcon, "Next page", () => this.nextPage());
 
-        this.loader.load(LeftIcon, (texture) => {
-            this.buttonLeft.add(
-                new InlineBlock(
-                    this.bigButtonAttributesTextureAttributes(texture)
-                )
-            );
-        });
-
-        this.buttonLeft.setupState({
-            state: "selected",
-            attributes: this.selectedAttributes,
-            onSet: () => {
-                this.PreviousPage();
-            },
-        });
-        this.buttonLeft.setupState(this.hoveredState);
-        this.buttonLeft.setupState(this.idleState);
-
-        // Right
-        this.buttonRight = new Block(this.bigButtonAttributes);
-        this.buttonRight.tooltip = "Next page";
-
-        this.loader.load(RightIcon, (texture) => {
-            this.buttonRight.add(
-                new InlineBlock(
-                    this.bigButtonAttributesTextureAttributes(texture)
-                )
-            );
-        });
-
-        this.buttonRight.setupState({
-            state: "selected",
-            attributes: this.selectedAttributes,
-            onSet: () => {
-                this.NextPage();
-            },
-        });
-        this.buttonRight.setupState(this.hoveredState);
-        this.buttonRight.setupState(this.idleState);
-
-        //////////////////////////////////////////////////
-
-        this.fileBrowserContainer = new Block({
-            justifyContent: "center",
-            contentDirection: "row",
-            fontFamily: FontJSON,
-            fontTexture: FontImage,
-            fontSize: 0.07,
-            padding: 0.02,
+        this.thumbsContainerAttributes = {
+            width: this.GRID_WIDTH,
+            height: this.GRID_HEIGHT,
+            contentDirection: "column",
+            justifyContent: "start",
+            padding: 0,
             borderRadius: 0,
-            backgroundOpacity: 1,
-            backgroundColor: new Color(0x292929),
-            width: this.PANELMAXWIDTH + 0.3 + this.BUTTONWIDTHHEIGHT * 2,
-            // The grid's height plus the padding, or the grid overflows it.
-            height: this.PANELMAXHEIGHT + 0.04,
-        });
-
-        MAIN.scene.add(this.fileBrowserContainer);
-
+            backgroundOpacity: 0,
+            ...FONT,
+        };
         this.thumbsContainer = new Block(this.thumbsContainerAttributes);
 
+        this.fileBrowserContainer = new Block({
+            width: this.GRID_WIDTH + 0.3 + this.PAGE_BUTTON_SIZE * 2,
+            // The grid's height plus the padding, or the grid overflows it.
+            height: this.GRID_HEIGHT + 0.04,
+            contentDirection: "row",
+            justifyContent: "center",
+            padding: 0.02,
+            borderRadius: 0,
+            backgroundColor: new Color(0x292929),
+            backgroundOpacity: 1,
+            ...FONT,
+        }).add(this.buttonLeft, this.thumbsContainer, this.buttonRight);
+        this.fileBrowserContainer.position.set(0, 1.4, this.CENTER_Z);
+        MAIN.scene.add(this.fileBrowserContainer);
+
+        this.loadingSpinner = createSpinner(0.15);
+        this.loadingSpinner.position.set(0, 1.4, this.CENTER_Z + 0.2);
+        MAIN.scene.add(this.loadingSpinner);
+
+        this.defaultObjsToTest.push(this.buttonLeft, this.buttonRight);
+    }
+
+    buildFolderList() {
+        this.foldersContainerAttributes = {
+            width: this.GRID_WIDTH / 3,
+            height: this.GRID_HEIGHT,
+            contentDirection: "column",
+            justifyContent: "start",
+            padding: 0.02,
+            borderRadius: 0,
+            backgroundColor: new Color(0x292929),
+            backgroundOpacity: 1,
+            ...FONT,
+        };
         this.foldersContainer = new Block(this.foldersContainerAttributes);
-        if (this.VIDEOS.length > 0) {
-            this.generateFoldersButtons();
-        }
-        MAIN.scene.add(this.foldersContainer);
-        this.foldersContainer.position.set(-3.8, 1.4, this.SIDEPANELZDISTANCE);
+        this.foldersContainer.position.set(-3.8, 1.4, this.SIDE_Z);
         this.foldersContainer.rotation.y = 0.5;
+        MAIN.scene.add(this.foldersContainer);
+        this.generateFoldersButtons();
+    }
 
-        //////////////////////////////////////////////////////////////////////
-        // Top row: search on the left; sorting and leaving VR on the right.
-
+    // Top row: search on the left; sorting and leaving VR on the right.
+    buildTopRow() {
         this.search = new SearchBar({
             onSearch: (phrase) => {
                 this.searchPhrase = phrase;
@@ -359,9 +204,8 @@ export class FileBrowserPanel {
         // ScreenManager finds panels by these property names.
         this.searchBar = this.search.bar;
         this.keyboard = this.search.keyboard;
-        this.searchBar.position.set(-1.77, 3.2, this.CENTERPANELZDISTANCE);
-        this.keyboard.position.set(0, 2, this.KEYBOARDZDISTANCE);
-        MAIN.scene.add(this.searchBar, this.keyboard);
+        this.searchBar.position.set(-1.77, 3.2, this.CENTER_Z);
+        this.keyboard.position.set(0, 2, this.KEYBOARD_Z);
 
         this.sortButton = iconButton({
             icon: SortIcon,
@@ -369,7 +213,7 @@ export class FileBrowserPanel {
             size: 0.26,
             onSelect: () => this.openLibraryWindow(this.sortWindow),
         });
-        this.sortButton.position.set(2.5, 3.2, this.CENTERPANELZDISTANCE);
+        this.sortButton.position.set(2.5, 3.2, this.CENTER_Z);
 
         this.leaveVRButton = iconButton({
             icon: PowerIcon,
@@ -377,82 +221,36 @@ export class FileBrowserPanel {
             size: 0.26,
             onSelect: () => MAIN.leaveVR(),
         });
-        this.leaveVRButton.position.set(2.82, 3.2, this.CENTERPANELZDISTANCE);
-        MAIN.scene.add(this.sortButton, this.leaveVRButton);
+        this.leaveVRButton.position.set(2.82, 3.2, this.CENTER_Z);
 
         // The sort menu opens under its button.
-        const sortMenu = buildSortMenu({
+        this.sortWindow = buildSortMenu({
             onChoose: (sortId) => {
                 this.sort = sortId;
-                sortMenu.setCurrent(sortId);
+                this.sortWindow.setCurrent(sortId);
                 this.closeLibraryWindow();
                 this.refreshList();
             },
         });
-        sortMenu.setCurrent(this.sort);
-        this.sortMenu = sortMenu.block;
-        this.sortWindow = sortMenu;
-        this.sortMenu.position.set(2.47, 2.52, this.CENTERPANELZDISTANCE + 0.15);
-        MAIN.scene.add(this.sortMenu);
+        this.sortWindow.setCurrent(this.sort);
+        this.sortMenu = this.sortWindow.block;
+        this.sortMenu.position.set(2.47, 2.52, this.CENTER_Z + 0.15);
 
-        ///////////////////////////
-        // Add to main container
+        MAIN.scene.add(this.searchBar, this.keyboard, this.sortButton, this.leaveVRButton, this.sortMenu);
+        this.defaultObjsToTest.push(this.sortButton, this.leaveVRButton);
+    }
 
-        this.fileBrowserContainer.add(this.buttonLeft);
-
-        this.fileBrowserContainer.add(this.thumbsContainer);
-
-        this.fileBrowserContainer.add(this.buttonRight);
-
-        this.fileBrowserContainer.position.set(
-            0,
-            1.4,
-            this.CENTERPANELZDISTANCE
-        );
-
-        this.draggingBox = new Block({
-            justifyContent: "center",
-            contentDirection: "row",
-            padding: 0.02,
-            borderRadius: 0.12,
-            backgroundOpacity: 1,
-            backgroundColor: new Color(0x5c5c5c),
-            width: this.PANELMAXWIDTH / 2,
+    // Bottom row: the Controls button and the bar to move the library.
+    buildBottomRow() {
+        this.draggingBox = dragHandle({
+            width: this.GRID_WIDTH / 2,
             height: 0.2,
+            tooltip: "Move the library",
+            onStart: () => ScreenManager.startDrag("files"),
+            onStop: () => ScreenManager.stopDrag("files"),
         });
+        this.draggingBox.position.set(0, -0.35, this.CENTER_Z);
 
-        MAIN.scene.add(this.draggingBox);
-        this.draggingBox.position.set(0, -0.35, this.CENTERPANELZDISTANCE);
-        this.draggingBox.tooltip = "Move the library";
-        this.draggingBox.setupState({
-            state: "selected",
-            onSet: () => {
-                ScreenManager.startDrag("files");
-            },
-        });
-
-        this.draggingBox.setupState({
-            state: "hovered",
-            attributes: {
-                backgroundColor: new Color(0xffff00),
-                backgroundOpacity: 1,
-            },
-            onSet: () => {
-                ScreenManager.stopDrag("files");
-            },
-        });
-        this.draggingBox.setupState({
-            state: "idle",
-            attributes: {
-                backgroundColor: new Color(0x5c5c5c),
-                backgroundOpacity: 1,
-            },
-            onSet: () => {
-                ScreenManager.stopDrag("files");
-            },
-        });
-
-        // The controls help, left of the bar, opens over the library.
         this.controlsButton = textButton({
             label: Helpers.getWordFromLang("controls"),
             tooltip: "What the controller buttons do",
@@ -460,9 +258,14 @@ export class FileBrowserPanel {
             fontSize: 0.08,
             onSelect: () => this.openLibraryWindow(this.controlsWindow),
         });
-        this.controlsButton.position.set(-1.75, -0.35, this.CENTERPANELZDISTANCE);
-        MAIN.scene.add(this.controlsButton);
+        this.controlsButton.position.set(-1.75, -0.35, this.CENTER_Z);
 
+        MAIN.scene.add(this.draggingBox, this.controlsButton);
+        this.defaultObjsToTest.push(this.draggingBox, this.controlsButton);
+    }
+
+    // The controls help, over the library until a click outside it.
+    buildControlsHelp() {
         this.controlsHelp = panel(
             [
                 label(Helpers.getWordFromLang("controls").toUpperCase(), {
@@ -500,45 +303,63 @@ export class FileBrowserPanel {
             ],
             { width: 3.9, height: 1.5, padding: 0.08, justify: "space-between" }
         );
-        this.controlsHelp.position.set(0, 1.4, this.CENTERPANELZDISTANCE + 0.3);
+        this.controlsHelp.position.set(0, 1.4, this.CENTER_Z + 0.3);
         this.controlsHelp.scale.setScalar(1.35);
         this.controlsHelp.visible = false;
         MAIN.scene.add(this.controlsHelp);
         this.controlsWindow = { block: this.controlsHelp, targets: [] };
+    }
 
-        this.defaultObjsToTest.push(
-            this.buttonLeft,
-            this.buttonRight,
-            this.draggingBox,
-            this.controlsButton,
-            this.sortButton,
-            this.leaveVRButton
-        );
+    ////////////////////////////////////////////////////////////////////////////
+    // The catalogue and the list shown
 
-        //////////////////////////////////////////////////////////////////////
-        // Everything above moves with the library, and goes back in place
-        // when it resets.
-
-        for (const name of [
-            "draggingBox",
-            "searchBar",
-            "keyboard",
-            "foldersContainer",
-            "fileBrowserContainer",
-            "sortButton",
-            "sortMenu",
-            "loadingAnimatedObj",
-            "loadingAnimatedObjBackground",
-            "controlsButton",
-            "leaveVRButton",
-            "controlsHelp",
-        ]) {
-            ScreenManager.registerPanel(this[name], "fileBrowserPanel", name, name);
-            ScreenManager.registerObjectToDrag(this[name], "files", "fileBrowserPanel");
+    // A catalogue: back to its first folder, keeping the search and sort.
+    rebuildFiles(files) {
+        if (!files.videos) {
+            return;
         }
+        this.VIDEOS = files.videos;
+        this.FOLDER = 0;
+        this.folderListPage = 0;
+        this.listFolder();
+    }
 
-        if (this.FILES.length > 0 && this.defaultVideoThumbnail !== undefined) {
-            this.generateView();
+    // Shows a new catalogue: its folders and its first folder's videos.
+    loadCatalogue(files) {
+        this.rebuildFiles(files);
+        this.regenerateFoldersButtons();
+        this.regenerateFileBrowser();
+    }
+
+    // The shown folder's videos, searched and sorted, from the first page.
+    listFolder() {
+        this.currentPage = 0;
+        this.FILES = listFiles(this.VIDEOS[this.FOLDER]?.list ?? [], {
+            phrase: this.searchPhrase,
+            sort: this.sort,
+        });
+    }
+
+    refreshList() {
+        this.listFolder();
+        this.regenerateFileBrowser();
+    }
+
+    get pageCount() {
+        return Math.max(Math.ceil(this.FILES.length / this.TILES_PER_PAGE), 1);
+    }
+
+    previousPage() {
+        if (this.currentPage > 0) {
+            this.currentPage--;
+            this.regenerateFileBrowser();
+        }
+    }
+
+    nextPage() {
+        if (this.currentPage < this.pageCount - 1) {
+            this.currentPage++;
+            this.regenerateFileBrowser();
         }
     }
 
@@ -557,17 +378,147 @@ export class FileBrowserPanel {
         return adjacentVideo(this.FILES, MAIN.video.getAttribute("src"), offset);
     }
 
-    // The current folder's videos, searched and sorted, from the first page.
-    refreshList() {
-        this.CURRENT_PAGE = 0;
-        this.FILES = listFiles(this.VIDEOS[this.FOLDER].list, {
-            phrase: this.searchPhrase,
-            sort: this.sort,
-        });
-        this.TOTAL_PAGES =
-            Math.ceil(this.FILES.length / (this.FILES_PER_ROW * this.FILES_ROWS)) - 1;
-        this.regenerateFileBrowser();
+    ////////////////////////////////////////////////////////////////////////////
+    // The grid
+
+    // Lays out the current page's tiles; their thumbnails load afterwards,
+    // a few at a time, in generateThumbnails().
+    regenerateFileBrowser() {
+        this.pageGeneration++;
+        clearUiChildren(this.thumbsContainer);
+        this.loadedTextures.forEach((texture) => texture.dispose());
+        this.loadedTextures = [];
+        this.thumbsContainer.set(this.thumbsContainerAttributes);
+
+        const start = this.currentPage * this.TILES_PER_PAGE;
+        const files = this.FILES.slice(start, start + this.TILES_PER_PAGE);
+        this.thumbTargets = files.map(
+            (file) =>
+                new ThumbnailBlock(file, {
+                    cellWidth: this.CELL_WIDTH,
+                    cellHeight: this.CELL_HEIGHT,
+                    margin: this.TILE_MARGIN,
+                })
+        );
+        for (let first = 0; first < this.thumbTargets.length; first += this.COLUMNS) {
+            this.thumbsContainer.add(
+                new Block({
+                    width: this.GRID_WIDTH,
+                    height: this.CELL_HEIGHT,
+                    contentDirection: "row",
+                    justifyContent: "start",
+                    backgroundOpacity: 0,
+                }).add(...this.thumbTargets.slice(first, first + this.COLUMNS))
+            );
+        }
+        this.pendingTiles = this.thumbTargets.slice();
+        this.loadingThumbnails = 0;
+        this.registerTargets();
     }
+
+    // Called every frame: starts loading the next thumbnails.
+    generateThumbnails() {
+        while (this.loadingThumbnails < this.THUMBNAIL_LOAD_CONCURRENCY && this.pendingTiles.length > 0) {
+            const tile = this.pendingTiles.shift();
+            const generation = this.pageGeneration;
+            this.loadingThumbnails++;
+            this.loader
+                .loadAsync(tile.thumbnailUrl)
+                .then((texture) => {
+                    if (generation !== this.pageGeneration) {
+                        texture.dispose();
+                        return;
+                    }
+                    this.loadedTextures.push(texture);
+                    tile.setImage(texture);
+                })
+                .catch(() => {
+                    if (generation === this.pageGeneration) {
+                        console.error("Failed to load thumbnail:", tile.thumbnailUrl);
+                        tile.setImage(this.defaultVideoThumbnail);
+                    }
+                })
+                .finally(() => {
+                    if (generation === this.pageGeneration) {
+                        this.loadingThumbnails--;
+                    }
+                });
+        }
+    }
+
+    get thumbnailsLoading() {
+        return this.pendingTiles.length > 0 || this.loadingThumbnails > 0;
+    }
+
+    // Called every frame: the spinner turns while the catalogue or the
+    // page's thumbnails load.
+    loadingAnimation() {
+        this.loadingSpinner.visible = this.libraryLoading || this.thumbnailsLoading;
+        if (this.loadingSpinner.visible) {
+            this.loadingSpinner.spin();
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // The folder list
+
+    generateFoldersButtons() {
+        const { rows } = folderPage(this.VIDEOS.length, this.folderListPage, this.FOLDER_ROWS);
+        this.foldersButtons = rows.map((entry) => this.folderListButton(entry));
+        if (this.foldersButtons.length > 0) {
+            this.foldersContainer.add(...this.foldersButtons);
+        }
+        this.foldersButtonsIdleState();
+    }
+
+    folderListButton(entry) {
+        const turnPage = (offset) => () => {
+            this.folderListPage += offset;
+            this.regenerateFoldersButtons();
+        };
+        const [text, onSelect] = {
+            previous: () => [Helpers.getWordFromLang("previous_page"), turnPage(-1)],
+            next: () => [Helpers.getWordFromLang("next_page"), turnPage(1)],
+            folder: () => [this.VIDEOS[entry.index].name, () => this.showFolder(entry.index)],
+        }[entry.type]();
+        const button = textButton({
+            label: sanitizeFontText(text),
+            width: this.GRID_WIDTH / 3 - 0.1,
+            height: 0.2,
+            fontSize: 0.12,
+            onSelect,
+        });
+        button.folderIndex = entry.type === "folder" ? entry.index : null;
+        return button;
+    }
+
+    showFolder(index) {
+        if (index === this.FOLDER) {
+            return;
+        }
+        this.FOLDER = index;
+        this.foldersButtonsIdleState();
+        this.refreshList();
+    }
+
+    // The shown folder's button is marked.
+    foldersButtonsIdleState() {
+        for (const button of this.foldersButtons) {
+            markActive(button, button.folderIndex === this.FOLDER);
+        }
+    }
+
+    regenerateFoldersButtons() {
+        clearUiChildren(this.foldersContainer);
+        this.foldersContainer.set(this.foldersContainerAttributes);
+        const { pageCount } = folderPage(this.VIDEOS.length, 0, this.FOLDER_ROWS);
+        this.folderListPage = Math.max(0, Math.min(this.folderListPage, pageCount - 1));
+        this.generateFoldersButtons();
+        this.registerTargets();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // What can be clicked, and windows over the library
 
     // A window over the library, such as the sort menu: while it is open,
     // only its buttons count, and a click outside it closes it.
@@ -606,11 +557,7 @@ export class FileBrowserPanel {
     // keyboard while typing, or the whole library.
     registerTargets() {
         if (this.openWindow) {
-            UI.registerNewObjectsToTest([
-                ...this.openWindow.targets,
-                this.openWindow.block,
-                MAIN.hiddenSphere,
-            ]);
+            UI.registerNewObjectsToTest([...this.openWindow.targets, this.openWindow.block, MAIN.hiddenSphere]);
         } else if (this.search.isTyping) {
             UI.registerNewObjectsToTest([...this.search.targets(), this.draggingBox]);
         } else {
@@ -618,338 +565,31 @@ export class FileBrowserPanel {
         }
     }
 
-    generateView() {
-        let endOfFiles = false;
-        this.thumbnailViewGeneration++;
-        this.viewGeneratorThumbs = [];
-        this.thumbTargets = [];
-        this.listOfVideoThumbnailTextures = [];
-        this.viewGeneratorThumbsIterator = 0;
-        this.viewGeneratorPending = 0;
-        let iterate =
-            this.CURRENT_PAGE > 0
-                ? this.FILES_PER_ROW * this.FILES_ROWS * this.CURRENT_PAGE
-                : 0;
-        for (let index = 0; index < this.FILES_ROWS; index++) {
-            const thumbsContainerButtonsRow = new Block(
-                this.thumbRowContainerAttributes
-            );
-            let addedThumbs = 0;
-            for (let index = 0; index < this.FILES_PER_ROW; index++) {
-                if (!this.FILES[iterate]) {
-                    endOfFiles = true;
-                    break;
-                }
+    ////////////////////////////////////////////////////////////////////////////
+    // Showing and hiding
 
-                const thumb = new ThumbnailBlock(this.FILES[iterate], {
-                    cellWidth: this.CELL_WIDTH,
-                    cellHeight: this.CELL_HEIGHT,
-                    margin: this.TILE_MARGIN,
-                });
-
-                thumbsContainerButtonsRow.add(thumb);
-                this.thumbTargets.push(thumb);
-                this.viewGeneratorThumbs.push(thumb);
-                iterate++;
-                addedThumbs++;
-            }
-            if (addedThumbs > 0) {
-                this.thumbsContainer.add(thumbsContainerButtonsRow);
-            }
-            if (endOfFiles) {
-                break;
-            }
-        }
-        this.viewGeneratorFinished = false;
+    get panels() {
+        return [
+            this.fileBrowserContainer,
+            this.foldersContainer,
+            this.draggingBox,
+            this.searchBar,
+            this.sortButton,
+            this.controlsButton,
+            this.leaveVRButton,
+        ];
     }
-
-    generateThumbnails() {
-        if (this.viewGeneratorFinished) {
-            return;
-        }
-
-        while (
-            this.viewGeneratorPending < this.THUMBNAIL_LOAD_CONCURRENCY &&
-            this.viewGeneratorThumbsIterator < this.viewGeneratorThumbs.length
-        ) {
-            const thumbnailBlock =
-                this.viewGeneratorThumbs[this.viewGeneratorThumbsIterator++];
-            const thumbnailUrl = thumbnailBlock.thumbnailUrl;
-            const viewGeneration = this.thumbnailViewGeneration;
-            this.viewGeneratorPending++;
-
-            this.loader
-                .loadAsync(thumbnailUrl, undefined)
-                .then((image) => {
-                    if (viewGeneration !== this.thumbnailViewGeneration) {
-                        image.dispose();
-                        return;
-                    }
-
-                    this.addThumbnailToBlock(thumbnailBlock, image, true);
-                })
-                .catch(() => {
-                    if (viewGeneration !== this.thumbnailViewGeneration) {
-                        return;
-                    }
-
-                    console.error("Failed to load thumbnail:", thumbnailUrl);
-                    this.addThumbnailToBlock(
-                        thumbnailBlock,
-                        this.defaultVideoThumbnail,
-                        false
-                    );
-                })
-                .finally(() => {
-                    if (viewGeneration !== this.thumbnailViewGeneration) {
-                        return;
-                    }
-
-                    this.viewGeneratorPending--;
-                    if (
-                        this.viewGeneratorThumbsIterator ===
-                            this.viewGeneratorThumbs.length &&
-                        this.viewGeneratorPending === 0
-                    ) {
-                        this.viewGeneratorFinished = true;
-                    }
-                });
-        }
-    }
-
-    addThumbnailToBlock(thumbnailBlock, texture, shouldDisposeTexture) {
-        if (shouldDisposeTexture) {
-            this.listOfVideoThumbnailTextures.push(texture);
-        }
-        thumbnailBlock.setImage(texture);
-    }
-
-    regenerateFileBrowser() {
-        this.thumbnailViewGeneration++;
-        this.viewGeneratorFinished = true;
-        clearUiChildren(this.thumbsContainer);
-        this.listOfVideoThumbnailTextures.forEach((texture) => {
-            texture.dispose();
-        });
-        this.thumbsContainer.set(this.thumbsContainerAttributes);
-
-        this.generateView();
-
-        this.registerTargets();
-    }
-
-    PreviousPage() {
-        if (this.CURRENT_PAGE > 0) {
-            this.CURRENT_PAGE--;
-            this.regenerateFileBrowser();
-        }
-    }
-
-    NextPage() {
-        if (this.CURRENT_PAGE < this.TOTAL_PAGES) {
-            this.CURRENT_PAGE++;
-            this.regenerateFileBrowser();
-        }
-    }
-
-    generateFoldersButtons() {
-        let folderIndex = this.folderPageIndex;
-        // for (let index = 0; index < this.VIDEOS.length; index++) {
-        let index = 0;
-        while (index < this.MAXFOLDERSPERPAGE) {
-            if (folderIndex !== 0 && index === 0) {
-                const folderButton = this.createFolderButton(
-                    index++,
-                    0,
-                    true,
-                    Helpers.getWordFromLang("previous_page"),
-                    "prev"
-                );
-                this.foldersContainer.add(folderButton);
-                this.foldersButtons.push(folderButton);
-            }
-            const folderButton = this.createFolderButton(
-                index++,
-                folderIndex++
-            );
-            this.foldersContainer.add(folderButton);
-            this.foldersButtons.push(folderButton);
-            if (folderIndex >= this.VIDEOS.length) {
-                break;
-            }
-        }
-        if (folderIndex < this.VIDEOS.length) {
-            const folderButton = this.createFolderButton(
-                index,
-                folderIndex,
-                true,
-                Helpers.getWordFromLang("next_page"),
-                "next"
-            );
-            this.foldersContainer.add(folderButton);
-            this.foldersButtons.push(folderButton);
-        }
-        this.foldersButtonsIdleState();
-    }
-
-    createFolderButton(
-        id,
-        index,
-        isPageSwitcher = false,
-        pageText = "",
-        pageDirection = ""
-    ) {
-        const folderButton = new Block({
-            justifyContent: "center",
-            contentDirection: "row",
-            height: 0.2,
-            offset: 0.05,
-            margin: 0.02,
-            bestFit: "shrink",
-            width: this.PANELMAXWIDTH / 3 - 0.1,
-            backgroundOpacity: 1,
-        }).add(
-            new Text({
-                content: sanitizeFontText(
-                    isPageSwitcher ? pageText : this.VIDEOS[index].name
-                ),
-            })
-        );
-        folderButton.folderId = id;
-        folderButton.folderIndex = index;
-        if (isPageSwitcher) {
-            folderButton.setupState({
-                state: "selected",
-                attributes: this.selectedAttributes,
-                onSet: () => {
-                    switch (pageDirection) {
-                        case "prev":
-                            this.folderPageIndex =
-                                this.folderPageIndex - this.MAXFOLDERSPERPAGE;
-                            break;
-
-                        default:
-                        case "next":
-                            this.folderPageIndex =
-                                this.folderPageIndex + this.MAXFOLDERSPERPAGE;
-                            break;
-                    }
-                    this.regenerateFoldersButtons();
-                },
-            });
-        } else {
-            folderButton.setupState({
-                state: "selected",
-                attributes: this.selectedAttributes,
-                onSet: () => {
-                    if (
-                        this.ACTIVEFOLDER !== id ||
-                        this.currentFolderPageIndex !== this.folderPageIndex
-                    ) {
-                        this.FOLDER = index;
-                        this.ACTIVEFOLDER = id;
-                        this.currentFolderPageIndex = this.folderPageIndex;
-                        this.foldersButtonsIdleState();
-                        this.refreshList();
-                    }
-                },
-            });
-        }
-        folderButton.setupState(this.hoveredState);
-        return folderButton;
-    }
-
-    regenerateFoldersButtons() {
-        clearUiChildren(this.foldersContainer);
-        this.foldersContainer.set(this.foldersContainerAttributes);
-        this.foldersButtons = [];
-        this.generateFoldersButtons();
-        this.registerTargets();
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Hide / Show Menu
 
     showFileMenuPanel() {
         MAIN.cancelVideoPlaybackRequest();
-        UI.showMenu(
-            [
-                this.fileBrowserContainer,
-                this.foldersContainer,
-                this.draggingBox,
-                this.searchBar,
-                this.sortButton,
-                this.controlsButton,
-                this.leaveVRButton,
-            ],
-            this.libraryTargets(),
-            true
-        );
+        UI.showMenu(this.panels, this.libraryTargets(), true);
         MAIN.playbackChange(false);
     }
 
     hideFileMenuPanel(screen_type = null) {
         this.closeLibraryWindow();
         this.search.stopTyping();
-        UI.hideMenu(
-            [
-                this.fileBrowserContainer,
-                this.foldersContainer,
-                this.draggingBox,
-                this.searchBar,
-                this.keyboard,
-                this.sortButton,
-                this.controlsButton,
-                this.leaveVRButton,
-            ],
-            [],
-            true
-        );
+        UI.hideMenu([...this.panels, this.keyboard], [], true);
         MAIN.playbackChange(true, screen_type);
-    }
-
-    foldersButtonsIdleState() {
-        this.foldersButtons.forEach((folder) => {
-            const state =
-                folder.folderIndex === this.FOLDER
-                    ? this.folderActiveIdleState
-                    : this.idleState;
-            folder.setupState(state);
-            folder.set(state.attributes);
-        });
-    }
-
-    // True until the catalogue has loaded, to show the spinner meanwhile.
-    libraryLoading = true;
-
-    loadingAnimation() {
-        if (this.viewGeneratorFinished === false || this.libraryLoading) {
-            this.loadingAnimatedObj.visible = true;
-            this.loadingAnimatedObjBackground.visible = true;
-            this.loadingAnimatedObj.rotation.z =
-                this.loadingAnimatedObj.rotation.z - 0.2;
-        } else {
-            this.loadingAnimatedObj.visible = false;
-            this.loadingAnimatedObjBackground.visible = false;
-        }
-    }
-
-    // A new catalogue: back to its first folder, keeping the search and sort.
-    rebuildFiles(files) {
-        if (!files.videos) {
-            return;
-        }
-        this.VIDEOS = files.videos;
-        this.FOLDER = 0;
-        this.ACTIVEFOLDER = 0;
-        this.folderPageIndex = 0;
-        this.currentFolderPageIndex = 0;
-        this.CURRENT_PAGE = 0;
-        this.FILES = listFiles(this.VIDEOS[0].list, {
-            phrase: this.searchPhrase,
-            sort: this.sort,
-        });
-        this.TOTAL_PAGES =
-            Math.ceil(this.FILES.length / (this.FILES_PER_ROW * this.FILES_ROWS)) - 1;
     }
 }

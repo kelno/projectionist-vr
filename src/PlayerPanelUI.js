@@ -30,6 +30,7 @@ import {
     BUTTON_SIZE,
     FONT,
     column,
+    dragHandle,
     iconButton,
     label,
     markActive,
@@ -273,32 +274,15 @@ export class PlayerPanel {
 
     // The bar under the controls, to move the screen and controls together.
     buildDraggingBox() {
-        const idle = { backgroundColor: new Color(0x5c5c5c), backgroundOpacity: 1 };
-        this.draggingBox = new Block({
+        this.draggingBox = dragHandle({
             width: this.WIDTH / 2,
             height: 0.1,
-            justifyContent: "center",
-            padding: 0.02,
-            borderRadius: 0.06,
-            ...idle,
+            tooltip: "Move the screen and controls",
+            onStart: () => ScreenManager.startDrag("player"),
+            onStop: () => ScreenManager.stopDrag("player"),
         });
         this.draggingBox.visible = false;
         this.draggingBox.position.set(0, 0.25, -3);
-        this.draggingBox.tooltip = "Move the screen and controls";
-        this.draggingBox.setupState({
-            state: "selected",
-            onSet: () => ScreenManager.startDrag("player"),
-        });
-        this.draggingBox.setupState({
-            state: "hovered",
-            attributes: { backgroundColor: new Color(0xffff00), backgroundOpacity: 1 },
-            onSet: () => ScreenManager.stopDrag("player"),
-        });
-        this.draggingBox.setupState({
-            state: "idle",
-            attributes: idle,
-            onSet: () => ScreenManager.stopDrag("player"),
-        });
         MAIN.scene.add(this.draggingBox);
         ScreenManager.registerPanel(this.draggingBox, "playMenuPanel", "draggingBox", "draggingBox");
         this.playMenuObjsToTest.push(this.draggingBox);

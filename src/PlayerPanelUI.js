@@ -291,8 +291,10 @@ export class PlayerPanel {
     ////////////////////////////////////////////////////////////////////////////
     // Showing and hiding
 
+    // The video stays in 3D while the controls show (upstream switched it to
+    // 2D, the same picture for both eyes, which looked wrong to the owner).
     showPlayMenuPanel() {
-        UI.showMenu([this.playMenuContainer, this.draggingBox], this.playMenuObjsToTest, true);
+        UI.showMenu([this.playMenuContainer, this.draggingBox], this.playMenuObjsToTest);
         MAIN.hiddenSphere.buttonsVisible = true;
     }
 
@@ -300,7 +302,7 @@ export class PlayerPanel {
         if (this.settingsWindow.isOpen) {
             this.hideSettingsMenuContainer();
         }
-        UI.hideMenu([this.playMenuContainer, this.draggingBox], [], true);
+        UI.hideMenu([this.playMenuContainer, this.draggingBox], []);
         MAIN.hiddenSphere.buttonsVisible = false;
     }
 

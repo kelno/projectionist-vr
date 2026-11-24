@@ -102,6 +102,7 @@ module.exports = (env) => {
       // player preferences; filesystem paths remain available to Webpack only.
       new webpack.DefinePlugin({
         __PLAYER_CONFIG__: JSON.stringify(playerConfig(config)),
+        __PLAYER_VERSION__: JSON.stringify(require("./package.json").version),
       }),
       new HtmlWebpackPlugin({
         template: "./index.html",

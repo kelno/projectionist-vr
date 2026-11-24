@@ -44,7 +44,7 @@ to their default position when you exit the current video.
 ## Controls
 
 The Controls button under the library opens a panel listing the controls
-below; a click outside it closes it. While you hold the grip, a popup above the controller lists what the
+below, and the player's version at its bottom right; a click outside it closes it. While you hold the grip, a popup above the controller lists what the
 grip combinations do there.
 Resting the pointer on a button shows what it does.
 
@@ -63,7 +63,7 @@ are connected, pull the trigger on the other one to point with it instead.
   videos; before you first change it, SBS playback starts at the configured
   `default_sbs_zoom`. Leaving VR, for instance when the headset sleeps, keeps
   the zoom.
-- Thumbstick left or right: back or forward 10 seconds.
+- Thumbstick left or right: back or forward 10 seconds. While the video seeks or waits for data, a small spinner shows ahead of you.
 - A: play or pause. B: back to the library.
 - Trigger on the video: show or hide the player controls.
 - The gear opens the settings window: screen mode, zoom and tilt, and Media

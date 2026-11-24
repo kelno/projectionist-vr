@@ -1,7 +1,7 @@
 import { Block, Text, Keyboard } from "../ui/meshUi.js";
 
 import { FONT, SURFACE, iconButton } from "../ui/kit.js";
-import { colour, space, textOn } from "../ui/theme.js";
+import { RADIUS, colour, space, textOn } from "../ui/theme.js";
 import { sanitizeFontText } from "../font.js";
 import * as Helpers from "../Helpers.js";
 
@@ -40,8 +40,10 @@ export class SearchBar {
         this.systemKeyboard = systemKeyboard;
 
         this.text = new Text({ content: "", fontSize: FONT_SIZE });
+        // Keeps the text off the bar's left end.
+        const indent = new Block({ width: 0.04, height: HEIGHT - 0.04, backgroundOpacity: 0 });
         const textBox = new Block({
-            width: WIDTH - 0.26,
+            width: WIDTH - 0.3,
             height: HEIGHT - 0.04,
             justifyContent: "center",
             textAlign: "left",
@@ -64,12 +66,12 @@ export class SearchBar {
             justifyContent: "space-between",
             alignItems: "center",
             padding: 0.02,
-            borderRadius: HEIGHT / 2,
+            borderRadius: RADIUS.button,
             backgroundColor: colour(BACKGROUND.idle),
             backgroundOpacity: 1,
             hiddenOverflow: true,
             ...FONT,
-        }).add(textBox, this.clearButton);
+        }).add(indent, textBox, this.clearButton);
         this.bar.setupState({
             state: "selected",
             onSet: () => {

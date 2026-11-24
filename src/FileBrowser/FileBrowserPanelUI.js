@@ -193,7 +193,10 @@ export class FileBrowserPanel {
             ...FONT,
         };
         this.foldersContainer = new Block(this.foldersContainerAttributes);
-        this.foldersContainer.position.set(-3.8, 1.4, this.SIDE_Z);
+        // The first folder's top level with the library's top.
+        const firstButtonTop = this.libraryEdges().top;
+        const containerTop = firstButtonTop + space(2) + space(1);
+        this.foldersContainer.position.set(-3.8, containerTop - this.GRID_HEIGHT / 2, this.SIDE_Z);
         this.foldersContainer.rotation.y = 0.5;
         MAIN.scene.add(this.foldersContainer);
         this.generateFoldersButtons();
@@ -231,12 +234,14 @@ export class FileBrowserPanel {
             icon: SortIcon,
             tooltip: "Sort",
             size,
+            round: false,
             onSelect: () => this.openLibraryWindow(this.sortWindow),
         });
         this.leaveVRButton = iconButton({
             icon: PowerIcon,
             tooltip: "Leave VR",
             size,
+            round: false,
             hovered: "danger",
             onSelect: () => MAIN.leaveVR(),
         });
@@ -270,7 +275,7 @@ export class FileBrowserPanel {
         const y = bottom - this.ROW_GAP - this.ROW_HEIGHT / 2;
         this.draggingBox = dragHandle({
             width: this.GRID_WIDTH / 2,
-            height: this.ROW_HEIGHT,
+            height: this.ROW_HEIGHT * 0.8,
             tooltip: "Move the library",
             onStart: () => ScreenManager.startDrag("files"),
             onStop: () => ScreenManager.stopDrag("files"),

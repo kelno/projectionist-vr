@@ -23,7 +23,7 @@ provide a catalogue from another source.
         {
           "name": "K-POP COVER DANCE",
           "src": "/vr-player/media/Music/K-POP%20COVER%20DANCE.mp4",
-          "thumbnail": "/vr-player/thumbnails/Music/K-POP%20COVER%20DANCE.jpg",
+          "thumbnail": "/vr-player/thumbnails/fa56ea00-3f6c2b9e81d04a57.jpg",
           "screen_type": "sbs",
           "date": "2023-01-10 15:05:50",
           "epoch": "1673359550.854825",
@@ -52,10 +52,30 @@ sorting. Flat videos can additionally supply `frame_height` and `frame_width`.
 `media` is what the player's Media info page shows. The generator reads it with
 FFprobe, from each video's header; a field FFprobe can't tell is left out, and
 an entry without `media` still plays, its page showing what the browser knows.
-Reading a header over a network mount is slow, so a regeneration reuses the
-previous `files.json`'s `media` for every video whose size and date haven't
-changed, and only probes new or changed files. Pass `--no-media-info` to skip
-FFprobe altogether.
+Pass `--no-media-info` to run no FFprobe: entries then only get the `media`
+already in the store (below).
+
+## Thumbnails and media info follow the video's content
+
+The generator knows each video by a fingerprint: its size and a hash of its
+first and last megabyte, such as `fa56ea00-3f6c2b9e81d04a57`. Thumbnails and
+media info are kept under that fingerprint, so a video that is moved or
+renamed keeps both, and two copies of one video share them. Only those two
+megabytes are read, because reading a whole file from a cloud mount downloads
+it.
+
+The thumbnails directory (`thumbnails_path`) is this store, with no subfolders:
+
+- `<fingerprint>.jpg`: a thumbnail, which `thumbnail` links when it exists.
+- `media.json`: the `media` of each fingerprint. FFprobe runs only for a
+  fingerprint missing from it.
+- `fingerprints.json`: the fingerprint computed for each video path, with the
+  file's size and modification time then. A video whose size and modification
+  time haven't changed since is not read again.
+
+Thumbnails and media info of deleted videos stay in the store until a run with
+`--prune`, which deletes those no current video uses. It refuses to prune when
+it finds no video at all, which more likely means the library isn't mounted.
 
 ## Screen types
 

@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Generate the player catalogue inside the self-contained dist directory."""
+"""Generate the player catalogue inside the self-contained dist directory.
+
+Each video's thumbnail and media info come from the store described in
+library_store.py, by the video's fingerprint, so they follow a moved or
+renamed video. FFprobe runs only for content the store has no media info for.
+"""
 
 from __future__ import annotations
 
@@ -14,7 +19,7 @@ import subprocess
 import sys
 from urllib.parse import quote
 
-from common import is_video_file
+from library_store import LibraryStore, iter_videos, write_json_atomic
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -97,33 +102,21 @@ def read_media_info(video_file: Path) -> dict[str, object] | None:
     return parse_media_info(probe, video_file.stat().st_size)
 
 
-def load_previous_media(output_path: Path) -> dict[str, dict]:
-    """Return the previous catalogue's entries by source URL, to reuse their media info."""
-    try:
-        catalogue = json.loads(output_path.read_text(encoding="utf-8"))
-        return {
-            entry["src"]: entry
-            for category in catalogue["videos"]
-            for entry in category["list"]
-            if "media" in entry
-        }
-    except (OSError, ValueError, KeyError, TypeError):
-        return {}
+def media_from_store(
+    store: LibraryStore, fingerprint: str, video_path: Path, probe_media: bool
+) -> dict[str, object] | None:
+    """Return the media info stored for this content, or probe the video and store it.
 
-
-def media_for(video_path: Path, previous_entry: dict | None, epoch: str) -> dict[str, object] | None:
-    """Reuse the previous media info while the file is unchanged; probe it otherwise.
-
-    Probing reads the file's header, which over a network mount is slow, so a
-    regeneration only probes new or changed files.
+    Probing reads the file's header, which over a network mount is slow, so it
+    only happens for content seen for the first time, and not at all without
+    probe_media.
     """
-    if (
-        previous_entry is not None
-        and previous_entry.get("epoch") == epoch
-        and previous_entry["media"].get("size") == video_path.stat().st_size
-    ):
-        return previous_entry["media"]
-    return read_media_info(video_path)
+    media = store.media.get(fingerprint)
+    if media is None and probe_media:
+        media = read_media_info(video_path)
+        if media:
+            store.media[fingerprint] = media
+    return media
 
 
 def url_for_file(prefix: str, relative_path: Path) -> str:
@@ -157,56 +150,52 @@ def load_config(config_path: Path) -> configparser.ConfigParser:
     return config
 
 
+def url_prefixes(config: configparser.ConfigParser) -> tuple[str, str]:
+    """Return the full URL prefixes of the videos and of the thumbnails, under the site path."""
+    web = config["web"]
+    site_url_prefix = web.get("site_url_prefix", "/")
+    return (
+        join_url_prefix(site_url_prefix, web.get("videos_url_prefix", "/media")),
+        join_url_prefix(site_url_prefix, web.get("thumbnails_url_prefix", "/thumbnails")),
+    )
+
+
 def generate_category_entries(
     config: configparser.ConfigParser,
-    previous: dict[str, dict] | None = None,
+    store: LibraryStore,
     probe_media: bool = True,
 ) -> dict[str, list[dict]]:
     """Build category entries using media roots and server URL prefixes only.
 
-    `previous` holds the last catalogue's entries by source URL, whose media
-    info is reused for unchanged files.
+    Thumbnails and media info come from the store, which gains the media info
+    of newly probed videos and the fingerprints of new or changed files.
     """
-    library = config["library"]
-    web = config["web"]
-    videos_dir = Path(library["videos_path"])
-    thumbnails_dir = Path(library["thumbnails_path"])
-    site_url_prefix = web.get("site_url_prefix", "/")
-    videos_url_prefix = join_url_prefix(site_url_prefix, web.get("videos_url_prefix", "/media"))
-    thumbnails_url_prefix = join_url_prefix(
-        site_url_prefix, web.get("thumbnails_url_prefix", "/thumbnails")
-    )
+    videos_dir = Path(config["library"]["videos_path"])
+    videos_url_prefix, thumbnails_url_prefix = url_prefixes(config)
     if not videos_dir.is_dir():
         raise FileNotFoundError(f"Videos directory not found: {videos_dir}")
 
-    previous = previous or {}
     category_map: dict[str, list[dict]] = defaultdict(list)
-    for root, _, files in os.walk(videos_dir):
-        root_path = Path(root)
-        for filename in files:
-            if not is_video_file(filename):
-                continue
-            video_path = root_path / filename
-            relative_path = video_path.relative_to(videos_dir)
-            thumbnail_path = (thumbnails_dir / relative_path).with_suffix(".jpg")
-            category_name = root_path.name if root_path != videos_dir else "!Uncategorized"
-            src = url_for_file(videos_url_prefix, relative_path)
-            entry = {
-                "name": clean_filename(filename),
-                "src": src,
-                "thumbnail": (
-                    url_for_file(thumbnails_url_prefix, relative_path.with_suffix(".jpg"))
-                    if thumbnail_path.exists()
-                    else ""
-                ),
-                "screen_type": "sbs",
-                **get_file_timestamps(video_path),
-            }
-            if probe_media:
-                media = media_for(video_path, previous.get(src), entry["epoch"])
-                if media:
-                    entry["media"] = media
-            category_map[category_name].append(entry)
+    for relative_path in iter_videos(videos_dir):
+        video_path = videos_dir / relative_path
+        entry = {
+            "name": clean_filename(relative_path.name),
+            "src": url_for_file(videos_url_prefix, relative_path),
+            "thumbnail": "",
+            "screen_type": "sbs",
+            **get_file_timestamps(video_path),
+        }
+        try:
+            fingerprint = store.fingerprint(video_path, relative_path)
+        except OSError as error:
+            print(f"WARNING: cannot read {video_path}, listed without thumbnail or media info: {error}", file=sys.stderr)
+        else:
+            if store.thumbnail_path(fingerprint).exists():
+                entry["thumbnail"] = url_for_file(thumbnails_url_prefix, Path(f"{fingerprint}.jpg"))
+            media = media_from_store(store, fingerprint, video_path, probe_media)
+            if media:
+                entry["media"] = media
+        category_map[relative_path.parent.name or "!Uncategorized"].append(entry)
     return category_map
 
 
@@ -218,11 +207,7 @@ def write_catalogue(category_map: dict[str, list[dict]], output_path: Path) -> i
             for category, entries in sorted(category_map.items())
         ]
     }
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    # Replace the catalogue in one step, so a web server never serves a half-written file.
-    partial_path = output_path.with_name(f"{output_path.name}.partial")
-    partial_path.write_text(json.dumps(video_data, indent=4, ensure_ascii=False), encoding="utf-8")
-    partial_path.replace(output_path)
+    write_json_atomic(output_path, video_data, indent=4)
     return sum(len(category["list"]) for category in video_data["videos"])
 
 
@@ -238,7 +223,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--no-media-info",
         action="store_true",
-        help="Skip reading resolution and codecs with ffprobe",
+        help="Don't run ffprobe; media info already in the store is still used",
+    )
+    parser.add_argument(
+        "--prune",
+        action="store_true",
+        help="Delete the stored thumbnails and media info that no current video uses",
     )
     return parser.parse_args()
 
@@ -246,11 +236,19 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     try:
-        category_map = generate_category_entries(
-            load_config(args.config),
-            previous=load_previous_media(args.output),
-            probe_media=not args.no_media_info,
-        )
+        config = load_config(args.config)
+        store = LibraryStore(Path(config["library"]["thumbnails_path"]))
+        try:
+            category_map = generate_category_entries(config, store, probe_media=not args.no_media_info)
+            if args.prune:
+                removed = store.prune()
+                print(
+                    f"Pruned {removed['thumbnails']} thumbnails, {removed['media']} media info entries"
+                    f" and {removed['paths']} cached fingerprints"
+                )
+        finally:
+            # Keep the fingerprints and media info gathered so far, even after an error or an interruption.
+            store.save()
         video_count = write_catalogue(category_map, args.output)
     except (OSError, ValueError) as error:
         print(f"ERROR: {error}", file=sys.stderr)

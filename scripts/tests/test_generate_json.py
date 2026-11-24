@@ -1,13 +1,37 @@
 import configparser
 import json
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from unittest import mock
+
 from generate_json import generate_category_entries, join_url_prefix, url_for_file, write_catalogue
+from generate_thumbs import generate_thumbnails
+from library_store import LibraryStore
+
+
+def make_config(videos: Path, thumbnails: Path) -> configparser.ConfigParser:
+    config = configparser.ConfigParser()
+    config["library"] = {"videos_path": str(videos), "thumbnails_path": str(thumbnails)}
+    config["web"] = {
+        "site_url_prefix": "/vr-player",
+        "videos_url_prefix": "/media",
+        "thumbnails_url_prefix": "/thumbnails",
+    }
+    return config
+
+
+def fake_ffmpeg(command, check, **kwargs):
+    """Stand in for subprocess.run in generate_thumbs: ffprobe gives a duration, ffmpeg writes its output file."""
+    if command[0] == "ffprobe":
+        return subprocess.CompletedProcess(command, 0, stdout="60.0\n", stderr="")
+    Path(command[-1]).write_bytes(b"jpeg")
+    return subprocess.CompletedProcess(command, 0)
 
 
 class GenerateCatalogueTests(unittest.TestCase):
@@ -31,24 +55,19 @@ class GenerateCatalogueTests(unittest.TestCase):
             videos = root / "unrelated-video-location"
             thumbnails = root / "thumbnail-location"
             (videos / "Category").mkdir(parents=True)
-            (thumbnails / "Category").mkdir(parents=True)
-            (videos / "Category" / "VR test.mp4").touch()
-            (thumbnails / "Category" / "VR test.jpg").touch()
-            config = configparser.ConfigParser()
-            config["library"] = {
-                "videos_path": str(videos),
-                "thumbnails_path": str(thumbnails),
-            }
-            config["web"] = {
-                "site_url_prefix": "/vr-player",
-                "videos_url_prefix": "/media",
-                "thumbnails_url_prefix": "/thumbnails",
-            }
+            thumbnails.mkdir()
+            (videos / "Category" / "VR test.mp4").write_bytes(b"video")
+            (videos / "Other.mp4").write_bytes(b"other video")
+            store = LibraryStore(thumbnails)
+            fingerprint = store.fingerprint(videos / "Category" / "VR test.mp4", Path("Category/VR test.mp4"))
+            store.thumbnail_path(fingerprint).touch()
 
-            categories = generate_category_entries(config)
+            categories = generate_category_entries(make_config(videos, thumbnails), store, probe_media=False)
             entry = categories["Category"][0]
             self.assertEqual(entry["src"], "/vr-player/media/Category/VR%20test.mp4")
-            self.assertEqual(entry["thumbnail"], "/vr-player/thumbnails/Category/VR%20test.jpg")
+            self.assertEqual(entry["thumbnail"], f"/vr-player/thumbnails/{fingerprint}.jpg")
+            # A video without a thumbnail in the store gets none.
+            self.assertEqual(categories["!Uncategorized"][0]["thumbnail"], "")
 
     def test_writes_catalogue_to_requested_release_directory(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -56,6 +75,82 @@ class GenerateCatalogueTests(unittest.TestCase):
             count = write_catalogue({"!Uncategorized": []}, output)
             self.assertEqual(count, 0)
             self.assertEqual(json.loads(output.read_text(encoding="utf-8")), {"videos": [{"name": "!Uncategorized", "list": []}]})
+
+
+class StoreTests(unittest.TestCase):
+    """The thumbnail and catalogue scripts together, as the Pi runs them: thumbnails first, then the catalogue."""
+
+    MEDIA = {"size": 5, "video_codec": "hevc"}
+
+    def run_both(self, videos: Path, thumbnails: Path, prune: bool = False):
+        """Run the thumbnail script, then the catalogue, and return the catalogue and the mocks counting the work done."""
+        with mock.patch("generate_thumbs.subprocess.run", side_effect=fake_ffmpeg) as ffmpeg:
+            self.assertEqual(generate_thumbnails(videos, thumbnails), [])
+        store = LibraryStore(thumbnails)
+        with mock.patch("generate_json.read_media_info", return_value=dict(self.MEDIA)) as probe:
+            categories = generate_category_entries(make_config(videos, thumbnails), store)
+        removed = store.prune() if prune else None
+        store.save()
+        return categories, ffmpeg, probe, removed
+
+    def make_library(self, root: Path) -> tuple[Path, Path]:
+        videos = root / "videos"
+        (videos / "Old").mkdir(parents=True)
+        (videos / "New").mkdir()
+        (videos / "Old" / "clip.mp4").write_bytes(b"clip content")
+        (videos / "Old" / "other.mp4").write_bytes(b"other content")
+        return videos, root / "thumbnails"
+
+    def test_a_moved_video_keeps_its_thumbnail_and_media_without_new_work(self):
+        with tempfile.TemporaryDirectory() as directory:
+            videos, thumbnails = self.make_library(Path(directory))
+            before, ffmpeg, probe, _ = self.run_both(videos, thumbnails)
+            self.assertEqual((ffmpeg.call_count, probe.call_count), (4, 2))  # ffprobe and ffmpeg for each video
+
+            (videos / "Old" / "clip.mp4").rename(videos / "New" / "renamed clip.mp4")
+            after, ffmpeg, probe, _ = self.run_both(videos, thumbnails)
+            self.assertEqual((ffmpeg.call_count, probe.call_count), (0, 0))
+            old_entry = next(entry for entry in before["Old"] if entry["src"].endswith("/clip.mp4"))
+            new_entry = after["New"][0]
+            self.assertEqual(new_entry["src"], "/vr-player/media/New/renamed%20clip.mp4")
+            self.assertEqual(new_entry["thumbnail"], old_entry["thumbnail"])
+            self.assertEqual(new_entry["media"], self.MEDIA)
+
+    def test_without_probing_the_stored_media_info_is_still_used(self):
+        with tempfile.TemporaryDirectory() as directory:
+            videos, thumbnails = self.make_library(Path(directory))
+            self.run_both(videos, thumbnails)
+            with mock.patch("generate_json.read_media_info") as probe:
+                categories = generate_category_entries(make_config(videos, thumbnails), LibraryStore(thumbnails), probe_media=False)
+            probe.assert_not_called()
+            self.assertEqual([entry["media"] for entry in categories["Old"]], [self.MEDIA, self.MEDIA])
+
+    def test_prune_removes_only_what_no_current_video_uses(self):
+        with tempfile.TemporaryDirectory() as directory:
+            videos, thumbnails = self.make_library(Path(directory))
+            self.run_both(videos, thumbnails)
+            kept = LibraryStore(thumbnails).fingerprints["Old/clip.mp4"]["fingerprint"]
+            (videos / "Old" / "other.mp4").unlink()
+            (thumbnails / "leftover.partial.jpg").write_bytes(b"half")
+
+            _, _, _, removed = self.run_both(videos, thumbnails, prune=True)
+            self.assertEqual(removed, {"thumbnails": 2, "media": 1, "paths": 1})
+            self.assertEqual(sorted(path.name for path in thumbnails.glob("*.jpg")), [f"{kept}.jpg"])
+            store = LibraryStore(thumbnails)
+            self.assertEqual(list(store.media), [kept])
+            self.assertEqual(list(store.fingerprints), ["Old/clip.mp4"])
+
+    def test_prune_refuses_when_no_video_is_found(self):
+        with tempfile.TemporaryDirectory() as directory:
+            videos, thumbnails = self.make_library(Path(directory))
+            self.run_both(videos, thumbnails)
+            for video in videos.rglob("*.mp4"):
+                video.unlink()
+            store = LibraryStore(thumbnails)
+            generate_category_entries(make_config(videos, thumbnails), store)
+            with self.assertRaises(ValueError):
+                store.prune()
+            self.assertEqual(len(list(thumbnails.glob("*.jpg"))), 2)
 
 
 class MediaInfoTests(unittest.TestCase):
@@ -92,31 +187,6 @@ class MediaInfoTests(unittest.TestCase):
         media = parse_media_info(probe, 10)
         self.assertNotIn("audio_codec", media)
         self.assertNotIn("bit_rate", media)
-
-    def test_reuses_media_info_of_an_unchanged_file_only(self):
-        from generate_json import media_for
-
-        with tempfile.TemporaryDirectory() as directory:
-            video = Path(directory) / "video.mp4"
-            video.write_bytes(b"12345")
-            previous = {"epoch": "1", "media": {"size": 5, "video_codec": "hevc"}}
-            self.assertEqual(media_for(video, previous, "1"), previous["media"])
-            # A new date, or a new size, means the file changed: it is probed
-            # again, and this one isn't a video, so there is nothing to show.
-            self.assertIsNone(media_for(video, previous, "2"))
-            self.assertIsNone(media_for(video, {"epoch": "1", "media": {"size": 6}}, "1"))
-
-    def test_reads_previous_media_by_source(self):
-        from generate_json import load_previous_media
-
-        with tempfile.TemporaryDirectory() as directory:
-            output = Path(directory) / "files.json"
-            output.write_text(json.dumps({"videos": [{"name": "C", "list": [
-                {"src": "/a.mp4", "epoch": "1", "media": {"size": 5}},
-                {"src": "/b.mp4", "epoch": "1"},
-            ]}]}), encoding="utf-8")
-            self.assertEqual(list(load_previous_media(output)), ["/a.mp4"])
-            self.assertEqual(load_previous_media(Path(directory) / "missing.json"), {})
 
     def test_probes_a_real_video(self):
         import shutil

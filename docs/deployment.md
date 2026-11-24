@@ -38,7 +38,7 @@ python scripts/generate_json.py config.ini
 
 ## Serve it
 
-Deploy the `dist/` directory as a single unit. The catalogue can live inside it (the default output of `generate_json.py`) or elsewhere, with `--output`: keeping it outside `dist/` lets a new release replace `dist/` without losing it. Generate thumbnails before the catalogue, which only links thumbnails that exist.
+Deploy the `dist/` directory as a single unit. The catalogue can live inside it (the default output of `generate_json.py`) or elsewhere, with `--output`: keeping it outside `dist/` lets a new release replace `dist/` without losing it. Generate thumbnails before the catalogue, which only links thumbnails that exist. Both scripts write to the thumbnails directory, which also holds the media info and fingerprints the catalogue reuses ([Catalogue](catalogue.md#thumbnails-and-media-info-follow-the-videos-content)), so the user who runs them needs write access to it. Add `--prune` to the catalogue command now and then to delete the thumbnails of deleted videos.
 
 Configure Nginx to serve `dist/` at the configured site path, `files.json` at the same path, and map `/media/` and `/thumbnails/` to the actual library directories. Nginx must be able to read those directories and support HTTP byte-range requests for video seeking.
 

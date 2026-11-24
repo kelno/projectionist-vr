@@ -1,6 +1,8 @@
 [library]
 ; Local paths used by the Python catalogue/thumbnail tools and npm run dev.
 videos_path=/mnt/hdd/videos
+; thumbnails_path holds the thumbnails, named by each video's fingerprint, with
+; media.json and fingerprints.json beside them.
 thumbnails_path=/mnt/hdd/thumbnails
 
 [web]

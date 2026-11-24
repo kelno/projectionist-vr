@@ -69,3 +69,7 @@ It runs the JavaScript tests, then checks the Python scripts with
 `uv run ruff format` formats the scripts; their settings are in
 `pyproject.toml`. The same command runs on GitHub for each push to `main` and
 each pull request, and before each release is built.
+
+Dependabot (`.github/dependabot.yml`) opens a pull request each week when the npm
+packages, the Python dev tools or the GitHub Actions have new versions; the
+Check workflow tests it.

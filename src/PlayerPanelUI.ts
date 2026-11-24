@@ -507,7 +507,7 @@ export class PlayerPanel {
         for (const [name] of mediaInfoLines(null, null)) {
             const value = new UiText({ text: "-", flexGrow: 1 });
             values.push(value);
-            const line = new UiContainer({ flexDirection: "row", alignItems: "center", height: 95, flexShrink: 0 });
+            const line = new UiContainer({ flexDirection: "row", alignItems: "center", height: 90, flexShrink: 0 });
             line.add(new UiText({ text: name, width: 450, flexShrink: 0, color: materialColour("mutedText") }), value);
             panel.add(line);
         }

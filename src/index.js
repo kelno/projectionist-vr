@@ -154,17 +154,32 @@ function init() {
   // Each controller keeps the input source three.js gives it on connecting.
   // The session's own list of input sources shifts when one disconnects (a
   // controller low on battery), so it can't be read by controller number.
+  //
+  // The controller in use must be a connected one. When it disconnects, the
+  // other takes over if it is connected; when a controller connects while the
+  // one in use isn't, it takes over. Ending a session disconnects both, so
+  // with a single controller, the next session would otherwise start on the
+  // missing one, with no pointer and no buttons.
+  const isConnected = (id) => Boolean(vrControl.controllers[id].userData.inputSource);
   vrControl.controllers.forEach((controller, id) => {
     controller.addEventListener("connected", (event) => {
       controller.userData.inputSource = event.data;
+      if (!isConnected(vrControlCurrentlyUsedController)) {
+        useController(id);
+      }
     });
     controller.addEventListener("disconnected", () => {
       controller.userData.inputSource = null;
-      if (vrControlCurrentlyUsedController === id) {
-        vrControlCurrentlyUsedController = 1 - id;
+      if (vrControlCurrentlyUsedController === id && isConnected(1 - id)) {
+        useController(1 - id);
       }
     });
   });
+
+  function useController(id) {
+    vrControl.controllers[vrControlCurrentlyUsedController].point.visible = false;
+    vrControlCurrentlyUsedController = id;
+  }
 
   // A press of the controller in use clicks; a press of the other one
   // makes it the one in use.
@@ -172,10 +187,7 @@ function init() {
     if (vrControlCurrentlyUsedController == id) {
       pointer.press();
     } else {
-      vrControl.controllers[
-        vrControlCurrentlyUsedController
-      ].point.visible = false;
-      vrControlCurrentlyUsedController = id;
+      useController(id);
     }
   }
 

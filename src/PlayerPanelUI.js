@@ -65,6 +65,9 @@ export class PlayerPanel {
     WIDTH = 3;
     PADDING = space(3);
     INNER_WIDTH = this.WIDTH - 2 * this.PADDING;
+    // The seek bar and time span from the first button's left edge to the
+    // last one's right edge: the buttons keep a margin inside the row.
+    BAR_WIDTH = this.INNER_WIDTH - 2 * space(1);
     PROGRESS_HEIGHT = 0.06;
     PROGRESS_MIN_WIDTH = 0.01;
     SETTINGS_WIDTH = this.WIDTH / 1.5;
@@ -171,7 +174,7 @@ export class PlayerPanel {
 
         this.timeLabel = new Text({ content: "0:00", fontSize: 0.06 });
         const time = new Block({
-            width: this.INNER_WIDTH,
+            width: this.BAR_WIDTH,
             height: 0.09,
             justifyContent: "center",
             textAlign: "right",
@@ -244,7 +247,7 @@ export class PlayerPanel {
         }
 
         this.seekBar = new Block({
-            width: this.INNER_WIDTH,
+            width: this.BAR_WIDTH,
             height: this.PROGRESS_HEIGHT,
             margin: 0,
             offset: 0.045,
@@ -545,7 +548,7 @@ export class PlayerPanel {
                 this.progressBar.set({ width: this.PROGRESS_MIN_WIDTH });
                 this.timeLabel.set({ content: Helpers.getWordFromLang("not_available") });
             } else {
-                const played = (this.INNER_WIDTH - this.PROGRESS_MIN_WIDTH * 2) * (video.currentTime / duration);
+                const played = (this.BAR_WIDTH - this.PROGRESS_MIN_WIDTH * 2) * (video.currentTime / duration);
                 this.progressBar.set({ width: Math.max(played, this.PROGRESS_MIN_WIDTH) });
                 this.timeLabel.set({ content: `${clockTime(video.currentTime)} / ${clockTime(duration)}` });
             }

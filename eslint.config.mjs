@@ -20,7 +20,14 @@ export default tseslint.config(
         // three-mesh-ui's objects are typed loosely on purpose until it is
         // replaced (src/types/three-mesh-ui.d.ts), so the code drawing panels
         // works with untyped values; the rest of the code keeps these rules.
-        files: ["src/ui/**", "src/PlayerPanelUI.ts", "src/FileBrowser/**", "src/index.ts", "src/UI.ts", "src/input/pointer.ts"],
+        files: [
+            "src/ui/**",
+            "src/PlayerPanelUI.ts",
+            "src/FileBrowser/**",
+            "src/index.ts",
+            "src/UI.ts",
+            "src/input/pointer.ts",
+        ],
         rules: {
             "@typescript-eslint/no-unsafe-call": "off",
             "@typescript-eslint/no-unsafe-member-access": "off",
@@ -32,20 +39,29 @@ export default tseslint.config(
     {
         // node:test's test() returns a promise the runner itself awaits.
         files: ["tests/**"],
-        rules: { "@typescript-eslint/no-floating-promises": ["error", { allowForKnownSafeCalls: [{ from: "package", name: ["test", "describe", "it"], package: "node:test" }] }] },
+        rules: {
+            "@typescript-eslint/no-floating-promises": [
+                "error",
+                {
+                    allowForKnownSafeCalls: [
+                        { from: "package", name: ["test", "describe", "it"], package: "node:test" },
+                    ],
+                },
+            ],
+        },
     },
     {
         // Node runs the tests, the icon script and the build configuration.
-        files: ["tests/**", "scripts/**", "*.js", "*.mjs"],
+        files: ["tests/**", "scripts/**", "*.cjs", "*.mjs"],
         languageOptions: { globals: { ...globals.node } },
     },
     {
         // The build configuration and this file are plain JavaScript.
-        files: ["*.js", "*.mjs"],
+        files: ["*.cjs", "*.mjs"],
         ...tseslint.configs.disableTypeChecked,
     },
     {
-        files: ["webpack.config.js"],
+        files: ["webpack.config.cjs"],
         languageOptions: { sourceType: "commonjs" },
         rules: { "@typescript-eslint/no-require-imports": "off" },
     },

@@ -47,9 +47,7 @@ export function formatDuration(seconds: number): string {
     const hours = Math.floor(total / 3600);
     const minutes = Math.floor((total % 3600) / 60);
     const secs = String(total % 60).padStart(2, "0");
-    return hours > 0
-        ? `${hours}:${String(minutes).padStart(2, "0")}:${secs}`
-        : `${minutes}:${secs}`;
+    return hours > 0 ? `${hours}:${String(minutes).padStart(2, "0")}:${secs}` : `${minutes}:${secs}`;
 }
 
 // Whether the video keeps its index before the video data, as the catalogue
@@ -64,7 +62,7 @@ function faststartLine(media: MediaInfo): MediaInfoLine {
 // line is [name, text], with `true` after them for a problem to show as such.
 export function mediaInfoLines(
     entry: Pick<CatalogueEntry, "name" | "media"> | null | undefined,
-    video: Pick<HTMLVideoElement, "videoWidth" | "videoHeight" | "duration"> | null | undefined
+    video: Pick<HTMLVideoElement, "videoWidth" | "videoHeight" | "duration"> | null | undefined,
 ): MediaInfoLine[] {
     const media: MediaInfo = entry?.media ?? {};
     const width = media.width ?? video?.videoWidth;
@@ -89,7 +87,10 @@ export function mediaInfoLines(
         ["Resolution", width && height ? `${width} x ${height}` : UNKNOWN],
         ["Video", videoParts.length > 0 ? videoParts.join(", ") : UNKNOWN],
         ["Audio", audio],
-        ["Duration", duration !== undefined && Number.isFinite(duration) && duration > 0 ? formatDuration(duration) : UNKNOWN],
+        [
+            "Duration",
+            duration !== undefined && Number.isFinite(duration) && duration > 0 ? formatDuration(duration) : UNKNOWN,
+        ],
         ["Size", media.size ? formatSize(media.size) : UNKNOWN],
         ["Bitrate", media.bit_rate ? `${(media.bit_rate / 1e6).toFixed(1)} Mb/s` : UNKNOWN],
         faststartLine(media),

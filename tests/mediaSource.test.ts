@@ -1,12 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-    clearMediaSource,
-    hasMediaSource,
-    isCurrentMediaSource,
-    setMediaSource,
-} from "../src/mediaSource.ts";
+import { clearMediaSource, hasMediaSource, isCurrentMediaSource, setMediaSource } from "../src/mediaSource.ts";
 
 function createVideo(source = "") {
     const attributes: Record<string, string> = source ? { src: source } : {};
@@ -45,10 +40,7 @@ function createVideo(source = "") {
 test("sets and plays a new source once", async () => {
     const video = createVideo();
 
-    const { sourceChanged, playback } = setMediaSource(
-        video,
-        "videos/example.mp4"
-    );
+    const { sourceChanged, playback } = setMediaSource(video, "videos/example.mp4");
     await playback;
 
     assert.equal(sourceChanged, true);
@@ -61,10 +53,7 @@ test("sets and plays a new source once", async () => {
 test("does not reload an already selected source", async () => {
     const video = createVideo("videos/example.mp4");
 
-    const { sourceChanged, playback } = setMediaSource(
-        video,
-        "videos/example.mp4"
-    );
+    const { sourceChanged, playback } = setMediaSource(video, "videos/example.mp4");
     await playback;
 
     assert.equal(video.loadCalls, 0);
@@ -87,12 +76,6 @@ test("clears an active source", () => {
 test("matches the browser's active source after URL resolution", () => {
     const video = createVideo("https://player.example/media/example.mp4");
 
-    assert.equal(
-        isCurrentMediaSource(video, "/media/example.mp4"),
-        true
-    );
-    assert.equal(
-        isCurrentMediaSource(video, "/media/other.mp4"),
-        false
-    );
+    assert.equal(isCurrentMediaSource(video, "/media/example.mp4"), true);
+    assert.equal(isCurrentMediaSource(video, "/media/other.mp4"), false);
 });

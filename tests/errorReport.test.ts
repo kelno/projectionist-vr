@@ -16,7 +16,8 @@ function reporter(max?: number) {
 test("sends the version, where, message and the top of the stack", () => {
     const { report, queries } = reporter();
     const error = new TypeError("x is undefined");
-    error.stack = "TypeError: x is undefined\n  at a (index.js:1)\n  at b (index.js:2)\n  at c (index.js:3)\n  at d (index.js:4)";
+    error.stack =
+        "TypeError: x is undefined\n  at a (index.js:1)\n  at b (index.js:2)\n  at c (index.js:3)\n  at d (index.js:4)";
     report("frame", error);
     assert.equal(queries.length, 1);
     assert.equal(queries[0].get("v"), "1.7.0");

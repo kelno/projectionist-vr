@@ -14,27 +14,12 @@ import type { FolderRow } from "./folderPages.ts";
 import type { Catalogue, CatalogueEntry, CatalogueFolder, ScreenType } from "../types/catalogue.ts";
 
 import clearUiChildren from "../ui/clearUiChildren.ts";
-import {
-    FONT,
-    dragHandle,
-    iconButton,
-    label,
-    markActive,
-    SURFACE,
-    panel,
-    row,
-    textButton,
-} from "../ui/kit.ts";
+import { FONT, dragHandle, iconButton, label, markActive, SURFACE, panel, row, textButton } from "../ui/kit.ts";
 import type { IconButton, Label, TextButton } from "../ui/kit.ts";
 import { createSpinner } from "../ui/spinner.ts";
 import type { Spinner } from "../ui/spinner.ts";
 import { createSystemKeyboard } from "../input/systemKeyboard.ts";
-import {
-    GRIP_PLAYER_CONTROLS,
-    LIBRARY_CONTROLS,
-    PLAYER_CONTROLS,
-    makeControlsColumn,
-} from "../ui/controlHints.ts";
+import { GRIP_PLAYER_CONTROLS, LIBRARY_CONTROLS, PLAYER_CONTROLS, makeControlsColumn } from "../ui/controlHints.ts";
 
 import * as MAIN from "../index.ts";
 import * as UI from "../UI.ts";
@@ -365,7 +350,7 @@ export class FileBrowserPanel {
                         makeControlsColumn("PLAYER", PLAYER_CONTROLS, 1.2),
                         makeControlsColumn("HOLD GRIP +", GRIP_PLAYER_CONTROLS, 1.2),
                     ],
-                    { width: 3.7, height: 0.95, justify: "space-between" }
+                    { width: 3.7, height: 0.95, justify: "space-between" },
                 ),
                 label("Left controller: X and Y instead of A and B.", {
                     width: 3.7,
@@ -374,7 +359,7 @@ export class FileBrowserPanel {
                     color: "mutedText",
                 }),
             ],
-            { width: 3.9, height: 1.5, padding: 0.08, justify: "space-between" }
+            { width: 3.9, height: 1.5, padding: 0.08, justify: "space-between" },
         );
         this.controlsHelp.position.set(0, 1.4, this.CENTER_Z + 0.3);
         this.controlsHelp.scale.setScalar(1.35);
@@ -471,7 +456,7 @@ export class FileBrowserPanel {
                     cellWidth: this.CELL_WIDTH,
                     cellHeight: this.CELL_HEIGHT,
                     margin: this.TILE_MARGIN,
-                })
+                }),
         );
         for (let first = 0; first < this.thumbTargets.length; first += this.COLUMNS) {
             this.thumbsContainer.add(
@@ -481,7 +466,7 @@ export class FileBrowserPanel {
                     contentDirection: "row",
                     justifyContent: "start",
                     backgroundOpacity: 0,
-                }).add(...this.thumbTargets.slice(first, first + this.COLUMNS))
+                }).add(...this.thumbTargets.slice(first, first + this.COLUMNS)),
             );
         }
         this.pendingTiles = this.thumbTargets.slice();
@@ -628,12 +613,7 @@ export class FileBrowserPanel {
 
     // Everything clickable in the library when nothing is open over it.
     libraryTargets(): Object3D[] {
-        return [
-            ...this.defaultObjsToTest,
-            ...this.search.targets(),
-            ...this.foldersButtons,
-            ...this.thumbTargets,
-        ];
+        return [...this.defaultObjsToTest, ...this.search.targets(), ...this.foldersButtons, ...this.thumbTargets];
     }
 
     // Registers what can be clicked now: an open window's buttons, the

@@ -5,188 +5,172 @@
 	Job: creating the VR controllers and their pointers
 */
 
-import * as THREE from 'three';
-import type { XRGripSpace, XRTargetRaySpace } from 'three';
-import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
+import * as THREE from "three";
+import type { XRGripSpace, XRTargetRaySpace } from "three";
+import { XRControllerModelFactory } from "three/addons/webxr/XRControllerModelFactory.js";
 
 // A controller, with the ray and the pointer dot VRControl adds to it.
 export type VRController = XRTargetRaySpace & {
-	ray: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>;
-	point: THREE.Sprite;
+    ray: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>;
+    point: THREE.Sprite;
 };
 
 export type VRControls = ReturnType<typeof VRControl>;
 
-export default function VRControl( renderer: THREE.WebGLRenderer ) {
+export default function VRControl(renderer: THREE.WebGLRenderer) {
+    const controllers: VRController[] = [];
+    const controllerGrips: XRGripSpace[] = [];
 
-	const controllers: VRController[] = [];
-	const controllerGrips: XRGripSpace[] = [];
+    const controllerModelFactory = new XRControllerModelFactory();
 
-	const controllerModelFactory = new XRControllerModelFactory();
+    //////////////////
+    // Lines helpers
+    //////////////////
 
-	//////////////////
-	// Lines helpers
-	//////////////////
+    const material = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        alphaMap: new THREE.CanvasTexture(generateRayTexture()),
+        transparent: true,
+    });
 
-	const material = new THREE.MeshBasicMaterial( {
-		color: 0xffffff,
-		alphaMap: new THREE.CanvasTexture( generateRayTexture() ),
-		transparent: true
-	} );
+    const geometry = new THREE.BoxGeometry(0.004, 0.004, 0.35);
 
-	const geometry = new THREE.BoxGeometry( 0.004, 0.004, 0.35 );
+    geometry.translate(0, 0, -0.15);
 
-	geometry.translate( 0, 0, -0.15 );
+    const uvAttribute = geometry.attributes.uv;
 
-	const uvAttribute = geometry.attributes.uv;
+    for (let i = 0; i < uvAttribute.count; i++) {
+        const [u, v] = (() => {
+            switch (i) {
+                case 0:
+                    return [1, 1];
+                case 1:
+                    return [0, 0];
+                case 2:
+                    return [1, 1];
+                case 3:
+                    return [0, 0];
+                case 4:
+                    return [0, 0];
+                case 5:
+                    return [1, 1];
+                case 6:
+                    return [0, 0];
+                case 7:
+                    return [1, 1];
+                case 8:
+                    return [0, 0];
+                case 9:
+                    return [0, 0];
+                case 10:
+                    return [1, 1];
+                case 11:
+                    return [1, 1];
+                case 12:
+                    return [1, 1];
+                case 13:
+                    return [1, 1];
+                case 14:
+                    return [0, 0];
+                case 15:
+                    return [0, 0];
+                default:
+                    return [0, 0];
+            }
+        })();
 
-	for ( let i = 0; i < uvAttribute.count; i++ ) {
+        uvAttribute.setXY(i, u, v);
+    }
 
-		const [ u, v ] = ( () => {
+    const linesHelper = new THREE.Mesh(geometry, material);
+    linesHelper.renderOrder = Infinity;
 
-			switch ( i ) {
+    /////////////////
+    // Point helper
+    /////////////////
 
-				case 0 :
-					return [ 1, 1 ];
-				case 1 :
-					return [ 0, 0 ];
-				case 2 :
-					return [ 1, 1 ];
-				case 3 :
-					return [ 0, 0 ];
-				case 4 :
-					return [ 0, 0 ];
-				case 5 :
-					return [ 1, 1 ];
-				case 6 :
-					return [ 0, 0 ];
-				case 7 :
-					return [ 1, 1 ];
-				case 8 :
-					return [ 0, 0 ];
-				case 9 :
-					return [ 0, 0 ];
-				case 10 :
-					return [ 1, 1 ];
-				case 11 :
-					return [ 1, 1 ];
-				case 12 :
-					return [ 1, 1 ];
-				case 13 :
-					return [ 1, 1 ];
-				case 14 :
-					return [ 0, 0 ];
-				case 15 :
-					return [ 0, 0 ];
-				default :
-					return [ 0, 0 ];
+    const spriteMaterial = new THREE.SpriteMaterial({
+        map: new THREE.CanvasTexture(generatePointerTexture()),
+        sizeAttenuation: false,
+        depthTest: false,
+    });
 
-			}
+    const pointer = new THREE.Sprite(spriteMaterial);
 
-		} )();
+    pointer.scale.set(0.015, 0.015, 1);
+    pointer.renderOrder = Infinity;
 
-		uvAttribute.setXY( i, u, v );
+    ////////////////
+    // Controllers
+    ////////////////
 
-	}
+    const controller1 = renderer.xr.getController(0);
+    const controller2 = renderer.xr.getController(1);
 
-	const linesHelper = new THREE.Mesh( geometry, material );
-	linesHelper.renderOrder = Infinity;
+    controller1.name = "controller-right";
+    controller2.name = "controller-left";
 
-	/////////////////
-	// Point helper
-	/////////////////
+    const controllerGrip1 = renderer.xr.getControllerGrip(0);
+    const controllerGrip2 = renderer.xr.getControllerGrip(1);
 
-	const spriteMaterial = new THREE.SpriteMaterial( {
-		map: new THREE.CanvasTexture( generatePointerTexture() ),
-		sizeAttenuation: false,
-		depthTest: false
-	} );
+    // The forEach below adds their ray and point.
+    if (controller1) controllers.push(controller1 as VRController);
+    if (controller2) controllers.push(controller2 as VRController);
 
-	const pointer = new THREE.Sprite( spriteMaterial );
+    if (controllerGrip1) controllerGrips.push(controllerGrip1);
+    if (controllerGrip2) controllerGrips.push(controllerGrip2);
 
-	pointer.scale.set( 0.015, 0.015, 1 );
-	pointer.renderOrder = Infinity;
+    controllers.forEach((controller) => {
+        const ray = linesHelper.clone();
+        const point = pointer.clone();
 
-	////////////////
-	// Controllers
-	////////////////
+        controller.add(ray, point);
+        controller.ray = ray;
+        controller.point = point;
+    });
 
-	const controller1 = renderer.xr.getController( 0 );
-	const controller2 = renderer.xr.getController( 1 );
+    controllerGrips.forEach((controllerGrip) => {
+        controllerGrip.add(controllerModelFactory.createControllerModel(controllerGrip));
+    });
 
-	controller1.name = 'controller-right';
-	controller2.name = 'controller-left';
+    //////////////
+    // Functions
+    //////////////
 
-	const controllerGrip1 = renderer.xr.getControllerGrip( 0 );
-	const controllerGrip2 = renderer.xr.getControllerGrip( 1 );
+    const dummyMatrix = new THREE.Matrix4();
 
-	// The forEach below adds their ray and point.
-	if ( controller1 ) controllers.push( controller1 as VRController );
-	if ( controller2 ) controllers.push( controller2 as VRController );
+    // Set the passed ray to match the given controller pointing direction
 
-	if ( controllerGrip1 ) controllerGrips.push( controllerGrip1 );
-	if ( controllerGrip2 ) controllerGrips.push( controllerGrip2 );
+    function setFromController(controllerID: number, ray: THREE.Ray): void {
+        const controller = controllers[controllerID];
 
-	controllers.forEach( ( controller ) => {
+        // Position the intersection ray
 
-		const ray = linesHelper.clone();
-		const point = pointer.clone();
+        dummyMatrix.identity().extractRotation(controller.matrixWorld);
 
-		controller.add( ray, point );
-		controller.ray = ray;
-		controller.point = point;
+        ray.origin.setFromMatrixPosition(controller.matrixWorld);
+        ray.direction.set(0, 0, -1).applyMatrix4(dummyMatrix);
+    }
 
-	} );
+    // Position the chosen controller's pointer at the given point in space.
+    // Should be called after raycaster.intersectObject() found an intersection point.
 
-	controllerGrips.forEach( ( controllerGrip ) => {
+    function setPointerAt(controllerID: number, vec: THREE.Vector3): void {
+        const controller = controllers[controllerID];
+        const localVec = controller.worldToLocal(vec);
 
-		controllerGrip.add( controllerModelFactory.createControllerModel( controllerGrip ) );
+        controller.point.position.copy(localVec);
+        controller.point.visible = true;
+    }
 
-	} );
+    //
 
-	//////////////
-	// Functions
-	//////////////
-
-	const dummyMatrix = new THREE.Matrix4();
-
-	// Set the passed ray to match the given controller pointing direction
-
-	function setFromController( controllerID: number, ray: THREE.Ray ): void {
-
-		const controller = controllers[ controllerID ];
-
-		// Position the intersection ray
-
-		dummyMatrix.identity().extractRotation( controller.matrixWorld );
-
-		ray.origin.setFromMatrixPosition( controller.matrixWorld );
-		ray.direction.set( 0, 0, -1 ).applyMatrix4( dummyMatrix );
-
-	}
-
-	// Position the chosen controller's pointer at the given point in space.
-	// Should be called after raycaster.intersectObject() found an intersection point.
-
-	function setPointerAt( controllerID: number, vec: THREE.Vector3 ): void {
-
-		const controller = controllers[ controllerID ];
-		const localVec = controller.worldToLocal( vec );
-
-		controller.point.position.copy( localVec );
-		controller.point.visible = true;
-
-	}
-
-	//
-
-	return {
-		controllers,
-		controllerGrips,
-		setFromController,
-		setPointerAt
-	};
-
+    return {
+        controllers,
+        controllerGrips,
+        setFromController,
+        setPointerAt,
+    };
 }
 
 //////////////////////////////
@@ -196,41 +180,37 @@ export default function VRControl( renderer: THREE.WebGLRenderer ) {
 // Generate the texture needed to make the intersection ray fade away
 
 function generateRayTexture(): HTMLCanvasElement {
+    const canvas = document.createElement("canvas");
+    canvas.width = 64;
+    canvas.height = 64;
 
-	const canvas = document.createElement( 'canvas' );
-	canvas.width = 64;
-	canvas.height = 64;
+    const ctx = canvas.getContext("2d")!;
 
-	const ctx = canvas.getContext( '2d' )!;
+    const gradient = ctx.createLinearGradient(0, 0, 64, 0);
+    gradient.addColorStop(0, "black");
+    gradient.addColorStop(1, "white");
 
-	const gradient = ctx.createLinearGradient( 0, 0, 64, 0 );
-	gradient.addColorStop( 0, 'black' );
-	gradient.addColorStop( 1, 'white' );
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 64, 64);
 
-	ctx.fillStyle = gradient;
-	ctx.fillRect( 0, 0, 64, 64 );
-
-	return canvas;
-
+    return canvas;
 }
 
 // Generate the texture of the point helper sprite
 
 function generatePointerTexture(): HTMLCanvasElement {
+    const canvas = document.createElement("canvas");
+    canvas.width = 64;
+    canvas.height = 64;
 
-	const canvas = document.createElement( 'canvas' );
-	canvas.width = 64;
-	canvas.height = 64;
+    const ctx = canvas.getContext("2d")!;
 
-	const ctx = canvas.getContext( '2d' )!;
+    ctx.beginPath();
+    ctx.arc(32, 32, 29, 0, 2 * Math.PI);
+    ctx.lineWidth = 5;
+    ctx.stroke();
+    ctx.fillStyle = "white";
+    ctx.fill();
 
-	ctx.beginPath();
-	ctx.arc( 32, 32, 29, 0, 2 * Math.PI );
-	ctx.lineWidth = 5;
-	ctx.stroke();
-	ctx.fillStyle = 'white';
-	ctx.fill();
-
-	return canvas;
-
+    return canvas;
 }

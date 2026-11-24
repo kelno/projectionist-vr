@@ -142,14 +142,8 @@ export class SearchBar {
     // the bar: the bar's hit includes its children, so both are hit at the
     // same distance, and the first one listed wins.
     targets(): Object3D[] {
-        const keys = this.isTyping
-            ? this.keys.filter((key) => this.keyboard.getObjectById(key.id))
-            : [];
-        return [
-            ...keys,
-            ...(this.phrase !== "" ? [this.clearButton] : []),
-            this.bar,
-        ];
+        const keys = this.isTyping ? this.keys.filter((key) => this.keyboard.getObjectById(key.id)) : [];
+        return [...keys, ...(this.phrase !== "" ? [this.clearButton] : []), this.bar];
     }
 
     // Opens this app's on-screen keyboard.
@@ -204,10 +198,7 @@ export class SearchBar {
 
     render() {
         const empty = this.phrase === "";
-        const shown =
-            this.phrase.length > MAX_SHOWN
-                ? "..." + this.phrase.slice(-(MAX_SHOWN - 3))
-                : this.phrase;
+        const shown = this.phrase.length > MAX_SHOWN ? "..." + this.phrase.slice(-(MAX_SHOWN - 3)) : this.phrase;
         this.text.set({
             content: empty ? Helpers.getWordFromLang("search") : sanitizeFontText(shown),
             fontColor: colour(empty ? "mutedText" : "text"),

@@ -7,17 +7,21 @@
     "url": "https://github.com/kelno/projectionist-vr.git"
   },
   "scripts": {
-    "build": "webpack --env production",
-    "build-dev": "webpack --env development",
-    "dev": "webpack serve --env development",
+    "build": "webpack --config webpack.config.cjs --env production",
+    "build-dev": "webpack --config webpack.config.cjs --env development",
+    "dev": "webpack serve --config webpack.config.cjs --env development",
     "test": "node --test tests/*.test.ts",
     "typecheck": "tsc -p .",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test:py": "uv run python -m unittest discover --start-directory scripts/tests --quiet",
     "lint:py": "uv run ruff check && uv run ruff format --check && uv run basedpyright",
-    "check": "npm test && npm run lint:py && npm run test:py"
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run lint:py && npm run test:py"
   },
   "author": "kelno",
   "license": "MIT",
+  "type": "module",
   "dependencies": {
     "@types/three": "^0.185.4",
     "three": "^0.185.1",

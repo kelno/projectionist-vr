@@ -26,7 +26,13 @@ type Hit = Intersection & { object: UI.PointerTarget };
 // holds null in both when there is no pointer, and update() checks for it.
 const NO_POINTER = null as unknown as number;
 
-export function createPointer({ renderer, camera, vrControl, controller, hiddenSphere }: {
+export function createPointer({
+    renderer,
+    camera,
+    vrControl,
+    controller,
+    hiddenSphere,
+}: {
     renderer: WebGLRenderer;
     camera: Camera;
     vrControl: VRControls;

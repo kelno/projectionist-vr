@@ -23,14 +23,20 @@ export function buildSortMenu({ onChoose }: { onChoose: (sortId: SortId) => void
                 fontSize: 0.065,
                 onSelect: () => onChoose(option.id),
             }),
-        ])
+        ]),
     );
     const block = panel(
         [
-            label("Sort by", { width: width - 0.08, height: 0.12, fontSize: 0.065, align: "center", color: "mutedText" }),
+            label("Sort by", {
+                width: width - 0.08,
+                height: 0.12,
+                fontSize: 0.065,
+                align: "center",
+                color: "mutedText",
+            }),
             ...buttons.values(),
         ],
-        { width, height: 0.2 + SORT_OPTIONS.length * 0.19 }
+        { width, height: 0.2 + SORT_OPTIONS.length * 0.19 },
     );
     block.visible = false;
 

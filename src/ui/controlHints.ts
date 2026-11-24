@@ -16,8 +16,7 @@ import { BORDER_WIDTH, SURFACE_OPACITY, colour } from "./theme.ts";
 // thumbstick direction (`stick`) or a button (`key`), and what it does.
 type StickDirection = "up" | "down" | "left" | "right";
 export type Control =
-    | { key: string; stick?: undefined; label: string }
-    | { key?: undefined; stick: StickDirection[]; label: string };
+    { key: string; stick?: undefined; label: string } | { key?: undefined; stick: StickDirection[]; label: string };
 
 export const LIBRARY_CONTROLS: Control[] = [
     { key: "TRIGGER", label: "Select" },
@@ -99,7 +98,7 @@ function makeRow(control: Control, width: number): Block {
             textAlign: "left",
             padding: 0.02,
             backgroundOpacity: 0,
-        }).add(new Text({ fontSize: FONT_SIZE, content: control.label }))
+        }).add(new Text({ fontSize: FONT_SIZE, content: control.label })),
     );
 }
 
@@ -124,7 +123,7 @@ export function makeControlsColumn(title: string, controls: Control[], width: nu
             textAlign: "left",
             backgroundOpacity: 0,
             fontColor: colour("heading"),
-        }).add(new Text({ fontSize: 0.075, content: title }))
+        }).add(new Text({ fontSize: 0.075, content: title })),
     );
     for (const control of controls) {
         column.add(makeRow(control, width - 0.04));
@@ -161,7 +160,7 @@ export function makeGripPopup(controls: Control[]): Block {
             textAlign: "left",
             backgroundOpacity: 0,
             fontColor: colour("heading"),
-        }).add(new Text({ fontSize: 0.07, content: "HOLD GRIP +" }))
+        }).add(new Text({ fontSize: 0.07, content: "HOLD GRIP +" })),
     );
     for (const control of controls) {
         popup.add(makeRow(control, 1.2));

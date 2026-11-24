@@ -18,8 +18,7 @@ export function createPlaybackPositions(): PlaybackPositions {
             if (typeof source !== "string" || source.length === 0) {
                 return;
             }
-            const nearEnd =
-                Number.isFinite(duration) && time >= duration - END_MARGIN_SECONDS;
+            const nearEnd = Number.isFinite(duration) && time >= duration - END_MARGIN_SECONDS;
             if (!Number.isFinite(time) || time < MIN_RESUME_SECONDS || nearEnd) {
                 positions.delete(source);
             } else {
@@ -37,24 +36,20 @@ const playbackPositions = createPlaybackPositions();
 
 // Call before the video element's source is changed or removed.
 export function rememberPlaybackPosition(
-    video: Pick<HTMLVideoElement, "getAttribute" | "readyState" | "ended" | "duration" | "currentTime">
+    video: Pick<HTMLVideoElement, "getAttribute" | "readyState" | "ended" | "duration" | "currentTime">,
 ): void {
     const source = video.getAttribute("src");
     if (!source || video.readyState === 0) {
         // Nothing has loaded, so there is no position to keep.
         return;
     }
-    playbackPositions.remember(
-        source,
-        video.ended ? video.duration : video.currentTime,
-        video.duration
-    );
+    playbackPositions.remember(source, video.ended ? video.duration : video.currentTime, video.duration);
 }
 
 // Call once the new source's metadata has loaded.
 export function restorePlaybackPosition(
     video: Pick<HTMLVideoElement, "duration" | "currentTime">,
-    source: string
+    source: string,
 ): void {
     const position = playbackPositions.positionFor(source);
     if (position !== null && position < video.duration) {

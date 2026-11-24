@@ -14,7 +14,7 @@ export function hasMediaSource(video: Pick<HTMLVideoElement, "getAttribute">): b
  */
 export function isCurrentMediaSource(
     video: Pick<HTMLVideoElement, "currentSrc"> & { ownerDocument?: { baseURI: string } | null },
-    source: string | null | undefined
+    source: string | null | undefined,
 ): boolean {
     if (typeof source !== "string" || source.length === 0 || !video.currentSrc) {
         return false;
@@ -32,7 +32,7 @@ export function isCurrentMediaSource(
 
 export function setMediaSource(
     video: Pick<HTMLVideoElement, "getAttribute" | "src" | "load" | "pause" | "play">,
-    source: string
+    source: string,
 ): { sourceChanged: boolean; playback: Promise<void> } {
     if (typeof source !== "string" || source.length === 0) {
         throw new TypeError("A media source must be a non-empty string.");
@@ -56,7 +56,7 @@ export function setMediaSource(
 }
 
 export function clearMediaSource(
-    video: Pick<HTMLVideoElement, "getAttribute" | "removeAttribute" | "load" | "pause">
+    video: Pick<HTMLVideoElement, "getAttribute" | "removeAttribute" | "load" | "pause">,
 ): void {
     if (!hasMediaSource(video)) {
         return;

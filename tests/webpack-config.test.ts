@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import test from "node:test";
 
 const require = createRequire(import.meta.url);
-// webpack.config.js is plain CommonJS: these are the parts the tests use.
+// webpack.config.cjs is plain CommonJS: these are the parts the tests use.
 interface PlayerSettings {
     library?: { videos_path?: string };
     web?: { site_url_prefix?: string };
@@ -14,7 +14,7 @@ interface WebpackConfigModule {
     parseToml: (text: string) => PlayerSettings;
     playerConfig: (config: PlayerSettings) => { defaultSbsZoom: number };
 }
-const webpackConfig = require("../webpack.config.js") as WebpackConfigModule;
+const webpackConfig = require("../webpack.config.cjs") as WebpackConfigModule;
 const { parseToml, playerConfig } = webpackConfig;
 
 test("keeps local library paths separate from web and player settings", () => {
@@ -36,10 +36,7 @@ default_sbs_zoom = 75.5
 
 test("uses the established SBS zoom when the setting is absent or invalid", () => {
     assert.deepEqual(playerConfig({}), { defaultSbsZoom: 100 });
-    assert.deepEqual(
-        playerConfig({ player: { default_sbs_zoom: 181 } }),
-        { defaultSbsZoom: 100 }
-    );
+    assert.deepEqual(playerConfig({ player: { default_sbs_zoom: 181 } }), { defaultSbsZoom: 100 });
 });
 
 test("builds production releases that work at any site path", () => {

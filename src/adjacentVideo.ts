@@ -4,7 +4,7 @@
 export function adjacentVideo<T extends { src: string }>(
     files: readonly T[],
     currentSource: string | null,
-    offset: number
+    offset: number,
 ): T | null {
     const index = files.findIndex((file) => file.src === currentSource);
     if (index === -1) {

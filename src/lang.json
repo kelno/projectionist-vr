@@ -1,22 +1,22 @@
 {
-    "en": {
-        "top_bottom": "Top-Bottom",
-        "top_bottom_360": "Top-Bottom 360",
-        "side_by_side": "Side-By-Side",
-        "zoom_video": "Zoom video",
-        "tilt_video": "Tilt video",
-        "switch_mode": "Switch mode",
-        "this_video": "This video",
-        "not_available": "N/A",
-        "loading_video": "Loading video...",
-        "video_not_found": "Video file not found.",
-        "previous_page": "Previous Page",
-        "next_page": "Next Page",
-        "controls": "Controls",
-        "no_next_video": "This is the last video in this list.",
-        "no_previous_video": "This is the first video in this list.",
-        "loading_library": "Loading library...",
-        "library_load_failed": "Could not load the library (files.json).",
-        "search": "Search..."
-    }
+  "en": {
+    "top_bottom": "Top-Bottom",
+    "top_bottom_360": "Top-Bottom 360",
+    "side_by_side": "Side-By-Side",
+    "zoom_video": "Zoom video",
+    "tilt_video": "Tilt video",
+    "switch_mode": "Switch mode",
+    "this_video": "This video",
+    "not_available": "N/A",
+    "loading_video": "Loading video...",
+    "video_not_found": "Video file not found.",
+    "previous_page": "Previous Page",
+    "next_page": "Next Page",
+    "controls": "Controls",
+    "no_next_video": "This is the last video in this list.",
+    "no_previous_video": "This is the first video in this list.",
+    "loading_library": "Loading library...",
+    "library_load_failed": "Could not load the library (files.json).",
+    "search": "Search..."
+  }
 }

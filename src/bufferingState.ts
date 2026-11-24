@@ -1,7 +1,7 @@
 // Whether the video is waiting for data: seeking, or meant to play but
 // without enough data to go on (HTMLMediaElement.HAVE_FUTURE_DATA is 3).
 export function isBuffering(
-    video: Pick<HTMLVideoElement, "getAttribute" | "seeking" | "paused" | "ended" | "readyState"> | null | undefined
+    video: Pick<HTMLVideoElement, "getAttribute" | "seeking" | "paused" | "ended" | "readyState"> | null | undefined,
 ): boolean {
     if (!video?.getAttribute("src")) {
         return false;

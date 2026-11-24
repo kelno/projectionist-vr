@@ -114,10 +114,12 @@ function init() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x101010);
 
+  // In VR the near plane is the headset's too: at 1 m it cut off the
+  // controllers in the user's hands, which flickered as they crossed it.
   camera = new THREE.PerspectiveCamera(
     90,
     window.innerWidth / window.innerHeight,
-    1,
+    0.05,
     1000
   );
   camera.layers.enable(1);

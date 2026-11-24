@@ -38,6 +38,7 @@ import PowerIcon from "../../assets/icons/power.png";
 import SortIcon from "../../assets/icons/sort.png";
 
 import { adjacentVideo } from "../adjacentVideo.mjs";
+import { playerVersion } from "../playerConfig.js";
 import {
     GRIP_PLAYER_CONTROLS,
     LIBRARY_CONTROLS,
@@ -478,12 +479,24 @@ export class FileBrowserPanel {
                     ],
                     { width: 3.7, height: 0.95, justify: "space-between" }
                 ),
-                label("Left controller: X and Y instead of A and B.", {
-                    width: 3.7,
-                    height: 0.2,
-                    fontSize: 0.06,
-                    color: 0xaaaaaa,
-                }),
+                row(
+                    [
+                        label("Left controller: X and Y instead of A and B.", {
+                            width: 3.0,
+                            height: 0.2,
+                            fontSize: 0.06,
+                            color: 0xaaaaaa,
+                        }),
+                        label(`v${playerVersion}`, {
+                            width: 0.7,
+                            height: 0.2,
+                            fontSize: 0.05,
+                            align: "right",
+                            color: 0x777777,
+                        }),
+                    ],
+                    { width: 3.7, height: 0.2, justify: "space-between" }
+                ),
             ],
             { width: 3.9, height: 1.5, padding: 0.08, justify: "space-between" }
         );

@@ -269,5 +269,9 @@ export function resetDrag(view) {
                 readyList.push(obj.panelName);
             }
         });
+        if (view === "player") {
+            // Same as the zoom reset in the settings: the configured default.
+            resetZoomToConfiguredDefault();
+        }
     }
 }

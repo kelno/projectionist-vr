@@ -1,7 +1,7 @@
-import { Color } from "three";
 import { Block, Text } from "./meshUi.js";
 
-import { FONT } from "./kit.js";
+import { FONT, SURFACE } from "./kit.js";
+import { colour, space } from "./theme.js";
 
 // One line of text in front of the viewer, such as "Loading video...":
 // show(message) shows it for `duration` ms, or until hidden with 0.
@@ -10,17 +10,15 @@ export function createPopupMessage(scene) {
         content: "",
         fontSize: 0.07,
         offset: 0.035,
-        fontColor: new Color(0xffffff),
+        fontColor: colour("text"),
     });
     const popup = new Block({
         width: 2,
         height: 0.2,
         justifyContent: "center",
         contentDirection: "row",
-        padding: 0.02,
-        borderRadius: 0,
-        backgroundColor: new Color(0x5c5c5c),
-        backgroundOpacity: 1,
+        padding: space(1),
+        ...SURFACE,
         ...FONT,
     }).add(text);
     popup.position.set(0, 1, -2);

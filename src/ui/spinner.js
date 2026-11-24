@@ -7,16 +7,18 @@ import {
     RingGeometry,
 } from "three";
 
-// A yellow ring turning on a dark disc, shown while something loads. Call
+import { materialColour } from "./theme.js";
+
+// A ring in the accent colour turning on a dark disc, shown while something loads. Call
 // `spin()` each frame it shows.
 export function createSpinner(radius) {
     const background = new Mesh(
         new CircleGeometry(radius * 1.35, 32),
-        new MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.7 })
+        new MeshBasicMaterial({ color: materialColour("surface"), transparent: true, opacity: 0.85 })
     );
     const ring = new Mesh(
         new RingGeometry(radius * 0.7, radius, 32, 1, 0, Math.PI * 1.5),
-        new MeshBasicMaterial({ color: 0xffff00, side: DoubleSide })
+        new MeshBasicMaterial({ color: materialColour("accent"), side: DoubleSide })
     );
     ring.position.z = 0.001;
     const spinner = new Group().add(background, ring);

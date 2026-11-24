@@ -1,4 +1,3 @@
-import { Color } from "three";
 import { Block, Text } from "./ui/meshUi.js";
 
 import * as MAIN from "./index.js";
@@ -8,27 +7,28 @@ import * as Helpers from "./Helpers.js";
 
 import PlayIcon from "../assets/icons/play.png";
 import PauseIcon from "../assets/icons/pause.png";
-import FFIcon from "../assets/icons/fast-forward.png";
-import RewIcon from "../assets/icons/rewind.png";
+import ForwardIcon from "../assets/icons/forward-10.png";
+import BackIcon from "../assets/icons/back-10.png";
 import MuteIcon from "../assets/icons/mute.png";
 import VolumeIcon from "../assets/icons/volume.png";
-import ExitIcon from "../assets/icons/logout.png";
-import SettingsIcon from "../assets/icons/setting.png";
+import LibraryIcon from "../assets/icons/library.png";
+import SettingsIcon from "../assets/icons/settings.png";
 import ZoomOutIcon from "../assets/icons/zoom-out.png";
 import ZoomInIcon from "../assets/icons/zoom-in.png";
-import UpIcon from "../assets/icons/up-arrow.png";
-import DownIcon from "../assets/icons/down-arrow.png";
-import VRIcon from "../assets/icons/vr-glasses.png";
-import WideScreenIcon from "../assets/icons/wide.png";
+import UpIcon from "../assets/icons/up.png";
+import DownIcon from "../assets/icons/down.png";
+import VRIcon from "../assets/icons/vr.png";
+import ScreenIcon from "../assets/icons/screen.png";
 import ResetIcon from "../assets/icons/reset.png";
-import FullScreenIcon from "../assets/icons/fullscreen.png";
-import LeftIcon from "../assets/icons/left-arrow.png";
-import RightIcon from "../assets/icons/right-arrow.png";
+import MoveIcon from "../assets/icons/move.png";
+import PreviousIcon from "../assets/icons/previous.png";
+import NextIcon from "../assets/icons/next.png";
 
 import { PagedWindow } from "./ui/PagedWindow.js";
 import {
     BUTTON_SIZE,
     FONT,
+    SURFACE,
     column,
     dragHandle,
     iconButton,
@@ -37,12 +37,9 @@ import {
     row,
     textButton,
 } from "./ui/kit.js";
+import { colour, space } from "./ui/theme.js";
 import { mediaInfoLines } from "./mediaInfo.mjs";
-import { sanitizeFontText } from "./font.js";
-
-function shorten(text, length) {
-    return text.length > length ? `${text.slice(0, length - 3)}...` : text;
-}
+import { shortenText } from "./font.js";
 
 // "01:02:03" for 3723 seconds.
 function clockTime(seconds) {
@@ -59,18 +56,16 @@ const LAYOUTS = [
     ["sphere360", () => "2D 360"],
 ];
 
-const MUTED_COLOR = 0xcc0000;
-
 // The player's controls: a seek bar, the time, and a row of buttons (back to
 // the library, mute, previous / back 10 s / play / forward 10 s / next,
 // settings, reset and move), with a bar under them to move the screen and
 // controls together, and the settings window above them.
 export class PlayerPanel {
     WIDTH = 3;
-    PROGRESS_WIDTH = this.WIDTH - 0.1;
-    PROGRESS_HEIGHT = 0.08;
+    PADDING = space(3);
+    INNER_WIDTH = this.WIDTH - 2 * this.PADDING;
+    PROGRESS_HEIGHT = 0.06;
     PROGRESS_MIN_WIDTH = 0.01;
-    BUTTONS_WIDTH = this.WIDTH - 0.2;
     SETTINGS_WIDTH = this.WIDTH / 1.5;
 
     // What can be clicked while the controls show.
@@ -100,26 +95,27 @@ export class PlayerPanel {
     buildControls() {
         this.buttonPlay = iconButton({
             icon: PlayIcon,
+            size: BUTTON_SIZE * 1.25,
             tooltip: "Play / pause",
             onSelect: () => this.playPause(),
         });
         const previous = iconButton({
-            icon: LeftIcon,
+            icon: PreviousIcon,
             tooltip: "Previous video",
             onSelect: () => this.playAdjacentVideo(-1),
         });
         const rewind = iconButton({
-            icon: RewIcon,
+            icon: BackIcon,
             tooltip: "Back 10 s",
             onSelect: () => this.videoPlaybackFFRew("Rew"),
         });
         const forward = iconButton({
-            icon: FFIcon,
+            icon: ForwardIcon,
             tooltip: "Forward 10 s",
             onSelect: () => this.videoPlaybackFFRew("FF"),
         });
         const next = iconButton({
-            icon: RightIcon,
+            icon: NextIcon,
             tooltip: "Next video",
             onSelect: () => this.playAdjacentVideo(1),
         });
@@ -137,7 +133,7 @@ export class PlayerPanel {
             onSelect: () => this.toggleMute(),
         });
         const exit = iconButton({
-            icon: ExitIcon,
+            icon: LibraryIcon,
             tooltip: "Back to library",
             onSelect: () => this.ExitToMain(),
         });
@@ -147,41 +143,45 @@ export class PlayerPanel {
             onSelect: () => ScreenManager.resetDrag("player"),
         });
         const move = iconButton({
-            icon: FullScreenIcon,
+            icon: MoveIcon,
             tooltip: "Move the controls",
             onSelect: () => ScreenManager.startDrag("playerControls"),
             onRelease: () => ScreenManager.stopDrag("playerControls"),
         });
 
-        const side = this.BUTTONS_WIDTH / 6;
+        // Three groups: the library and sound on the left, playback in the
+        // middle, the screen's settings and placement on the right.
+        const side = this.INNER_WIDTH / 4;
         const buttons = row(
             [
-                row([exit], { width: side, justify: "start" }),
-                row([this.muteButton], { width: side, justify: "end" }),
-                row([previous, rewind, this.buttonPlay, forward, next, this.settingsButton], {
-                    width: this.BUTTONS_WIDTH / 2,
+                row([exit, this.muteButton], { width: side, justify: "start" }),
+                row([previous, rewind, this.buttonPlay, forward, next], {
+                    width: this.INNER_WIDTH - 2 * side,
                     justify: "center",
                 }),
-                row([reset, move], { width: side, justify: "end" }),
+                row([this.settingsButton, reset, move], { width: side, justify: "end" }),
             ],
-            { width: this.WIDTH - 0.04, justify: "center" }
+            { width: this.INNER_WIDTH, justify: "center" }
         );
+        // The play button stands out: a size larger, in the accent colour.
+        markActive(this.buttonPlay, true);
 
-        this.timeLabel = new Text({ content: "0:00", fontSize: 0.07 });
+        this.timeLabel = new Text({ content: "0:00", fontSize: 0.06 });
         const time = new Block({
-            width: this.WIDTH,
-            height: 0.1,
+            width: this.INNER_WIDTH,
+            height: 0.09,
             justifyContent: "center",
+            textAlign: "right",
             backgroundOpacity: 0,
+            fontColor: colour("mutedText"),
         }).add(this.timeLabel);
 
         this.playMenuContainer = new Block({
             width: this.WIDTH,
             contentDirection: "column",
             justifyContent: "center",
-            padding: 0.02,
-            borderRadius: 0,
-            backgroundOpacity: 1,
+            padding: this.PADDING,
+            ...SURFACE,
             ...FONT,
         }).add(this.buildSeekBar(), time, buttons);
         this.playMenuContainer.visible = false;
@@ -218,21 +218,20 @@ export class PlayerPanel {
         );
     }
 
-    // The seek bar: the part played in blue, a white mark at the current
-    // time; a click seeks to where it lands.
+    // The seek bar: the part played in the accent colour, a light mark at the
+    // current time; a click seeks to where it lands.
     buildSeekBar() {
-        const idleColor = new Color(0x5b5b5b);
         const part = (width, color) =>
             new Block({
                 width,
                 height: this.PROGRESS_HEIGHT,
                 margin: 0,
                 borderRadius: 0,
-                backgroundColor: new Color(color),
+                backgroundColor: colour(color),
                 offset: 0.005,
             });
-        this.progressBar = part(this.PROGRESS_MIN_WIDTH, 0x0099ff);
-        const mark = part(this.PROGRESS_MIN_WIDTH * 2, 0xffffff);
+        this.progressBar = part(this.PROGRESS_MIN_WIDTH, "accent");
+        const mark = part(this.PROGRESS_MIN_WIDTH * 2, "text");
         // Drawn on the layers the screen's eyes see, above the video.
         for (const block of [this.progressBar, mark]) {
             block.onAfterUpdate = () => {
@@ -242,14 +241,14 @@ export class PlayerPanel {
         }
 
         this.seekBar = new Block({
-            width: this.PROGRESS_WIDTH,
+            width: this.INNER_WIDTH,
             height: this.PROGRESS_HEIGHT,
-            margin: 0.04,
+            margin: 0,
             offset: 0.045,
             borderRadius: 0,
             justifyContent: "start",
             contentDirection: "row",
-            backgroundColor: idleColor,
+            backgroundColor: colour("track"),
             backgroundOpacity: 1,
         }).add(this.progressBar, mark);
         this.seekBar.setupState({
@@ -263,11 +262,11 @@ export class PlayerPanel {
         // reflow the whole controls panel around it.
         this.seekBar.setupState({
             state: "hovered",
-            attributes: { backgroundColor: new Color(0x8a8a8a) },
+            attributes: { backgroundColor: colour("hovered") },
         });
         this.seekBar.setupState({
             state: "idle",
-            attributes: { backgroundColor: idleColor },
+            attributes: { backgroundColor: colour("track") },
         });
         return this.seekBar;
     }
@@ -352,7 +351,7 @@ export class PlayerPanel {
             label(Helpers.getWordFromLang(key), { width: 0.45, fontSize: 0.05 });
 
         const screenMode = iconButton({
-            icon: WideScreenIcon,
+            icon: ScreenIcon,
             tooltip: "Flat screen",
             onSelect: () => ScreenManager.switchModeVRScreen("screen"),
         });
@@ -390,7 +389,6 @@ export class PlayerPanel {
         const tiltReset = iconButton({ icon: ResetIcon, tooltip: "Reset tilt", onSelect: () => ScreenManager.tilt("reset") });
         const mediaInfo = textButton({
             label: "Media info",
-            icon: RightIcon,
             width: width - 0.04,
             onSelect: () => this.settingsWindow.show("media"),
         });
@@ -432,11 +430,11 @@ export class PlayerPanel {
     buildMediaInfoPage(width) {
         const values = [];
         const rows = mediaInfoLines(null, null).map(([name]) => {
-            const value = label("-", { width: width - 0.5, height: 0.1, fontSize: 0.055 });
+            const value = label("-", { width: width - 0.5, height: 0.09, fontSize: 0.055 });
             values.push(value);
             return row(
-                [label(name, { width: 0.45, height: 0.1, fontSize: 0.055, color: 0xaaaaaa }), value],
-                { width, height: 0.105 }
+                [label(name, { width: 0.45, height: 0.09, fontSize: 0.055, color: "mutedText" }), value],
+                { width, height: 0.095 }
             );
         });
         return {
@@ -445,8 +443,11 @@ export class PlayerPanel {
             block: column(rows, { width, height: 0.8 }),
             onShow: () => {
                 const entry = MAIN.fileBrowserPanel.fileForSource(this.videoElement.getAttribute("src"));
-                mediaInfoLines(entry, this.videoElement).forEach(([, text], index) => {
-                    values[index].text.set({ content: sanitizeFontText(shorten(text, 40)) });
+                mediaInfoLines(entry, this.videoElement).forEach(([, text, problem], index) => {
+                    values[index].text.set({
+                        content: shortenText(text, 40),
+                        fontColor: colour(problem ? "danger" : "text"),
+                    });
                 });
             },
         };
@@ -513,7 +514,7 @@ export class PlayerPanel {
     refreshMuteButton() {
         const muted = this.videoElement.muted;
         this.muteButton.setIcon(muted ? MuteIcon : VolumeIcon);
-        markActive(this.muteButton, muted, { color: MUTED_COLOR });
+        markActive(this.muteButton, muted, { color: "danger" });
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -537,7 +538,7 @@ export class PlayerPanel {
                 this.progressBar.set({ width: this.PROGRESS_MIN_WIDTH });
                 this.timeLabel.set({ content: Helpers.getWordFromLang("not_available") });
             } else {
-                const played = (this.PROGRESS_WIDTH - this.PROGRESS_MIN_WIDTH * 2) * (video.currentTime / duration);
+                const played = (this.INNER_WIDTH - this.PROGRESS_MIN_WIDTH * 2) * (video.currentTime / duration);
                 this.progressBar.set({ width: Math.max(played, this.PROGRESS_MIN_WIDTH) });
                 this.timeLabel.set({ content: `${clockTime(video.currentTime)} / ${clockTime(duration)}` });
             }

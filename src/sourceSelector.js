@@ -1,4 +1,3 @@
-import { Color } from "three";
 import {
     Block,
     Text,
@@ -12,6 +11,7 @@ import FontImage from "../assets/fonts/Roboto-Regular.png";
 import { fileBrowserPanel, scene } from "./index.js";
 import { hideMenu, showMenu, registerNewObjectsToTest } from "./UI.js";
 import { getWordFromLang } from "./Helpers.js";
+import { colour } from "./ui/theme.js";
 import {
     registerObjectToDrag,
     registerPanel,
@@ -28,7 +28,7 @@ export default class SourcesSelectorPanel {
         padding: 0.02,
         borderRadius: 0,
         backgroundOpacity: 1,
-        backgroundColor: new Color(0x494949),
+        backgroundColor: colour("surface"),
         width: 1.3,
         height: 2,
     };
@@ -58,15 +58,15 @@ export default class SourcesSelectorPanel {
     };
     selectedAttributes = {
         offset: 0.02,
-        backgroundColor: new Color(0x777777),
+        backgroundColor: colour("accent"),
         backgroundOpacity: 1,
-        fontColor: new Color(0x222222),
+        fontColor: colour("text"),
     };
     hoveredStateAttributes = {
         offset: 0.035,
-        backgroundColor: new Color(0xffff00),
+        backgroundColor: colour("hovered"),
         backgroundOpacity: 1,
-        fontColor: new Color(0x000000),
+        fontColor: colour("text"),
     };
     hoveredState = {
         state: "hovered",
@@ -74,9 +74,9 @@ export default class SourcesSelectorPanel {
     };
     idleStateAttributes = {
         offset: 0.035,
-        backgroundColor: new Color(0x999999),
+        backgroundColor: colour("raised"),
         backgroundOpacity: 1,
-        fontColor: new Color(0xffffff),
+        fontColor: colour("text"),
     };
     idleState = {
         state: "idle",
@@ -133,18 +133,18 @@ export default class SourcesSelectorPanel {
             state: "hovered",
             attributes: {
                 offset: 0.035,
-                backgroundColor: new Color(0xf44336),
+                backgroundColor: colour("danger"),
                 backgroundOpacity: 1,
-                fontColor: new Color(0x000000),
+                fontColor: colour("text"),
             },
         });
         this.buttonClose.setupState({
             state: "idle",
             attributes: {
                 offset: 0.035,
-                backgroundColor: new Color(0xf88e86),
+                backgroundColor: colour("raised"),
                 backgroundOpacity: 1,
-                fontColor: new Color(0x000000),
+                fontColor: colour("text"),
             },
         });
 
@@ -167,18 +167,18 @@ export default class SourcesSelectorPanel {
             state: "hovered",
             attributes: {
                 offset: 0.035,
-                backgroundColor: new Color(0x008000),
+                backgroundColor: colour("hovered"),
                 backgroundOpacity: 1,
-                fontColor: new Color(0xffffff),
+                fontColor: colour("text"),
             },
         });
         this.buttonRefresh.setupState({
             state: "idle",
             attributes: {
                 offset: 0.035,
-                backgroundColor: new Color(0x98fb98),
+                backgroundColor: colour("raised"),
                 backgroundOpacity: 1,
-                fontColor: new Color(0x000000),
+                fontColor: colour("text"),
             },
         });
 

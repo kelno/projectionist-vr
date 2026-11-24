@@ -52,12 +52,12 @@ export default tseslint.config(
     },
     {
         // Node runs the tests, the icon script and the build configuration.
-        files: ["tests/**", "scripts/**", "*.cjs", "*.mjs"],
+        files: ["tests/**", "scripts/**", "*.cjs", "*.mjs", "build/*.cjs"],
         languageOptions: { globals: { ...globals.node } },
     },
     {
-        // The build configuration and this file are plain JavaScript.
-        files: ["*.cjs", "*.mjs"],
+        // The build configuration, its loaders and this file are plain JavaScript.
+        files: ["*.cjs", "*.mjs", "build/*.cjs"],
         ...tseslint.configs.disableTypeChecked,
     },
     {

@@ -79,6 +79,11 @@ module.exports = (env) => {
                     test: /\.(png|svg|jpg|gif)$/,
                     use: ["file-loader"],
                 },
+                {
+                    // Sharp text in uikit: its font image without mipmaps (build/uikit-font-filter-loader.cjs).
+                    test: /@pmndrs[\\/]uikit[\\/]dist[\\/]text[\\/]cache\.js$/,
+                    loader: path.resolve(__dirname, "build/uikit-font-filter-loader.cjs"),
+                },
             ],
         },
         resolve: {

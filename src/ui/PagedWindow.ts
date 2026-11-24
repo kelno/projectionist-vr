@@ -95,6 +95,11 @@ export class PagedWindow {
     }
 
     open(pageId: string): void {
+        // The page shown when the window was last closed is still in it.
+        const shown = this.currentPage;
+        if (shown) {
+            this.body.remove(shown.block);
+        }
         this.history = [];
         this.isOpen = true;
         this.container.visible = true;

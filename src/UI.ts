@@ -30,7 +30,7 @@ export let objsToTest: PointerTarget[] = [];
 export function hideMenu(
     menuContainer: Object3D | Object3D[],
     passedObjsToTest: PointerTarget[] = [],
-    shouldSwitch2d3d = false
+    shouldSwitch2d3d = false,
 ): void {
     if (shouldSwitch2d3d) {
         ScreenManager.switch2d3d("3d");
@@ -48,16 +48,14 @@ export function hideMenu(
         objsToTest = passedObjsToTest.slice();
     } else {
         objsToTest.push(MAIN.hiddenSphere);
-        MAIN.vrControl.controllers[
-            MAIN.vrControlCurrentlyUsedController
-        ].point.visible = false;
+        MAIN.vrControl.controllers[MAIN.vrControlCurrentlyUsedController].point.visible = false;
     }
 }
 
 export function showMenu(
     menuContainer: Object3D | Object3D[],
     passedObjsToTest: PointerTarget[],
-    shouldSwitch2d3d = false
+    shouldSwitch2d3d = false,
 ): void {
     if (shouldSwitch2d3d) {
         ScreenManager.switch2d3d("2d");
@@ -72,9 +70,7 @@ export function showMenu(
     }
     objsToTest = [];
     objsToTest = passedObjsToTest.slice();
-    MAIN.vrControl.controllers[
-        MAIN.vrControlCurrentlyUsedController
-    ].point.visible = true;
+    MAIN.vrControl.controllers[MAIN.vrControlCurrentlyUsedController].point.visible = true;
 }
 
 // What a click outside the open window does, usually closing it. The window
@@ -123,10 +119,7 @@ export class HiddenSphere {
             const savedState = this.states[state];
 
             if (!savedState) {
-                console.warn(
-                    `state "${state}" does not exist within this component:`,
-                    this.name
-                );
+                console.warn(`state "${state}" does not exist within this component:`, this.name);
                 return;
             }
             if (state === this.currentState) return;
@@ -147,10 +140,7 @@ export class HiddenSphere {
                     const close = closeOpenWindow;
                     closeOpenWindow = null;
                     close();
-                } else if (
-                    Helpers.videoSrcExists() &&
-                    !this.hiddenSphere.buttonsVisible
-                ) {
+                } else if (Helpers.videoSrcExists() && !this.hiddenSphere.buttonsVisible) {
                     MAIN.playMenuPanel.showPlayMenuPanel();
                 } else if (Helpers.videoSrcExists()) {
                     MAIN.playMenuPanel.hidePlayMenuPanel();

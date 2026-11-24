@@ -45,14 +45,15 @@ test("shows the catalogue's media info", () => {
 });
 
 test("flags a video that starts slowly", () => {
-    const line = (media: MediaInfo) => mediaInfoLines({ name: "Clip", media }, null).find(([name]) => name === "Fast start");
+    const line = (media: MediaInfo) =>
+        mediaInfoLines({ name: "Clip", media }, null).find(([name]) => name === "Fast start");
     assert.deepEqual(line({ faststart: true }), ["Fast start", "Yes"]);
     assert.deepEqual(line({ faststart: false }), ["Fast start", "No, slow to start: remux it", true]);
 });
 
 test("falls back on the video element without catalogue info", () => {
     const lines = linesByName(
-        mediaInfoLines({ name: "Old entry" }, { videoWidth: 1920, videoHeight: 1080, duration: 65 })
+        mediaInfoLines({ name: "Old entry" }, { videoWidth: 1920, videoHeight: 1080, duration: 65 }),
     );
     assert.equal(lines.Resolution, "1920 x 1080");
     assert.equal(lines.Duration, "1:05");

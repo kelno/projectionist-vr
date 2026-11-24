@@ -14,7 +14,7 @@ export function watchVideoTexture(
         "paused" | "ended" | "readyState" | "currentTime" | "requestVideoFrameCallback" | "cancelVideoFrameCallback"
     >,
     texture: Pick<Texture, "version" | "needsUpdate">,
-    staleMs = STALE_MS
+    staleMs = STALE_MS,
 ): (now: number) => void {
     if (!("requestVideoFrameCallback" in video)) {
         // Without it, three.js refreshes the texture on every render instead.
@@ -46,18 +46,14 @@ export function watchVideoTexture(
             timeAtLastChange = video.currentTime;
             return;
         }
-        const playing =
-            !video.paused && !video.ended && video.readyState >= HAVE_CURRENT_DATA;
+        const playing = !video.paused && !video.ended && video.readyState >= HAVE_CURRENT_DATA;
         if (!playing) {
             // A still picture is expected: count from when playback resumes.
             lastChange = now;
             timeAtLastChange = video.currentTime;
             return;
         }
-        if (
-            now - lastChange > staleMs &&
-            video.currentTime !== timeAtLastChange
-        ) {
+        if (now - lastChange > staleMs && video.currentTime !== timeAtLastChange) {
             restartFrameCallbacks();
             lastVersion = texture.version;
             lastChange = now;

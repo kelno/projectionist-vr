@@ -75,9 +75,7 @@ export function createControllerInput(): (state: ControllerState, context: { pla
             if (!playing) {
                 return [{ type: "page", offset }];
             }
-            return grip
-                ? [{ type: "adjacentVideo", offset }]
-                : [{ type: "seek", seconds: 10 * offset }];
+            return grip ? [{ type: "adjacentVideo", offset }] : [{ type: "seek", seconds: 10 * offset }];
         }
         if (down && (stick === false || stick === "down")) {
             stick = "down";

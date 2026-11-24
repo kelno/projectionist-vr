@@ -230,9 +230,7 @@ export let dragging = false;
 export function startDrag(view: DragView): void {
     if (MAIN.renderer.xr.isPresenting && !dragging && view in objectsToDrag) {
         objectsToDrag[view].forEach((obj) => {
-            MAIN.vrControl.controllers[
-                MAIN.vrControlCurrentlyUsedController
-            ].attach(obj.ref);
+            MAIN.vrControl.controllers[MAIN.vrControlCurrentlyUsedController].attach(obj.ref);
         });
         dragging = true;
     }

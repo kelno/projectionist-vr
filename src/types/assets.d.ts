@@ -9,6 +9,6 @@ declare module "*.jpg" {
     export default url;
 }
 
-// Values the build defines (webpack.config.js, DefinePlugin).
+// Values the build defines (webpack.config.cjs, DefinePlugin).
 declare const __PLAYER_CONFIG__: { defaultSbsZoom: number };
 declare const __PLAYER_VERSION__: string;

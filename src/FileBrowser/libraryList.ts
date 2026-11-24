@@ -20,8 +20,7 @@ export const SORT_OPTIONS: { id: SortId; label: string }[] = [
 export const DEFAULT_SORT: SortId = "name-asc";
 
 // Names compare as people read them: case aside, and "Part 2" before "Part 10".
-const byName: Compare = (a, b) =>
-    a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
+const byName: Compare = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
 const byDate: Compare = (a, b) => Number(a.epoch) - Number(b.epoch);
 
 // Indexed by any string, since an unknown sort falls back to the default.
@@ -46,7 +45,7 @@ export function sortFiles<T extends ListedFile>(files: T[], sortId: string): T[]
 
 export function listFiles<T extends ListedFile>(
     files: T[],
-    { phrase = "", sort = DEFAULT_SORT }: { phrase?: string; sort?: string } = {}
+    { phrase = "", sort = DEFAULT_SORT }: { phrase?: string; sort?: string } = {},
 ): T[] {
     return sortFiles(filterFiles(files, phrase), sort);
 }

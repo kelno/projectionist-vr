@@ -1,13 +1,5 @@
-import {
-    clearMediaSource,
-    hasMediaSource,
-    isCurrentMediaSource,
-    setMediaSource,
-} from "./mediaSource.ts";
-import {
-    rememberPlaybackPosition,
-    restorePlaybackPosition,
-} from "./playbackPositions.ts";
+import { clearMediaSource, hasMediaSource, isCurrentMediaSource, setMediaSource } from "./mediaSource.ts";
+import { rememberPlaybackPosition, restorePlaybackPosition } from "./playbackPositions.ts";
 
 import LANG from "./lang.json";
 

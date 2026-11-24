@@ -149,9 +149,7 @@ export class PlayerPanel {
             icon: SettingsIcon,
             tooltip: "Settings",
             onSelect: () =>
-                this.settingsWindow.isOpen
-                    ? this.hideSettingsMenuContainer()
-                    : this.showSettingsMenuContainer(),
+                this.settingsWindow.isOpen ? this.hideSettingsMenuContainer() : this.showSettingsMenuContainer(),
         });
         this.muteButton = iconButton({
             icon: VolumeIcon,
@@ -187,7 +185,7 @@ export class PlayerPanel {
                 }),
                 row([this.settingsButton, reset, move], { width: side, justify: "end" }),
             ],
-            { width: this.INNER_WIDTH, justify: "center" }
+            { width: this.INNER_WIDTH, justify: "center" },
         );
         // The play button stands out: a size larger, in the accent colour.
         markActive(this.buttonPlay, true);
@@ -240,7 +238,7 @@ export class PlayerPanel {
             this.settingsButton,
             this.seekBar,
             this.playMenuContainer,
-            MAIN.hiddenSphere
+            MAIN.hiddenSphere,
         );
     }
 
@@ -373,8 +371,7 @@ export class PlayerPanel {
     }
 
     buildSettingsPage(width: number): Page {
-        const rowLabel = (key: Helpers.LangKey) =>
-            label(Helpers.getWordFromLang(key), { width: 0.45, fontSize: 0.05 });
+        const rowLabel = (key: Helpers.LangKey) => label(Helpers.getWordFromLang(key), { width: 0.45, fontSize: 0.05 });
 
         const screenMode = iconButton({
             icon: ScreenIcon,
@@ -403,16 +400,28 @@ export class PlayerPanel {
         });
         this.layoutLabel = layout.text;
 
-        const zoomOut = iconButton({ icon: ZoomOutIcon, tooltip: "Zoom out", onSelect: () => ScreenManager.zoom("out") });
+        const zoomOut = iconButton({
+            icon: ZoomOutIcon,
+            tooltip: "Zoom out",
+            onSelect: () => ScreenManager.zoom("out"),
+        });
         const zoomIn = iconButton({ icon: ZoomInIcon, tooltip: "Zoom in", onSelect: () => ScreenManager.zoom("in") });
         const zoomReset = iconButton({
             icon: ResetIcon,
             tooltip: "Default zoom",
             onSelect: () => ScreenManager.resetZoomToConfiguredDefault(),
         });
-        const tiltDown = iconButton({ icon: DownIcon, tooltip: "Tilt down", onSelect: () => ScreenManager.tilt("down") });
+        const tiltDown = iconButton({
+            icon: DownIcon,
+            tooltip: "Tilt down",
+            onSelect: () => ScreenManager.tilt("down"),
+        });
         const tiltUp = iconButton({ icon: UpIcon, tooltip: "Tilt up", onSelect: () => ScreenManager.tilt("up") });
-        const tiltReset = iconButton({ icon: ResetIcon, tooltip: "Reset tilt", onSelect: () => ScreenManager.tilt("reset") });
+        const tiltReset = iconButton({
+            icon: ResetIcon,
+            tooltip: "Reset tilt",
+            onSelect: () => ScreenManager.tilt("reset"),
+        });
         // Media info isn't a setting: it sits apart, under a line, as wide as
         // three buttons above it.
         const mediaInfo = textButton({
@@ -422,7 +431,19 @@ export class PlayerPanel {
             onSelect: () => this.settingsWindow.show("media"),
         });
 
-        const targets = [screenMode, vrMode, stereo, layout, zoomOut, zoomIn, zoomReset, tiltDown, tiltUp, tiltReset, mediaInfo];
+        const targets = [
+            screenMode,
+            vrMode,
+            stereo,
+            layout,
+            zoomOut,
+            zoomIn,
+            zoomReset,
+            tiltDown,
+            tiltUp,
+            tiltReset,
+            mediaInfo,
+        ];
         return {
             title: "Settings",
             targets,
@@ -434,7 +455,7 @@ export class PlayerPanel {
                     divider(width),
                     row([rowLabel("this_video"), mediaInfo], { width }),
                 ],
-                { width, height: this.SETTINGS_HEIGHT }
+                { width, height: this.SETTINGS_HEIGHT },
             ),
         };
     }
@@ -462,10 +483,10 @@ export class PlayerPanel {
         const rows = mediaInfoLines(null, null).map(([name]) => {
             const value = label("-", { width: width - 0.5, height: 0.09, fontSize: 0.055 });
             values.push(value);
-            return row(
-                [label(name, { width: 0.45, height: 0.09, fontSize: 0.055, color: "mutedText" }), value],
-                { width, height: 0.095 }
-            );
+            return row([label(name, { width: 0.45, height: 0.09, fontSize: 0.055, color: "mutedText" }), value], {
+                width,
+                height: 0.095,
+            });
         });
         return {
             title: "Media info",
@@ -491,9 +512,7 @@ export class PlayerPanel {
     playAdjacentVideo(offset: number) {
         const file = MAIN.fileBrowserPanel.adjacentFile(offset);
         if (file === null) {
-            MAIN.showPopupMessage(
-                Helpers.getWordFromLang(offset > 0 ? "no_next_video" : "no_previous_video")
-            );
+            MAIN.showPopupMessage(Helpers.getWordFromLang(offset > 0 ? "no_next_video" : "no_previous_video"));
             return;
         }
         this.hidePlayMenuPanel();

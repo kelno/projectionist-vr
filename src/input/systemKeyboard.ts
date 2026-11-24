@@ -13,11 +13,7 @@ const FAIL_MS = 1500;
 
 export interface SystemKeyboard {
     isAvailable(): boolean;
-    open(handlers: {
-        onInput: (text: string) => void;
-        onClose: (text: string) => void;
-        onFail: () => void;
-    }): void;
+    open(handlers: { onInput: (text: string) => void; onClose: (text: string) => void; onFail: () => void }): void;
 }
 
 export function createSystemKeyboard(getSession: () => XRSession | null): SystemKeyboard {

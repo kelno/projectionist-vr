@@ -13,7 +13,7 @@ const RADIUS = 0.04;
 const forward = new Vector3();
 
 export function createBufferingIndicator(
-    scene: Object3D
+    scene: Object3D,
 ): (video: HTMLVideoElement | null | undefined, camera: Camera, now: number) => void {
     const spinner = createSpinner(RADIUS);
     scene.add(spinner);

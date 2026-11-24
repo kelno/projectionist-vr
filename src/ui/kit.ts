@@ -206,7 +206,7 @@ export function label(
         fontSize?: number;
         align?: "left" | "center" | "right";
         color?: ColourName;
-    }
+    },
 ): Label {
     const text = new Text({ content, fontSize });
     const block = new Block({
@@ -234,17 +234,20 @@ function withChildren(block: Block, children: Object3D[]): Block {
 
 export function row(
     children: Object3D[],
-    { width, height = BUTTON_SIZE + 0.04, justify = "start" }: { width: number; height?: number; justify?: Justify }
+    { width, height = BUTTON_SIZE + 0.04, justify = "start" }: { width: number; height?: number; justify?: Justify },
 ): Block {
-    return withChildren(new Block({
-        width,
-        height,
-        contentDirection: "row",
-        justifyContent: justify,
-        alignItems: "center",
-        backgroundOpacity: 0,
-        ...FONT,
-    }), children);
+    return withChildren(
+        new Block({
+            width,
+            height,
+            contentDirection: "row",
+            justifyContent: justify,
+            alignItems: "center",
+            backgroundOpacity: 0,
+            ...FONT,
+        }),
+        children,
+    );
 }
 
 // The look of a window or panel's background, for panels built by hand.
@@ -270,17 +273,20 @@ export function panel(
         height,
         padding = space(2),
         justify = "start",
-    }: { width: number; height: number; padding?: number; justify?: Justify }
+    }: { width: number; height: number; padding?: number; justify?: Justify },
 ): Block {
-    const block = withChildren(new Block({
-        width,
-        height,
-        contentDirection: "column",
-        justifyContent: justify,
-        padding,
-        ...SURFACE,
-        ...FONT,
-    }), children);
+    const block = withChildren(
+        new Block({
+            width,
+            height,
+            contentDirection: "column",
+            justifyContent: justify,
+            padding,
+            ...SURFACE,
+            ...FONT,
+        }),
+        children,
+    );
     block.setupState({ state: "selected" });
     block.setupState({ state: "hovered" });
     block.setupState({ state: "idle" });
@@ -308,25 +314,31 @@ export function divider(width: number): Block {
         backgroundColor: colour("border"),
         backgroundOpacity: 1,
     });
-    return withChildren(new Block({
-        width,
-        height: space(3),
-        justifyContent: "center",
-        backgroundOpacity: 0,
-        ...FONT,
-    }), [line]);
+    return withChildren(
+        new Block({
+            width,
+            height: space(3),
+            justifyContent: "center",
+            backgroundOpacity: 0,
+            ...FONT,
+        }),
+        [line],
+    );
 }
 
 export function column(
     children: Object3D[],
-    { width, height, justify = "start" }: { width: number; height: number; justify?: Justify }
+    { width, height, justify = "start" }: { width: number; height: number; justify?: Justify },
 ): Block {
-    return withChildren(new Block({
-        width,
-        height,
-        contentDirection: "column",
-        justifyContent: justify,
-        backgroundOpacity: 0,
-        ...FONT,
-    }), children);
+    return withChildren(
+        new Block({
+            width,
+            height,
+            contentDirection: "column",
+            justifyContent: justify,
+            backgroundOpacity: 0,
+            ...FONT,
+        }),
+        children,
+    );
 }

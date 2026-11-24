@@ -38,7 +38,7 @@ export default class ThumbnailBlock extends Block {
     // cell, `margin` the space kept free around the tile inside it.
     constructor(
         file: CatalogueEntry,
-        { cellWidth, cellHeight, margin }: { cellWidth: number; cellHeight: number; margin: number }
+        { cellWidth, cellHeight, margin }: { cellWidth: number; cellHeight: number; margin: number },
     ) {
         const width = cellWidth - margin * 2;
         const height = cellHeight - margin * 2;
@@ -77,7 +77,7 @@ export default class ThumbnailBlock extends Block {
             new Text({
                 content: sanitizeFontText(file.name),
                 fontSize: CAPTION_FONT_SIZE,
-            })
+            }),
         );
         this.add(this.image, caption);
 

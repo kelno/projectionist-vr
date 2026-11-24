@@ -3,7 +3,11 @@
 // the server answers 404 and keeps in its access log. A given error is sent
 // once per page load, and at most `max` in all, so an error repeating every
 // frame doesn't flood the log.
-export function createErrorReporter({ send, version, max = 20 }: {
+export function createErrorReporter({
+    send,
+    version,
+    max = 20,
+}: {
     send: (query: string) => void;
     version: string;
     max?: number;

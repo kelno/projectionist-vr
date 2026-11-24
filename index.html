@@ -1,90 +1,87 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
-    />
-    <link rel="icon" href="favicon.ico" type="image/x-icon" />
-    <title>Projectionist</title>
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-      }
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+        <link rel="icon" href="favicon.ico" type="image/x-icon" />
+        <title>Projectionist</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+            }
 
-      body {
-        overflow: hidden;
-      }
+            body {
+                overflow: hidden;
+            }
 
-      .loader {
-        position: absolute;
-        right: 0px;
-        bottom: 20%;
-        padding: 5px;
-        font-size: 15px;
-        background-color: #d4d4d4;
-        color: rgb(0, 0, 0);
-        width: 20%;
-        font-family: Arial, Helvetica, sans-serif;
-      }
+            .loader {
+                position: absolute;
+                right: 0px;
+                bottom: 20%;
+                padding: 5px;
+                font-size: 15px;
+                background-color: #d4d4d4;
+                color: rgb(0, 0, 0);
+                width: 20%;
+                font-family: Arial, Helvetica, sans-serif;
+            }
 
-      .loader pre {
-        color: rgb(20, 63, 129);
-      }
+            .loader pre {
+                color: rgb(20, 63, 129);
+            }
 
-      .loader input {
-        margin-top: 5px;
-        width: 100%;
-      }
+            .loader input {
+                margin-top: 5px;
+                width: 100%;
+            }
 
-      .btn {
-        background-color: #19abff;
-        border: none;
-        color: white;
-        padding: 5px;
-        width: 100%;
-        margin-top: 5px;
-        text-align: center;
-        text-decoration: none;
-        display: inline-block;
-        font-size: 16px;
-      }
+            .btn {
+                background-color: #19abff;
+                border: none;
+                color: white;
+                padding: 5px;
+                width: 100%;
+                margin-top: 5px;
+                text-align: center;
+                text-decoration: none;
+                display: inline-block;
+                font-size: 16px;
+            }
 
-      .loader .close {
-        width: 35px;
-        position: absolute;
-        top: -34px;
-        right: 0;
-      }
+            .loader .close {
+                width: 35px;
+                position: absolute;
+                top: -34px;
+                right: 0;
+            }
 
-      .open {
-        position: absolute;
-        width: 135px;
-        right: 0;
-        bottom: 25px;
-        font-family: Arial, Helvetica, sans-serif;
-        visibility: hidden;
-      }
+            .open {
+                position: absolute;
+                width: 135px;
+                right: 0;
+                bottom: 25px;
+                font-family: Arial, Helvetica, sans-serif;
+                visibility: hidden;
+            }
 
-      footer {
-        position: absolute;
-        bottom: 0px;
-        right: 0px;
-        justify-content: center;
-        padding: 5px;
-        font-size: 12px;
-        height: 15px;
-        max-height: 15px !important;
-        background-color: #d4d4d4;
-        color: rgb(0, 0, 0);
-      }
-    </style>
-  </head>
+            footer {
+                position: absolute;
+                bottom: 0px;
+                right: 0px;
+                justify-content: center;
+                padding: 5px;
+                font-size: 12px;
+                height: 15px;
+                max-height: 15px !important;
+                background-color: #d4d4d4;
+                color: rgb(0, 0, 0);
+            }
+        </style>
+    </head>
 
-  <body>
-    <div id="three_scene"></div>
-    <video id="video" crossorigin="anonymous" playsinline style="display: none"></video>
-  </body>
+    <body>
+        <div id="three_scene"></div>
+        <video id="video" crossorigin="anonymous" playsinline style="display: none"></video>
+    </body>
 </html>

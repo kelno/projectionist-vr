@@ -46,11 +46,8 @@ import { colour, space } from "./ui/theme.ts";
 import type { ColourName } from "./ui/theme.ts";
 import { mediaInfoLines } from "./mediaInfo.ts";
 import { shortenText } from "./font.ts";
-
-// "01:02:03" for 3723 seconds.
-function clockTime(seconds: number): string {
-    return new Date(seconds * 1000).toISOString().substring(11, 19);
-}
+import { clockTime } from "./seekBar.ts";
+import { createSeekPreview } from "./ui/seekPreview.ts";
 
 // What the layout button shows for each video layout, in the order it steps
 // through them.
@@ -96,6 +93,9 @@ export class PlayerPanel {
     settingsMenuContainer!: Block;
     stereoLabel!: Text;
     layoutLabel!: Text;
+    // Call once per frame with the component the pointer is on: shows the
+    // time and frame under the pointer while it is on the seek bar.
+    updateSeekPreview!: (target: Object3D | null) => void;
 
     constructor(video: HTMLVideoElement) {
         this.videoElement = video;
@@ -243,7 +243,8 @@ export class PlayerPanel {
     }
 
     // The seek bar: the part played in the accent colour, a light mark at the
-    // current time; a click seeks to where it lands.
+    // current time; a click seeks to where it lands, and hovering shows the
+    // time and frame there (ui/seekPreview.ts).
     buildSeekBar(): Block {
         const part = (width: number, color: ColourName) =>
             new Block({
@@ -291,6 +292,15 @@ export class PlayerPanel {
         this.seekBar.setupState({
             state: "idle",
             attributes: { backgroundColor: colour("track") },
+        });
+        this.updateSeekPreview = createSeekPreview({
+            scene: MAIN.scene,
+            seekBar: this.seekBar,
+            barWidth: this.BAR_WIDTH,
+            barHeight: this.PROGRESS_HEIGHT,
+            video: this.videoElement,
+            thumbnails: () =>
+                MAIN.fileBrowserPanel.fileForSource(this.videoElement.getAttribute("src"))?.seek_thumbnails,
         });
         return this.seekBar;
     }

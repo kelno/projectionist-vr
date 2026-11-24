@@ -20,6 +20,16 @@ export interface MediaInfo {
 // single-lens fisheye, or flat on a screen ("tb_screen": top-bottom flat).
 export type ScreenType = "sbs" | "tb" | "360" | "sphere180" | "sphere360" | "screen" | "tb_screen";
 
+// The seek bar's thumbnails (scripts/generate_seek_thumbs.py): one image of
+// `count` frames in a grid `columns` wide, filled row by row, frame i covering
+// the seconds from i * interval.
+export interface SeekThumbnails {
+    url: string;
+    interval: number;
+    columns: number;
+    count: number;
+}
+
 export interface CatalogueEntry {
     name: string;
     src: string;
@@ -32,6 +42,7 @@ export interface CatalogueEntry {
     frame_width?: number;
     frame_height?: number;
     media?: MediaInfo;
+    seek_thumbnails?: SeekThumbnails;
 }
 
 export interface CatalogueFolder {

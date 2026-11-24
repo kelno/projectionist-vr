@@ -30,10 +30,10 @@ export const GRIP_PLAYER_CONTROLS = [
     { stick: ["up", "down"], label: "Tilt" },
     { stick: ["left"], label: "Previous video" },
     { stick: ["right"], label: "Next video" },
-    { key: "B", label: "Leave VR" },
+    { key: "B", label: "Library, hold: leave VR" },
 ];
 
-export const GRIP_LIBRARY_CONTROLS = [{ key: "B", label: "Leave VR" }];
+export const GRIP_LIBRARY_CONTROLS = [{ key: "B", label: "Hold: leave VR" }];
 
 const STICK_ICONS = { up: UpIcon, down: DownIcon, left: LeftIcon, right: RightIcon };
 

@@ -52,9 +52,10 @@ export function loadTexture(url) {
     return textures.get(url);
 }
 
-// A round button showing an icon; `setIcon(icon)` changes it, as the play
-// button does between play and pause.
-export function iconButton({ icon, tooltip, onSelect, onRelease, size = BUTTON_SIZE, hovered }) {
+// A button showing an icon, round, or a square with rounded corners when
+// `round` is false; `setIcon(icon)` changes the icon, as the play button does
+// between play and pause.
+export function iconButton({ icon, tooltip, onSelect, onRelease, size = BUTTON_SIZE, hovered, round = true }) {
     // The icon's place is kept from the start, empty until its image loads:
     // adding it later would change the layout.
     const image = new InlineBlock({
@@ -69,7 +70,7 @@ export function iconButton({ icon, tooltip, onSelect, onRelease, size = BUTTON_S
         justifyContent: "center",
         offset: 0.05,
         margin: space(1),
-        borderRadius: size / 2,
+        borderRadius: round ? size / 2 : RADIUS.button,
         ...buttonLook("raised"),
     }).add(image);
 

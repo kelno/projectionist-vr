@@ -102,9 +102,7 @@ export default class SourcesSelectorPanel {
     }
 
     refreshFileBrowser(json) {
-        fileBrowserPanel.rebuildFiles(json);
-        fileBrowserPanel.regenerateFoldersButtons();
-        fileBrowserPanel.regenerateFileBrowser();
+        fileBrowserPanel.loadCatalogue(json);
         this.hideSourcesSelectorPanel();
         fileBrowserPanel.showFileMenuPanel();
     }

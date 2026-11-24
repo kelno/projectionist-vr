@@ -1,14 +1,7 @@
-import {
-    CircleGeometry,
-    DoubleSide,
-    Group,
-    Mesh,
-    MeshBasicMaterial,
-    RingGeometry,
-    Vector3,
-} from "three";
+import { Vector3 } from "three";
 
 import { createBufferingTracker, isBuffering } from "../bufferingState.mjs";
+import { createSpinner } from "./spinner.js";
 
 // A spinner shown while the video seeks or waits for data, floating a little
 // ahead of where the viewer looks: the video surrounds them in VR, so there is
@@ -19,17 +12,7 @@ const RADIUS = 0.04;
 const forward = new Vector3();
 
 export function createBufferingIndicator(scene) {
-    const background = new Mesh(
-        new CircleGeometry(RADIUS * 1.35, 32),
-        new MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.7 })
-    );
-    const ring = new Mesh(
-        new RingGeometry(RADIUS * 0.7, RADIUS, 32, 1, 0, Math.PI * 1.5),
-        new MeshBasicMaterial({ color: 0xffff00, side: DoubleSide })
-    );
-    ring.position.z = 0.001;
-    const spinner = new Group().add(background, ring);
-    spinner.visible = false;
+    const spinner = createSpinner(RADIUS);
     scene.add(spinner);
 
     const shouldShow = createBufferingTracker();
@@ -44,6 +27,6 @@ export function createBufferingIndicator(scene) {
         camera.getWorldDirection(forward);
         spinner.position.addScaledVector(forward, DISTANCE);
         camera.getWorldQuaternion(spinner.quaternion);
-        ring.rotation.z -= 0.15;
+        spinner.spin();
     };
 }

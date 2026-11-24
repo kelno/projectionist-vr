@@ -101,35 +101,68 @@ export function iconButton({ icon, tooltip, onSelect, onRelease, size = BUTTON_S
 
 // A text button, with an optional icon after the label (such as an arrow for
 // a button leading to a sub-page); `text` is returned too, for buttons whose
-// label changes.
-export function textButton({ label, tooltip, onSelect, width = 0.55, fontSize = 0.07, icon = null }) {
+// label changes. A label too long for the button shrinks to fit.
+export function textButton({
+    label,
+    tooltip,
+    onSelect,
+    width = 0.55,
+    height = BUTTON_SIZE,
+    fontSize = 0.07,
+    icon = null,
+}) {
     const text = new Text({ content: label, fontSize });
     const button = new Block({
         width,
-        height: BUTTON_SIZE,
+        height,
         justifyContent: "center",
+        contentDirection: "row",
         offset: 0.05,
         margin: 0.02,
         borderRadius: 0.08,
+        bestFit: "shrink",
         ...FONT,
         ...textIdleAttributes,
     }).add(text);
     if (icon) {
-        loader.load(icon, (texture) => {
-            button.add(
-                new InlineBlock({
-                    width: fontSize,
-                    height: fontSize,
-                    margin: 0.02,
-                    backgroundTexture: texture,
-                    borderRadius: 0,
-                })
-            );
+        const image = new InlineBlock({
+            width: fontSize,
+            height: fontSize,
+            margin: 0.02,
+            backgroundOpacity: 0,
+            borderRadius: 0,
+        });
+        button.add(image);
+        loadTexture(icon).then((texture) => {
+            image.set({ backgroundTexture: texture, backgroundOpacity: 1 });
         });
     }
     makeButton(button, { tooltip, onSelect, idle: textIdleAttributes });
     button.text = text;
     return button;
+}
+
+// A bar to hold the trigger on and move something: it starts the drag when
+// pressed and stops it when the press ends.
+export function dragHandle({ width, height, tooltip, onStart, onStop }) {
+    const idle = { backgroundColor: new Color(0x5c5c5c), backgroundOpacity: 1 };
+    const handle = new Block({
+        width,
+        height,
+        justifyContent: "center",
+        padding: 0.02,
+        borderRadius: height * 0.6,
+        ...idle,
+    });
+    handle.tooltip = tooltip;
+    handle.setupState({ state: "selected", onSet: onStart });
+    handle.setupState({
+        state: "hovered",
+        attributes: { backgroundColor: new Color(0xffff00), backgroundOpacity: 1 },
+        onSet: onStop,
+    });
+    handle.setupState({ state: "idle", attributes: idle, onSet: onStop });
+    return handle;
 }
 
 // Text with no background; `align` is "left", "center" or "right".

@@ -856,9 +856,9 @@ function runControllerAction(action) {
       break;
     case "page":
       if (action.offset > 0) {
-        fileBrowserPanel.NextPage();
+        fileBrowserPanel.nextPage();
       } else {
-        fileBrowserPanel.PreviousPage();
+        fileBrowserPanel.previousPage();
       }
       break;
     case "playPause":

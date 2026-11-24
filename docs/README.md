@@ -25,20 +25,20 @@ Tested with a Meta Quest 2 in Quest Browser. Other WebXR browsers should work, b
 You need a server that keeps your videos and can serve files over HTTPS (browsers only allow VR on HTTPS pages), with Python 3 and FFmpeg installed. These steps use Nginx; any web server that supports HTTP range requests works.
 
 1. Download `projectionist-vr-<version>.tar.gz` from the [latest release](../../../releases/latest) and extract it on the server, for example to `/srv/vr-player/`. It holds the site (`dist/`), the scripts (`scripts/`) and two example configuration files.
-2. Copy `config.ini.example` to `config.ini` and set:
+2. Copy `config.toml.example` to `config.toml` and set:
    - `videos_path`: the folder holding your videos, one subfolder per category;
    - `thumbnails_path`: a folder the scripts can write to, for the thumbnails and media info;
    - `site_url_prefix`: the address path the player will have, such as `/vr-player`.
 3. Generate the thumbnails, then the catalogue:
    ```bash
-   python3 scripts/generate_thumbs.py config.ini
-   python3 scripts/generate_json.py config.ini
+   python3 scripts/generate_thumbs.py config.toml
+   python3 scripts/generate_json.py config.toml
    ```
    The catalogue is written to `dist/files.json`. Run both again whenever you add, move or delete videos; a cron job or a systemd timer can do it for you.
-4. Set up the web server from `nginx.conf.example`: it serves `dist/` at the site path, and your videos and thumbnails below it. The paths in it must match `config.ini`.
+4. Set up the web server from `nginx.conf.example`: it serves `dist/` at the site path, and your videos and thumbnails below it. The paths in it must match `config.toml`.
 5. In the headset's browser, open the player's address (for example `https://your-server/vr-player/`) and press the VR button.
 
-To update, extract the new release over the old one; your `config.ini` and catalogue are kept. If videos don't play, see [Troubleshooting](troubleshooting.md).
+To update, extract the new release over the old one; your `config.toml` and catalogue are kept. If videos don't play, see [Troubleshooting](troubleshooting.md).
 
 ## More documentation
 

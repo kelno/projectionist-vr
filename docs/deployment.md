@@ -16,11 +16,11 @@ The release holds `projectionist-vr-<tag>.tar.gz`, which contains:
 - `dist/`: the built site, without `files.json`.
 - `scripts/`: the catalogue and thumbnail generators, which need only Python 3 and FFmpeg (for thumbnails, and for the media info the catalogue records). The other media preparation scripts come along.
 - `LICENSE`.
-- `config.ini.example` and `nginx.conf.example`, to start the configuration from.
+- `config.toml.example` and `nginx.conf.example`, to start the configuration from.
 
 Running the workflow by hand from the Actions tab builds and tests the branch without publishing; the tarball is kept as a workflow artifact.
 
-The release is built without a `config.ini`, so `[player]` settings keep their defaults. To change them, build the bundle yourself (below).
+The release is built without a `config.toml`, so `[player]` settings keep their defaults. To change them, build the bundle yourself (below).
 
 ## Build it yourself
 
@@ -33,8 +33,8 @@ npm run build
 Then generate the catalogue, because the build clears old output:
 
 ```powershell
-python scripts/generate_thumbs.py config.ini
-python scripts/generate_json.py config.ini
+python scripts/generate_thumbs.py config.toml
+python scripts/generate_json.py config.toml
 ```
 
 ## Serve it
@@ -43,4 +43,4 @@ Deploy the `dist/` directory as a single unit. The catalogue can live inside it 
 
 Configure Nginx to serve `dist/` at the configured site path, `files.json` at the same path, and map `/media/` and `/thumbnails/` to the actual library directories. Nginx must be able to read those directories and support HTTP byte-range requests for video seeking.
 
-Use [nginx.conf.example](nginx.conf.example) as the site configuration starting point. Its paths must match `[web]` in `config.ini`.
+Use [nginx.conf.example](nginx.conf.example) as the site configuration starting point. Its paths must match `[web]` in `config.toml`.

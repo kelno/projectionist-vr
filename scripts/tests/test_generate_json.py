@@ -1,4 +1,3 @@
-import configparser
 import json
 import struct
 import subprocess
@@ -12,20 +11,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from unittest import mock
 
-from generate_json import clean_filename, generate_category_entries, join_url_prefix, parse_name_prefixes, url_for_file, write_catalogue
+from generate_json import clean_filename, generate_category_entries, join_url_prefix, url_for_file, write_catalogue
 from generate_thumbs import generate_thumbnails
 from library_store import LibraryStore
+from settings import Settings
 
 
-def make_config(videos: Path, thumbnails: Path) -> configparser.ConfigParser:
-    config = configparser.ConfigParser()
-    config["library"] = {"videos_path": str(videos), "thumbnails_path": str(thumbnails)}
-    config["web"] = {
-        "site_url_prefix": "/vr-player",
-        "videos_url_prefix": "/media",
-        "thumbnails_url_prefix": "/thumbnails",
-    }
-    return config
+def make_config(videos: Path, thumbnails: Path) -> Settings:
+    return Settings(videos_path=videos, thumbnails_path=thumbnails, site_url_prefix="/vr-player")
 
 
 def fake_ffmpeg(command, check, **kwargs):
@@ -83,9 +76,8 @@ class NameTests(unittest.TestCase):
     def test_a_name_loses_its_extension_and_separators(self):
         self.assertEqual(clean_filename("my_holiday+trip 4k.mp4"), "My Holiday Trip 4k")
 
-    def test_configured_prefixes_are_cut_with_their_spaces(self):
-        prefixes = parse_name_prefixes('\n    "Studio - "\n    Site.com_\n')
-        self.assertEqual(prefixes, ("Studio - ", "Site.com_"))
+    def test_configured_prefixes_are_cut(self):
+        prefixes = ("Studio - ", "Site.com_")
         self.assertEqual(clean_filename("Studio - beach day.mp4", prefixes), "Beach Day")
         self.assertEqual(clean_filename("Site.com_beach_day.mp4", prefixes), "Beach Day")
 

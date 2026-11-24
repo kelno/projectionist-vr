@@ -3,7 +3,7 @@ files.json
 node_modules
 dist/*
 .idea/
-config.ini
+config.toml
 __pycache__/
 
 .venv/

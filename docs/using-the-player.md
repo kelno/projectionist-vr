@@ -15,10 +15,12 @@
 
 ### Search and sorting
 
-The search bar sits above the library. Select it to type on the on-screen
-keyboard, then press Enter, or select the bar again, to search the current
-folder by name. The phrase stays active when you switch folders; the X at the
-end of the bar clears it.
+The search bar sits above the library. Select it to type on the headset's own
+keyboard, in your layout and language (Quest Browser 26.1 and later); closing
+the keyboard searches the current folder by name. Where the browser can't show
+its keyboard over VR, and outside VR, the player shows its own on-screen
+keyboard instead: press Enter, or select the bar again, to search. The phrase
+stays active when you switch folders; the X at the end of the bar clears it.
 
 The sort button at the top right, beside the power button, opens a menu: name
 A to Z or Z to A, newest or oldest first. Names sort as people read them, so

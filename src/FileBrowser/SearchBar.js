@@ -12,8 +12,10 @@ import ClearIcon from "../../assets/icons/close.png";
 
 // The library's search box: a bar showing the phrase, or a muted "Search..."
 // when there is none, with an X inside it to clear the phrase once there is
-// one. Selecting the bar opens the on-screen keyboard; Enter, or selecting the
-// bar again, searches.
+// one. Selecting the bar opens the headset's own keyboard where the browser
+// offers it (`systemKeyboard`, input/systemKeyboard.js), which searches when
+// closed. Elsewhere, or if it doesn't show, it opens this app's on-screen
+// keyboard, where Enter, or selecting the bar again, searches.
 //
 // `onSearch(phrase)` is called with the phrase to search for, "" for none.
 // `onTargetsChange()` is called when the clickable parts change (the X shows
@@ -34,9 +36,10 @@ export class SearchBar {
     searchedPhrase = "";
     hovered = false;
 
-    constructor({ onSearch, onTargetsChange }) {
+    constructor({ onSearch, onTargetsChange, systemKeyboard }) {
         this.onSearch = onSearch;
         this.onTargetsChange = onTargetsChange;
+        this.systemKeyboard = systemKeyboard;
 
         this.text = new Text({ content: "", fontSize: FONT_SIZE });
         const textBox = new Block({
@@ -71,7 +74,15 @@ export class SearchBar {
         }).add(textBox, this.clearButton);
         this.bar.setupState({
             state: "selected",
-            onSet: () => (this.isTyping ? this.submit() : this.startTyping()),
+            onSet: () => {
+                if (this.isTyping) {
+                    this.submit();
+                } else if (this.systemKeyboard.isAvailable()) {
+                    this.typeOnSystemKeyboard();
+                } else {
+                    this.startTyping();
+                }
+            },
         });
         for (const state of ["hovered", "idle"]) {
             this.bar.setupState({
@@ -110,9 +121,23 @@ export class SearchBar {
         ];
     }
 
+    // Opens this app's on-screen keyboard.
     startTyping() {
         this.keyboard.visible = true;
         this.onTargetsChange();
+    }
+
+    // The headset's keyboard starts each time from an empty text, shown in
+    // the bar as it's typed and searched for when the keyboard closes.
+    typeOnSystemKeyboard() {
+        this.systemKeyboard.open({
+            onInput: (text) => this.setPhrase(text),
+            onClose: (text) => {
+                this.setPhrase(text);
+                this.search(text);
+            },
+            onFail: () => this.startTyping(),
+        });
     }
 
     // Closes the keyboard without searching, back to the last search.

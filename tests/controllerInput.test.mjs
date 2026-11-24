@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-    LEAVE_VR_HOLD_MS,
-    createControllerInput,
-    readGamepad,
-} from "../src/input/controllerInput.mjs";
+import { createControllerInput, readGamepad } from "../src/input/controllerInput.mjs";
 
 const idle = { grip: false, a: false, b: false, x: 0, y: 0 };
 const PLAYER = { playing: true };
@@ -13,7 +9,7 @@ const LIBRARY = { playing: false };
 
 function run(frames, context = PLAYER) {
     const step = createControllerInput();
-    return frames.map(([state, now = 0]) => step({ ...idle, ...state }, context, now));
+    return frames.map(([state]) => step({ ...idle, ...state }, context));
 }
 
 test("reads an xr-standard gamepad, missing parts as released", () => {
@@ -84,31 +80,40 @@ test("buttons aren't read while the stick is pushed", () => {
     assert.deepEqual(run([[{ a: true, y: -0.9 }]]), [[{ type: "zoom", direction: "in" }]]);
 });
 
-test("grip + B leaves the video at once, and VR after a second's hold", () => {
+// Runs frames where the context follows the actions, as in the app: leaving
+// the video brings the library.
+function runApp(frames, playing = true) {
+    const step = createControllerInput();
+    return frames.map((state) => {
+        const actions = step({ ...idle, ...state }, { playing });
+        if (actions.some((action) => action.type === "exitToLibrary")) {
+            playing = false;
+        }
+        return actions;
+    });
+}
+
+test("grip + B leaves the video from a video, VR from the library", () => {
     const held = { grip: true, b: true };
-    assert.deepEqual(
-        run([
-            [held, 0],
-            [held, LEAVE_VR_HOLD_MS - 1],
-            [held, LEAVE_VR_HOLD_MS],
-            [held, LEAVE_VR_HOLD_MS + 500],
-        ]),
-        [[{ type: "exitToLibrary" }], [], [{ type: "leaveVR" }], []]
-    );
+    assert.deepEqual(run([[held], [held]]), [[{ type: "exitToLibrary" }], []]);
+    assert.deepEqual(run([[held], [held]], LIBRARY), [[{ type: "leaveVR" }], []]);
 });
 
-test("grip + B held in the library only leaves VR", () => {
+test("grip + B held from a video doesn't go on to leave VR", () => {
     const held = { grip: true, b: true };
-    assert.deepEqual(run([[held, 0], [held, LEAVE_VR_HOLD_MS]], LIBRARY), [[], [{ type: "leaveVR" }]]);
+    assert.deepEqual(runApp([held, held, held, { grip: true }, held]), [
+        [{ type: "exitToLibrary" }],
+        [],
+        [],
+        [],
+        [{ type: "leaveVR" }],
+    ]);
 });
 
-test("B pressed before the grip doesn't leave the video twice", () => {
-    assert.deepEqual(
-        run([
-            [{ b: true }, 0],
-            [{ grip: true, b: true }, 100],
-            [{ grip: true, b: true }, 100 + LEAVE_VR_HOLD_MS],
-        ]),
-        [[{ type: "exitToLibrary" }], [], [{ type: "leaveVR" }]]
-    );
+test("B pressed before the grip leaves the video only", () => {
+    assert.deepEqual(runApp([{ b: true }, { grip: true, b: true }, { grip: true, b: true }]), [
+        [{ type: "exitToLibrary" }],
+        [],
+        [],
+    ]);
 });

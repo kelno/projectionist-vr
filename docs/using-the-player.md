@@ -57,7 +57,7 @@ are connected, pull the trigger on the other one to point with it instead.
 
 - Trigger: select. On the bar under the library, hold it to move the library.
 - Thumbstick left or right: previous or next page.
-- Grip + B held for a second, or the power button at the top-right of the library: leave VR.
+- Grip + B, or the power button at the top-right of the library: leave VR.
 
 ### Player
 
@@ -76,7 +76,8 @@ are connected, pull the trigger on the other one to point with it instead.
 - Grip + thumbstick left or right: previous or next video in the library's
   current list, as searched and sorted. The arrow buttons at either end of the
   playback buttons do the same.
-- Grip + B: back to the library at once; keep holding for a second to leave VR.
+- Grip + B: back to the library, as B does. From the library, a new press
+  leaves VR; holding the first one keeps you in the library.
 - The reset button puts the screen and the controls back in place, with the
   configured default zoom.
 

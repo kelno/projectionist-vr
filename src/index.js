@@ -414,12 +414,7 @@ function gamepadControlsUpdate() {
   }
   const state = readGamepad(gamepad);
   showGripPopup(state.grip);
-  const actions = controllerInput(
-    state,
-    { playing: playbackIsActive },
-    performance.now()
-  );
-  actions.forEach(runControllerAction);
+  controllerInput(state, { playing: playbackIsActive }).forEach(runControllerAction);
 }
 
 function runControllerAction(action) {

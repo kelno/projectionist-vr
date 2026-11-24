@@ -23,8 +23,8 @@
   "license": "MIT",
   "type": "module",
   "dependencies": {
-    "@types/three": "^0.185.4",
-    "three": "^0.185.1",
+    "@types/three": "^0.187.0",
+    "three": "^0.187.0",
     "three-mesh-ui": "file:vendor/three-mesh-ui-6.5.31.tgz"
   },
   "devDependencies": {
@@ -42,8 +42,8 @@
     "ts-loader": "^9.6.2",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.74.0",
-    "webpack": "^5.109.2",
-    "webpack-cli": "^7.2.2",
-    "webpack-dev-server": "^6.0.0"
+    "webpack": "^5.113.0",
+    "webpack-cli": "^7.3.1",
+    "webpack-dev-server": "^6.1.0"
   }
 }

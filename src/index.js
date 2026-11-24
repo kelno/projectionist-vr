@@ -923,28 +923,45 @@ function gamepadControlsUpdate() {
   }
 }
 
+// A and B (X and Y on the left controller) act once per press. Grip + B
+// leaves the video at once, as B does, and held a second longer leaves VR,
+// from the library too.
+const LEAVE_VR_HOLD_MS = 1000;
 let buttonABXYpressed = false;
+let gripBHeldSince = null;
+let gripBLeftVR = false;
 
 function gamepadButtonsCheck(buttons) {
-  // Grip + B leaves VR at once, from the library or the player.
-  if (buttons[1].pressed && buttons[5].pressed && buttonABXYpressed === false) {
-    leaveVR();
+  const grip = buttons[1].pressed;
+  const a = buttons[4].pressed;
+  const b = buttons[5].pressed;
+
+  if (grip && b) {
+    if (gripBHeldSince === null) {
+      gripBHeldSince = performance.now();
+      if (playbackIsActive && !buttonABXYpressed) {
+        playMenuPanel.ExitToMain();
+      }
+    } else if (
+      !gripBLeftVR &&
+      performance.now() - gripBHeldSince >= LEAVE_VR_HOLD_MS
+    ) {
+      gripBLeftVR = true;
+      leaveVR();
+    }
     buttonABXYpressed = true;
-  } else if (
-    buttons[4].pressed &&
-    playbackIsActive &&
-    buttonABXYpressed === false
-  ) {
+    return;
+  }
+  gripBHeldSince = null;
+  gripBLeftVR = false;
+
+  if (a && playbackIsActive && !buttonABXYpressed) {
     playMenuPanel.playPause();
     buttonABXYpressed = true;
-  } else if (
-    buttons[5].pressed &&
-    playbackIsActive &&
-    buttonABXYpressed === false
-  ) {
+  } else if (b && playbackIsActive && !buttonABXYpressed) {
     playMenuPanel.ExitToMain();
     buttonABXYpressed = true;
-  } else if (!buttons[4].pressed && !buttons[5].pressed) {
+  } else if (!a && !b) {
     buttonABXYpressed = false;
   }
 }

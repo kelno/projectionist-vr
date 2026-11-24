@@ -23,6 +23,7 @@ import {
   GRIP_PLAYER_CONTROLS,
   makeGripPopup,
 } from "./ui/controlHints.js";
+import { createTooltip } from "./ui/tooltip.js";
 
 export let scene,
   camera,
@@ -516,6 +517,7 @@ function init() {
   scene.add(vrControl.controllerGrips[0], vrControl.controllers[0]);
   scene.add(vrControl.controllerGrips[1], vrControl.controllers[1]);
   createGripPopups();
+  updateTooltip = createTooltip(scene);
 
   vrControl.controllers[0].addEventListener("selectstart", () => {
     vrControlSelected(0);
@@ -940,6 +942,7 @@ function gamepadButtonsCheck(buttons) {
 }
 
 let checkVideoTexture = () => {};
+let updateTooltip = () => {};
 
 function loop() {
   checkVideoTexture(performance.now());
@@ -1009,6 +1012,13 @@ function updateButtons() {
       intersect.object.setState("hovered");
     }
   }
+
+  updateTooltip(
+    intersect && intersect.object.isUI && intersect.object !== hiddenSphere
+      ? intersect.object
+      : null,
+    renderer.xr.isPresenting ? renderer.xr.getCamera() : camera
+  );
 
   // Update non-targeted buttons state
 

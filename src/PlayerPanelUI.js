@@ -392,7 +392,7 @@ export class PlayerPanel {
         buttonMute.tooltip = "Mute / unmute";
         buttonExitToMain.tooltip = "Back to library";
         settingsButton.tooltip = "Settings";
-        moveButton.tooltip = "Hold to move";
+        moveButton.tooltip = "Move the controls";
         moveResetButton.tooltip = "Reset position and zoom";
         const moveButtonContainer = new Block(
             this.moveButtonContainerAttributes
@@ -1049,7 +1049,7 @@ export class PlayerPanel {
         this.draggingBox.visible = false;
         MAIN.scene.add(this.draggingBox);
         this.draggingBox.position.set(0, 0.25, -3);
-        this.draggingBox.tooltip = "Hold to move";
+        this.draggingBox.tooltip = "Move the screen and controls";
         this.draggingBox.setupState({
             state: "selected",
             onSet: () => {

@@ -469,7 +469,13 @@ export class FileBrowserPanel {
                 }).add(...this.thumbTargets.slice(first, first + this.COLUMNS)),
             );
         }
-        this.pendingTiles = this.thumbTargets.slice();
+        // A video without a thumbnail shows the placeholder at once: nothing to load.
+        for (const tile of this.thumbTargets) {
+            if (tile.thumbnailUrl === "") {
+                tile.setImage(this.defaultVideoThumbnail);
+            }
+        }
+        this.pendingTiles = this.thumbTargets.filter((tile) => tile.thumbnailUrl !== "");
         this.loadingThumbnails = 0;
         this.registerTargets();
     }

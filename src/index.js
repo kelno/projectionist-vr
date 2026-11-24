@@ -25,6 +25,8 @@ import {
 } from "./ui/controlHints.js";
 import { createTooltip } from "./ui/tooltip.js";
 import { createBufferingIndicator } from "./ui/bufferingIndicator.js";
+import { createErrorReporter } from "./errorReport.mjs";
+import { playerVersion } from "./playerConfig.js";
 
 export let scene,
   camera,
@@ -972,7 +974,33 @@ let checkVideoTexture = () => {};
 let updateTooltip = () => {};
 let updateBufferingIndicator = () => {};
 
+// Errors go to the server's access log, where they can be read without the
+// headset (see errorReport.mjs).
+const reportError = createErrorReporter({
+  send: (query) => fetch(`diag?${query}`, { cache: "no-store" }).catch(() => {}),
+  version: playerVersion,
+});
+window.addEventListener("error", (event) =>
+  reportError("window", event.error ?? event.message)
+);
+window.addEventListener("unhandledrejection", (event) =>
+  reportError("promise", event.reason)
+);
+
+// three.js asks for the next frame only once this one has returned, so an
+// error thrown during a frame would stop every later one: the picture
+// freezes while the sound plays on, and no button responds, until the
+// headset sleeps and the VR session restarts. Catch it, report it, go on.
 function loop() {
+  try {
+    renderFrame();
+  } catch (error) {
+    console.error(error);
+    reportError("frame", error);
+  }
+}
+
+function renderFrame() {
   const now = performance.now();
   checkVideoTexture(now);
   updateBufferingIndicator(

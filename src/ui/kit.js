@@ -38,7 +38,8 @@ const selectedAttributes = {
     fontColor: new Color(0x222222),
 };
 
-function makeButton(block, { tooltip, onSelect, idle = idleAttributes }) {
+// `onRelease`, if given, runs when the press ends, as a drag handle needs.
+function makeButton(block, { tooltip, onSelect, onRelease, idle = idleAttributes }) {
     block.tooltip = tooltip;
     block.idleAttributes = idle;
     block.setupState({
@@ -46,12 +47,32 @@ function makeButton(block, { tooltip, onSelect, idle = idleAttributes }) {
         attributes: selectedAttributes,
         onSet: onSelect,
     });
-    block.setupState({ state: "hovered", attributes: hoveredAttributes });
-    block.setupState({ state: "idle", attributes: idle });
+    block.setupState({ state: "hovered", attributes: hoveredAttributes, onSet: onRelease });
+    block.setupState({ state: "idle", attributes: idle, onSet: onRelease });
     return block;
 }
 
-export function iconButton({ icon, tooltip, onSelect, size = BUTTON_SIZE }) {
+// Each image is loaded once, however many buttons show it.
+const textures = new Map();
+
+export function loadTexture(url) {
+    if (!textures.has(url)) {
+        textures.set(url, loader.loadAsync(url));
+    }
+    return textures.get(url);
+}
+
+// A round button showing an icon; `setIcon(icon)` changes it, as the play
+// button does between play and pause.
+export function iconButton({ icon, tooltip, onSelect, onRelease, size = BUTTON_SIZE }) {
+    // The icon's place is kept from the start, empty until its image loads:
+    // adding it later would change the layout.
+    const image = new InlineBlock({
+        width: size * 0.8,
+        height: size * 0.8,
+        backgroundOpacity: 0,
+        borderRadius: 0,
+    });
     const button = new Block({
         width: size,
         height: size,
@@ -60,18 +81,22 @@ export function iconButton({ icon, tooltip, onSelect, size = BUTTON_SIZE }) {
         margin: 0.02,
         borderRadius: size / 2,
         ...idleAttributes,
-    });
-    loader.load(icon, (texture) => {
-        button.add(
-            new InlineBlock({
-                width: size * 0.8,
-                height: size * 0.8,
-                backgroundTexture: texture,
-                borderRadius: 0,
-            })
-        );
-    });
-    return makeButton(button, { tooltip, onSelect });
+    }).add(image);
+
+    let shown = null;
+    button.setIcon = (url) => {
+        if (url === shown) {
+            return;
+        }
+        shown = url;
+        loadTexture(url).then((texture) => {
+            if (shown === url) {
+                image.set({ backgroundTexture: texture, backgroundOpacity: 1 });
+            }
+        });
+    };
+    button.setIcon(icon);
+    return makeButton(button, { tooltip, onSelect, onRelease });
 }
 
 // A text button, with an optional icon after the label (such as an arrow for
@@ -164,14 +189,12 @@ export function panel(children, { width, height, padding = 0.04, justify = "star
     return block;
 }
 
-// Shows a button as the chosen one of a set, such as the current sort.
-const activeAttributes = {
-    ...idleAttributes,
-    backgroundColor: new Color(0x008e7f),
-};
-
-export function markActive(button, active) {
-    const attributes = active ? activeAttributes : button.idleAttributes;
+// Shows a button as on, such as the current sort (teal by default) or the
+// mute button while muted (red), until it is marked off again.
+export function markActive(button, active, { color = 0x008e7f } = {}) {
+    const attributes = active
+        ? { ...button.idleAttributes, backgroundColor: new Color(color) }
+        : button.idleAttributes;
     button.setupState({ state: "idle", attributes });
     button.set(attributes);
 }

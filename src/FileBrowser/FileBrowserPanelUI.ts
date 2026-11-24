@@ -1,6 +1,6 @@
 import { Block } from "../ui/meshUi.ts";
 import type { Keyboard, Options } from "../ui/meshUi.ts";
-import { Color, TextureLoader } from "three";
+import { TextureLoader } from "three";
 import type { Object3D, Texture } from "three";
 
 import ThumbnailBlock from "./ThumbnailBlock.ts";

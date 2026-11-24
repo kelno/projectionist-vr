@@ -112,7 +112,8 @@ export function iconButton({
             return;
         }
         shown = url;
-        loadTexture(url).then((texture) => {
+        // A failed load leaves the icon empty; its rejection reaches the error report.
+        void loadTexture(url).then((texture) => {
             if (shown === url) {
                 image.set({ backgroundTexture: texture, backgroundOpacity: 1 });
             }

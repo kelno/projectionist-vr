@@ -9,9 +9,9 @@ function readPreferences(): Record<string, unknown> {
         if (serializedPreferences === null) {
             return {};
         }
-        const preferences = JSON.parse(serializedPreferences);
+        const preferences: unknown = JSON.parse(serializedPreferences);
         return preferences !== null && typeof preferences === "object" && !Array.isArray(preferences)
-            ? preferences
+            ? (preferences as Record<string, unknown>)
             : {};
     } catch {
         // Storage can be unavailable in private browsing or blocked by policy.

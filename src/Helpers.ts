@@ -14,7 +14,7 @@ import LANG from "./lang.json";
 // The words the player shows, by key, in each language of lang.json.
 export type LangKey = keyof (typeof LANG)["en"];
 
-let selected_lang: keyof typeof LANG = "en";
+const selected_lang: keyof typeof LANG = "en";
 
 // The page's one video element (index.html); the player can't run without it.
 function videoElement(): HTMLVideoElement {

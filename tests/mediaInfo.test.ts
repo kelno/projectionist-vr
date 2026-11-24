@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { formatDuration, formatSize, mediaInfoLines } from "../src/mediaInfo.ts";
+import type { MediaInfoLine } from "../src/mediaInfo.ts";
 import type { MediaInfo } from "../src/types/catalogue.ts";
+
+// The page's lines by name, as their text.
+function linesByName(lines: MediaInfoLine[]): Record<string, string> {
+    return Object.fromEntries(lines.map(([name, text]) => [name, text]));
+}
 
 test("formats sizes and durations", () => {
     assert.equal(formatSize(512), "512 B");
@@ -45,7 +51,7 @@ test("flags a video that starts slowly", () => {
 });
 
 test("falls back on the video element without catalogue info", () => {
-    const lines = Object.fromEntries(
+    const lines = linesByName(
         mediaInfoLines({ name: "Old entry" }, { videoWidth: 1920, videoHeight: 1080, duration: 65 })
     );
     assert.equal(lines.Resolution, "1920 x 1080");
@@ -55,6 +61,6 @@ test("falls back on the video element without catalogue info", () => {
 });
 
 test("says None for a video the catalogue knows has no audio", () => {
-    const lines = Object.fromEntries(mediaInfoLines({ name: "Silent", media: { video_codec: "h264" } }, null));
+    const lines = linesByName(mediaInfoLines({ name: "Silent", media: { video_codec: "h264" } }, null));
     assert.equal(lines.Audio, "None");
 });

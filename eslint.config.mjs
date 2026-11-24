@@ -17,6 +17,24 @@ export default tseslint.config(
         },
     },
     {
+        // three-mesh-ui's objects are typed loosely on purpose until it is
+        // replaced (src/types/three-mesh-ui.d.ts), so the code drawing panels
+        // works with untyped values; the rest of the code keeps these rules.
+        files: ["src/ui/**", "src/PlayerPanelUI.ts", "src/FileBrowser/**", "src/index.ts", "src/UI.ts", "src/input/pointer.ts"],
+        rules: {
+            "@typescript-eslint/no-unsafe-call": "off",
+            "@typescript-eslint/no-unsafe-member-access": "off",
+            "@typescript-eslint/no-unsafe-assignment": "off",
+            "@typescript-eslint/no-unsafe-return": "off",
+            "@typescript-eslint/no-unsafe-argument": "off",
+        },
+    },
+    {
+        // node:test's test() returns a promise the runner itself awaits.
+        files: ["tests/**"],
+        rules: { "@typescript-eslint/no-floating-promises": ["error", { allowForKnownSafeCalls: [{ from: "package", name: ["test", "describe", "it"], package: "node:test" }] }] },
+    },
+    {
         // Node runs the tests, the icon script and the build configuration.
         files: ["tests/**", "scripts/**", "*.js", "*.mjs"],
         languageOptions: { globals: { ...globals.node } },

@@ -45,7 +45,7 @@ export let scene: THREE.Scene,
   playMenuPanel: PlayerPanel,
   fileBrowserPanel: FileBrowserPanel,
   hiddenSphere: UI.HiddenSphereMesh;
-export let camToSave: {
+export const camToSave: {
   position?: THREE.Vector3;
   rotation?: THREE.Euler;
   controlCenter?: THREE.Vector3;
@@ -242,7 +242,7 @@ function init() {
 
   // Say the library is loading, then open it as soon as files.json arrives.
   showPopupMessage(Helpers.getWordFromLang("loading_library"), 0);
-  Promise.all([
+  void Promise.all([
     libraryLoading,
     fileBrowserPanel.defaultVideoThumbnailReady,
   ]).then(([catalogue]) => {
@@ -302,7 +302,7 @@ export function playCatalogueVideo(file: CatalogueEntry): void {
 }
 
 export function leaveVR(): void {
-  renderer.xr.getSession()?.end();
+  void renderer.xr.getSession()?.end();
 }
 
 export function cancelVideoPlaybackRequest(): void {
@@ -458,7 +458,10 @@ let updateBufferingIndicator: ReturnType<typeof createBufferingIndicator> = () =
 // Errors go to the server's access log, where they can be read without the
 // headset (see errorReport.mjs).
 const reportError = createErrorReporter({
-  send: (query) => fetch(`diag?${query}`, { cache: "no-store" }).catch(() => {}),
+  send: (query) => {
+    // A report that can't be sent is dropped.
+    fetch(`diag?${query}`, { cache: "no-store" }).catch(() => {});
+  },
   version: playerVersion,
 });
 window.addEventListener("error", (event) =>

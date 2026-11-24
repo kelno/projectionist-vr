@@ -2,6 +2,7 @@
 // so tsconfig.json points the module here instead. Its objects are typed
 // loosely on purpose: the library is unmaintained and due to be replaced
 // (docs/vendored-dependencies.md), and only src/ui/meshUi.ts imports it.
+/* eslint-disable @typescript-eslint/no-explicit-any -- the loose typing is the point of this file */
 declare module "three-mesh-ui" {
     import type { Object3D } from "three";
 

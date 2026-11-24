@@ -145,7 +145,7 @@ export class FileBrowserPanel {
 
     buildGrid() {
         const pageButton = (icon, tooltip, onSelect) =>
-            iconButton({ icon, tooltip, onSelect, size: this.PAGE_BUTTON_SIZE });
+            iconButton({ icon, tooltip, onSelect, size: this.PAGE_BUTTON_SIZE, round: true });
         this.buttonLeft = pageButton(LeftIcon, "Previous page", () => this.previousPage());
         this.buttonRight = pageButton(RightIcon, "Next page", () => this.nextPage());
 
@@ -234,14 +234,12 @@ export class FileBrowserPanel {
             icon: SortIcon,
             tooltip: "Sort",
             size,
-            round: false,
             onSelect: () => this.openLibraryWindow(this.sortWindow),
         });
         this.leaveVRButton = iconButton({
             icon: PowerIcon,
             tooltip: "Leave VR",
             size,
-            round: false,
             hovered: "danger",
             onSelect: () => MAIN.leaveVR(),
         });

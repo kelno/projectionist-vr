@@ -390,11 +390,12 @@ export class PlayerPanel {
         const tiltDown = iconButton({ icon: DownIcon, tooltip: "Tilt down", onSelect: () => ScreenManager.tilt("down") });
         const tiltUp = iconButton({ icon: UpIcon, tooltip: "Tilt up", onSelect: () => ScreenManager.tilt("up") });
         const tiltReset = iconButton({ icon: ResetIcon, tooltip: "Reset tilt", onSelect: () => ScreenManager.tilt("reset") });
-        // Media info isn't a setting: it sits apart, under a line.
+        // Media info isn't a setting: it sits apart, under a line, as wide as
+        // three buttons above it.
         const mediaInfo = textButton({
             label: "Media info",
             tooltip: "Resolution, codecs, bitrate...",
-            width: 0.6,
+            width: BUTTON_SIZE * 3 + space(1) * 4,
             onSelect: () => this.settingsWindow.show("media"),
         });
 

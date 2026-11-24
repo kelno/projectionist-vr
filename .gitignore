@@ -6,3 +6,4 @@ dist/*
 config.ini
 __pycache__/
 
+.venv/

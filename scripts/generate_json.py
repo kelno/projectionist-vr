@@ -14,18 +14,17 @@ from __future__ import annotations
 
 import argparse
 import configparser
-from collections import defaultdict
-from datetime import datetime
+import contextlib
 import json
-import os
-from pathlib import Path
 import subprocess
 import sys
+from collections import defaultdict
+from datetime import datetime
+from pathlib import Path
 from urllib.parse import quote
 
 from library_store import LibraryStore, iter_videos, write_json_atomic
 from mp4_layout import BOX_CONTAINER_SUFFIXES, needs_faststart
-
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "dist" / "files.json"
@@ -37,13 +36,10 @@ def clean_filename(filename: str) -> str:
     for prefix in prefixes:
         if filename.startswith(prefix):
             filename = filename[len(prefix) :]
-    filename = os.path.splitext(filename)[0]
+    filename = Path(filename).stem
     for old, new in {"+": " ", "_": " ", "__": " ", "  ": " "}.items():
         filename = filename.replace(old, new)
-    return " ".join(
-        part if part.lower() in {"4k", "1080p", "180", "6k", "1920p"} else part.title()
-        for part in filename.split()
-    ).strip()
+    return " ".join(part if part.lower() in {"4k", "1080p", "180", "6k", "1920p"} else part.title() for part in filename.split()).strip()
 
 
 def get_file_timestamps(filepath: Path) -> dict[str, str]:
@@ -66,19 +62,15 @@ def parse_media_info(probe: dict, size: int) -> dict[str, object]:
         media["height"] = video.get("height")
         media["video_codec"] = video.get("codec_name")
         numerator, _, denominator = str(video.get("avg_frame_rate", "0/1")).partition("/")
-        try:
+        with contextlib.suppress(ValueError, ZeroDivisionError):
             media["fps"] = round(float(numerator) / float(denominator or 1), 2)
-        except (ValueError, ZeroDivisionError):
-            pass
     if audio:
         media["audio_codec"] = audio.get("codec_name")
         media["audio_channels"] = audio.get("channels")
     file_format = probe.get("format", {})
     for key, cast in (("duration", float), ("bit_rate", int)):
-        try:
+        with contextlib.suppress(KeyError, TypeError, ValueError):
             media[key] = cast(file_format[key])
-        except (KeyError, TypeError, ValueError):
-            pass
     return {key: value for key, value in media.items() if value not in (None, "")}
 
 
@@ -88,11 +80,12 @@ def read_media_info(video_file: Path) -> dict[str, object] | None:
         result = subprocess.run(
             [
                 "ffprobe",
-                "-loglevel", "error",
+                "-loglevel",
+                "error",
                 "-show_entries",
-                "stream=codec_type,codec_name,width,height,avg_frame_rate,channels"
-                ":format=duration,bit_rate",
-                "-output_format", "json",
+                "stream=codec_type,codec_name,width,height,avg_frame_rate,channels:format=duration,bit_rate",
+                "-output_format",
+                "json",
                 str(video_file),
             ],
             capture_output=True,
@@ -107,9 +100,7 @@ def read_media_info(video_file: Path) -> dict[str, object] | None:
     return parse_media_info(probe, video_file.stat().st_size)
 
 
-def media_from_store(
-    store: LibraryStore, fingerprint: str, video_path: Path, probe_media: bool
-) -> dict[str, object] | None:
+def media_from_store(store: LibraryStore, fingerprint: str, video_path: Path, probe_media: bool) -> dict[str, object] | None:
     """Return the media info stored for this content, or probe the video and store it.
 
     Probing reads the file's header, which over a network mount is slow, so it
@@ -205,7 +196,7 @@ def generate_category_entries(
     category_map: dict[str, list[dict]] = defaultdict(list)
     for relative_path in iter_videos(videos_dir):
         video_path = videos_dir / relative_path
-        entry = {
+        entry: dict[str, object] = {
             "name": clean_filename(relative_path.name),
             "src": url_for_file(videos_url_prefix, relative_path),
             "thumbnail": "",
@@ -272,15 +263,10 @@ def main() -> int:
         store = LibraryStore(Path(config["library"]["thumbnails_path"]))
         try:
             slow_start: list[Path] = []
-            category_map = generate_category_entries(
-                config, store, probe_media=not args.no_media_info, slow_start=slow_start
-            )
+            category_map = generate_category_entries(config, store, probe_media=not args.no_media_info, slow_start=slow_start)
             if args.prune:
                 removed = store.prune()
-                print(
-                    f"Pruned {removed['thumbnails']} thumbnails, {removed['media']} media info entries"
-                    f" and {removed['paths']} cached fingerprints"
-                )
+                print(f"Pruned {removed['thumbnails']} thumbnails, {removed['media']} media info entries and {removed['paths']} cached fingerprints")
         finally:
             # Keep the fingerprints and media info gathered so far, even after an error or an interruption.
             store.save()

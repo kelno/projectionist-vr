@@ -5,7 +5,7 @@
 Configure `config.ini`, then run:
 
 ```bash
-./generate_thumbnails.sh
+python scripts/generate_thumbs.py config.ini
 ```
 
 `ffmpeg` and `ffprobe` must be available on `PATH`.

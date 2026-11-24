@@ -1,13 +1,16 @@
 {
   "name": "projectionist-vr",
   "version": "1.12.0",
-  "description": "",
+  "description": "Self-hosted WebXR player: stream your own VR videos from your server to your headset's browser",
   "main": "index.html",
   "scripts": {
     "build": "webpack --env production",
     "build-dev": "webpack --env development",
     "dev": "webpack serve --env development",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "test:py": "uv run python -m unittest discover --start-directory scripts/tests --quiet",
+    "lint:py": "uv run ruff check && uv run ruff format --check && uv run basedpyright",
+    "check": "npm test && npm run lint:py && npm run test:py"
   },
   "author": "michal-repo",
   "license": "MIT",

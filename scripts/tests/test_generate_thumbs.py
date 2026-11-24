@@ -1,8 +1,8 @@
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -62,7 +62,6 @@ class GenerateThumbnailsTests(unittest.TestCase):
                 failed = generate_thumbnails(videos, thumbnails)
             self.assertEqual(failed, [videos / "Music" / "clip.mp4"])
             self.assertEqual(list(thumbnails.rglob("*.jpg")), [])
-
 
     def test_takes_the_frame_halfway_through_a_short_video(self):
         with tempfile.TemporaryDirectory() as directory:

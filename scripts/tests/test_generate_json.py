@@ -1,11 +1,12 @@
 import configparser
 import json
 import struct
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
+from typing import Any, ClassVar
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -81,7 +82,7 @@ class GenerateCatalogueTests(unittest.TestCase):
 class StoreTests(unittest.TestCase):
     """The thumbnail and catalogue scripts together, as a server runs them: thumbnails first, then the catalogue."""
 
-    MEDIA = {"size": 5, "video_codec": "hevc"}
+    MEDIA: ClassVar[dict[str, object]] = {"size": 5, "video_codec": "hevc"}
 
     def run_both(self, videos: Path, thumbnails: Path, prune: bool = False):
         """Run the thumbnail script, then the catalogue, and return the catalogue and the mocks counting the work done."""
@@ -175,7 +176,7 @@ class FaststartTests(unittest.TestCase):
         with mock.patch("generate_json.read_media_info", side_effect=lambda path: {"size": path.stat().st_size}):
             categories = generate_category_entries(make_config(videos, thumbnails), store, probe_media, slow)
         store.save()
-        media = {Path(entry["src"]).name: entry.get("media") for entry in categories["Clips"]}
+        media: dict[str, Any] = {Path(entry["src"]).name: entry.get("media") for entry in categories["Clips"]}
         return media, slow
 
     def test_flags_and_lists_the_videos_that_start_slowly(self):
@@ -207,7 +208,7 @@ class FaststartTests(unittest.TestCase):
 
 
 class MediaInfoTests(unittest.TestCase):
-    PROBE = {
+    PROBE: ClassVar[dict[str, Any]] = {
         "streams": [
             {"codec_type": "video", "codec_name": "hevc", "width": 5760, "height": 2880, "avg_frame_rate": "60000/1001"},
             {"codec_type": "audio", "codec_name": "aac", "channels": 2},
@@ -252,9 +253,9 @@ class MediaInfoTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             video = Path(directory) / "test.mp4"
             subprocess.run(
-                ["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=320x160:rate=30:duration=1",
-                 "-pix_fmt", "yuv420p", str(video)],
+                ["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=320x160:rate=30:duration=1", "-pix_fmt", "yuv420p", str(video)],
                 check=True,
             )
             media = read_media_info(video)
+            assert media is not None
             self.assertEqual((media["width"], media["height"], media["video_codec"], media["fps"]), (320, 160, "h264", 30.0))

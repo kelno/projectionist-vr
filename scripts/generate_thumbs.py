@@ -9,12 +9,11 @@ from __future__ import annotations
 
 import argparse
 import configparser
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 
 from library_store import LibraryStore, iter_videos
-
 
 # Seconds into the video of the thumbnail frame, past most intros and fades.
 THUMBNAIL_SEEK_SECONDS = 20.0
@@ -43,9 +42,12 @@ def read_duration(video_file: Path) -> float | None:
     result = subprocess.run(
         [
             "ffprobe",
-            "-loglevel", "error",
-            "-show_entries", "format=duration",
-            "-output_format", "csv=print_section=0",
+            "-loglevel",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-output_format",
+            "csv=print_section=0",
             str(video_file),
         ],
         capture_output=True,
@@ -84,13 +86,19 @@ def generate_thumbnail(video_file: Path, thumb_file: Path) -> bool:
     result = subprocess.run(
         [
             "ffmpeg",
-            "-loglevel", "error",
+            "-loglevel",
+            "error",
             "-nostdin",
-            "-ss", f"{seek_seconds:.3f}",
-            "-i", str(video_file),
-            "-filter:v", THUMBNAIL_FILTER,
-            "-frames:v", "1",
-            "-q:v", "2",
+            "-ss",
+            f"{seek_seconds:.3f}",
+            "-i",
+            str(video_file),
+            "-filter:v",
+            THUMBNAIL_FILTER,
+            "-frames:v",
+            "1",
+            "-q:v",
+            "2",
             "-y",
             str(partial_file),
         ],

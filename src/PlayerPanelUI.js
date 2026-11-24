@@ -30,6 +30,7 @@ import {
     FONT,
     SURFACE,
     column,
+    divider,
     dragHandle,
     iconButton,
     label,
@@ -67,6 +68,8 @@ export class PlayerPanel {
     PROGRESS_HEIGHT = 0.06;
     PROGRESS_MIN_WIDTH = 0.01;
     SETTINGS_WIDTH = this.WIDTH / 1.5;
+    // The height of the settings window's pages, under their title.
+    SETTINGS_HEIGHT = 0.85;
 
     // What can be clicked while the controls show.
     playMenuObjsToTest = [];
@@ -324,7 +327,7 @@ export class PlayerPanel {
         const innerWidth = width - 0.08;
         this.settingsWindow = new PagedWindow({
             width,
-            bodyHeight: 0.8,
+            bodyHeight: this.SETTINGS_HEIGHT,
             onTargetsChange: (targets) => {
                 // While open, only the window, the gear and outside clicks count.
                 UI.registerNewObjectsToTest([
@@ -338,7 +341,7 @@ export class PlayerPanel {
         // ScreenManager finds panels by this property name to reset them.
         this.settingsMenuContainer = this.settingsWindow.container;
         // Just above the controls, which sit at y 0.6.
-        this.settingsMenuContainer.position.set(0, 1.4, -2.95);
+        this.settingsMenuContainer.position.set(0, 1.46, -2.95);
         MAIN.scene.add(this.settingsMenuContainer);
         ScreenManager.registerPanel(this.settingsMenuContainer, "playMenuPanel");
 
@@ -387,9 +390,11 @@ export class PlayerPanel {
         const tiltDown = iconButton({ icon: DownIcon, tooltip: "Tilt down", onSelect: () => ScreenManager.tilt("down") });
         const tiltUp = iconButton({ icon: UpIcon, tooltip: "Tilt up", onSelect: () => ScreenManager.tilt("up") });
         const tiltReset = iconButton({ icon: ResetIcon, tooltip: "Reset tilt", onSelect: () => ScreenManager.tilt("reset") });
+        // Media info isn't a setting: it sits apart, under a line.
         const mediaInfo = textButton({
             label: "Media info",
-            width: width - 0.04,
+            tooltip: "Resolution, codecs, bitrate...",
+            width: 0.6,
             onSelect: () => this.settingsWindow.show("media"),
         });
 
@@ -402,9 +407,10 @@ export class PlayerPanel {
                     row([rowLabel("switch_mode"), screenMode, vrMode, stereo, layout], { width }),
                     row([rowLabel("zoom_video"), zoomOut, zoomIn, zoomReset], { width }),
                     row([rowLabel("tilt_video"), tiltDown, tiltUp, tiltReset], { width }),
-                    row([mediaInfo], { width }),
+                    divider(width),
+                    row([rowLabel("this_video"), mediaInfo], { width }),
                 ],
-                { width, height: 0.8 }
+                { width, height: this.SETTINGS_HEIGHT }
             ),
         };
     }
@@ -440,7 +446,7 @@ export class PlayerPanel {
         return {
             title: "Media info",
             targets: [],
-            block: column(rows, { width, height: 0.8 }),
+            block: column(rows, { width, height: this.SETTINGS_HEIGHT }),
             onShow: () => {
                 const entry = MAIN.fileBrowserPanel.fileForSource(this.videoElement.getAttribute("src"));
                 mediaInfoLines(entry, this.videoElement).forEach(([, text, problem], index) => {

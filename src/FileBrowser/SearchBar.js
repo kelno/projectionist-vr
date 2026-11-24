@@ -21,7 +21,7 @@ import ClearIcon from "../../assets/icons/close.png";
 // `onTargetsChange()` is called when the clickable parts change (the X shows
 // or hides, the keyboard opens or closes), so the owner registers them.
 const WIDTH = 2.4;
-const HEIGHT = 0.2;
+const HEIGHT = 0.22;
 const FONT_SIZE = 0.11;
 // Past this many characters, only the end of the phrase shows.
 const MAX_SHOWN = 34;

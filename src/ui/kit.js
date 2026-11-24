@@ -217,6 +217,25 @@ export function markActive(button, active, { color = "accent" } = {}) {
     button.set(attributes);
 }
 
+// A thin line across a window, between sections that aren't the same kind
+// of thing, such as settings and information.
+export function divider(width) {
+    const line = new Block({
+        width,
+        height: BORDER_WIDTH,
+        borderRadius: 0,
+        backgroundColor: colour("border"),
+        backgroundOpacity: 1,
+    });
+    return withChildren(new Block({
+        width,
+        height: space(3),
+        justifyContent: "center",
+        backgroundOpacity: 0,
+        ...FONT,
+    }), [line]);
+}
+
 export function column(children, { width, height, justify = "start" }) {
     return withChildren(new Block({
         width,

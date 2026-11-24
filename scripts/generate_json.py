@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Generate the player catalogue inside the self-contained dist directory.
 
-Each video's thumbnail and media info come from the store described in
-library_store.py, by the video's fingerprint, so they follow a moved or
+Each video's thumbnail, seek thumbnails and media info come from the store
+described in library_store.py, by the video's fingerprint, so they follow a moved or
 renamed video. FFprobe runs only for content the store has no media info for.
 
 MP4s that keep their index after the video data start slowly in the browser
@@ -193,6 +193,9 @@ def generate_category_entries(
         else:
             if store.thumbnail_path(fingerprint).exists():
                 entry["thumbnail"] = url_for_file(thumbnails_url_prefix, Path(f"{fingerprint}.jpg"))
+            seek = store.seek.get(fingerprint)
+            if seek and store.seek_path(fingerprint).exists():
+                entry["seek_thumbnails"] = {"url": url_for_file(thumbnails_url_prefix, Path(f"{fingerprint}.seek.jpg")), **seek}
             media = media_from_store(store, fingerprint, video_path, probe_media)
             faststart = check_faststart(video_path, media)
             if faststart is False and slow_start is not None:
@@ -253,7 +256,11 @@ def main() -> int:
             category_map = generate_category_entries(settings, store, probe_media=not args.no_media_info, slow_start=slow_start)
             if args.prune:
                 removed = store.prune()
-                print(f"Pruned {removed['thumbnails']} thumbnails, {removed['media']} media info entries and {removed['paths']} cached fingerprints")
+                store.save_seek()
+                print(
+                    f"Pruned {removed['thumbnails']} thumbnails, {removed['seek']} seek thumbnail images,"
+                    f" {removed['media']} media info entries and {removed['paths']} cached fingerprints"
+                )
         finally:
             # Keep the fingerprints and media info gathered so far, even after an error or an interruption.
             store.save()

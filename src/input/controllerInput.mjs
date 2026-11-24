@@ -1,0 +1,111 @@
+// What the controller in use does, as a list of actions per frame, from its
+// grip, A and B (X and Y on the left controller) and thumbstick. Kept apart
+// from three.js so it can be tested; index.js reads the gamepad and carries
+// the actions out.
+//
+// The thumbstick: up and down zoom the video, or tilt it with the grip held,
+// for as long as it is pushed; left and right act once per push: seek 10 s,
+// or with the grip held, previous or next video. In the library, left and
+// right turn pages, with or without the grip.
+//
+// A plays or pauses and B goes back to the library, once per press, in the
+// player. Grip + B goes back to the library at once too, and held a second
+// longer leaves VR, from the library as well.
+
+export const STICK_THRESHOLD = 0.35;
+export const LEAVE_VR_HOLD_MS = 1000;
+
+// The parts of a WebXR "xr-standard" gamepad this uses.
+export function readGamepad(gamepad) {
+    return {
+        grip: gamepad.buttons[1]?.pressed ?? false,
+        a: gamepad.buttons[4]?.pressed ?? false,
+        b: gamepad.buttons[5]?.pressed ?? false,
+        x: gamepad.axes[2] ?? 0,
+        y: gamepad.axes[3] ?? 0,
+    };
+}
+
+export function createControllerInput() {
+    // The thumbstick: false when centred, "up" or "down" while held there,
+    // true after a left or right push until it comes back to the centre.
+    let stick = false;
+    let buttonHeld = false;
+    let gripBHeldSince = null;
+    let gripBLeftVR = false;
+
+    function stickActions({ grip, x, y }, playing) {
+        const up = y < -STICK_THRESHOLD;
+        const down = y > STICK_THRESHOLD;
+        const sideways = Math.abs(x) > STICK_THRESHOLD;
+        const offset = x > 0 ? 1 : -1;
+
+        if (grip && up && (stick === false || stick === "up")) {
+            stick = "up";
+            return playing ? [{ type: "tilt", direction: "up" }] : [];
+        }
+        if (grip && down && (stick === false || stick === "down")) {
+            stick = "down";
+            return playing ? [{ type: "tilt", direction: "down" }] : [];
+        }
+        if (sideways && stick === false) {
+            stick = true;
+            if (!playing) {
+                return [{ type: "page", offset }];
+            }
+            return grip
+                ? [{ type: "adjacentVideo", offset }]
+                : [{ type: "seek", seconds: 10 * offset }];
+        }
+        if (down && (stick === false || stick === "down")) {
+            stick = "down";
+            return playing ? [{ type: "zoom", direction: "out" }] : [];
+        }
+        if (up && (stick === false || stick === "up")) {
+            stick = "up";
+            return playing ? [{ type: "zoom", direction: "in" }] : [];
+        }
+        if (!sideways) {
+            stick = false;
+            return null; // centred: the buttons are read
+        }
+        return [];
+    }
+
+    function buttonActions({ grip, a, b }, playing, now) {
+        if (grip && b) {
+            const actions = [];
+            if (gripBHeldSince === null) {
+                gripBHeldSince = now;
+                if (playing && !buttonHeld) {
+                    actions.push({ type: "exitToLibrary" });
+                }
+            } else if (!gripBLeftVR && now - gripBHeldSince >= LEAVE_VR_HOLD_MS) {
+                gripBLeftVR = true;
+                actions.push({ type: "leaveVR" });
+            }
+            buttonHeld = true;
+            return actions;
+        }
+        gripBHeldSince = null;
+        gripBLeftVR = false;
+
+        if (a && playing && !buttonHeld) {
+            buttonHeld = true;
+            return [{ type: "playPause" }];
+        }
+        if (b && playing && !buttonHeld) {
+            buttonHeld = true;
+            return [{ type: "exitToLibrary" }];
+        }
+        if (!a && !b) {
+            buttonHeld = false;
+        }
+        return [];
+    }
+
+    // `state` from readGamepad; `playing` when a video is shown; `now` in ms.
+    return function step(state, { playing }, now) {
+        return stickActions(state, playing) ?? buttonActions(state, playing, now);
+    };
+}

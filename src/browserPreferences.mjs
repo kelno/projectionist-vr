@@ -18,24 +18,9 @@ function readPreferences() {
     }
 }
 
-export function loadPreference(name, { legacyStorageKey } = {}) {
+export function loadPreference(name) {
     const preferences = readPreferences();
-    if (Object.hasOwn(preferences, name)) {
-        return preferences[name];
-    }
-
-    try {
-        const legacyValue = legacyStorageKey
-            ? globalThis.localStorage?.getItem(legacyStorageKey)
-            : null;
-        if (legacyValue !== null && legacyValue !== undefined) {
-            savePreference(name, legacyValue);
-            return legacyValue;
-        }
-    } catch {
-        // Use the configured default when the old storage entry cannot be read.
-    }
-    return null;
+    return Object.hasOwn(preferences, name) ? preferences[name] : null;
 }
 
 export function savePreference(name, value) {

@@ -344,6 +344,7 @@ export class FileBrowserPanel {
 
         // Left
         this.buttonLeft = new Block(this.bigButtonAttributes);
+        this.buttonLeft.tooltip = "Previous page";
 
         this.loader.load(LeftIcon, (texture) => {
             this.buttonLeft.add(
@@ -365,6 +366,7 @@ export class FileBrowserPanel {
 
         // Right
         this.buttonRight = new Block(this.bigButtonAttributes);
+        this.buttonRight.tooltip = "Next page";
 
         this.loader.load(RightIcon, (texture) => {
             this.buttonRight.add(
@@ -814,6 +816,7 @@ export class FileBrowserPanel {
 
         MAIN.scene.add(this.draggingBox);
         this.draggingBox.position.set(0, -0.35, this.CENTERPANELZDISTANCE);
+        this.draggingBox.tooltip = "Hold to move";
         this.draggingBox.setupState({
             state: "selected",
             onSet: () => {
@@ -852,6 +855,7 @@ export class FileBrowserPanel {
         MAIN.scene.add(this.controlsButton);
 
         this.leaveVRButton = this.makeIconButton(PowerIcon, () => MAIN.leaveVR());
+        this.leaveVRButton.tooltip = "Leave VR";
         this.leaveVRButton.position.set(1.4, -0.35, this.CENTERPANELZDISTANCE);
         MAIN.scene.add(this.leaveVRButton);
 

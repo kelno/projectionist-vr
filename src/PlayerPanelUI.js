@@ -382,6 +382,18 @@ export class PlayerPanel {
 
         const moveButton = new Block(this.buttonOptions);
         const moveResetButton = new Block(this.buttonOptions);
+
+        // Shown on hover.
+        this.buttonPlay.tooltip = "Play / pause";
+        buttonRew.tooltip = "Back 10 s";
+        buttonFF.tooltip = "Forward 10 s";
+        buttonPreviousVideo.tooltip = "Previous video";
+        buttonNextVideo.tooltip = "Next video";
+        buttonMute.tooltip = "Mute / unmute";
+        buttonExitToMain.tooltip = "Back to library";
+        settingsButton.tooltip = "Settings";
+        moveButton.tooltip = "Hold to move";
+        moveResetButton.tooltip = "Reset position and zoom";
         const moveButtonContainer = new Block(
             this.moveButtonContainerAttributes
         ).add(moveResetButton, moveButton);
@@ -742,6 +754,19 @@ export class PlayerPanel {
         const VR2DModeButton = new Block(this.buttonOptions);
         const VRSBSTBModeButton = new Block(this.biggerButtonOptions);
 
+        // Shown on hover.
+        closeSettingsButton.tooltip = "Close settings";
+        zoomOutButton.tooltip = "Zoom out";
+        zoomInButton.tooltip = "Zoom in";
+        zoomResetButton.tooltip = "Default zoom";
+        tiltUpButton.tooltip = "Tilt up";
+        tiltDownButton.tooltip = "Tilt down";
+        tiltResetButton.tooltip = "Reset tilt";
+        VRModeButton.tooltip = "VR view";
+        ScreenModeButton.tooltip = "Flat screen";
+        VR2DModeButton.tooltip = "3D / 2D";
+        VRSBSTBModeButton.tooltip = "Video layout";
+
         this.VR2DModeButtonText = new Text({
             content: "3D",
             fontSize: 0.07,
@@ -1024,6 +1049,7 @@ export class PlayerPanel {
         this.draggingBox.visible = false;
         MAIN.scene.add(this.draggingBox);
         this.draggingBox.position.set(0, 0.25, -3);
+        this.draggingBox.tooltip = "Hold to move";
         this.draggingBox.setupState({
             state: "selected",
             onSet: () => {

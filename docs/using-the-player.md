@@ -42,6 +42,7 @@ to their default position when you exit the current video.
 The Controls button under the library opens a panel listing the controls
 below. While you hold the grip, a popup above the controller lists what the
 grip combinations do there.
+Resting the pointer on a button shows what it does.
 
 On the left controller, X and Y take the place of A and B. If two controllers
 are connected, pull the trigger on the other one to point with it instead.

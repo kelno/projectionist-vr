@@ -4,12 +4,14 @@ The application is a static website after building. There is no application serv
 
 ## Releases
 
-Pushing a version tag builds and publishes a release with the [Release workflow](../.github/workflows/release.yml). The tag must be the `package.json` version with a `v` in front: A tag with a hyphen, such as `v1.15.0-uikit.1` from `npm version 1.15.0-uikit.1`, is published as a pre-release, for trying a branch on a server.
+Pushing a version tag builds and publishes a release with the [Release workflow](../.github/workflows/release.yml). The tag must be the `package.json` version with a `v` in front:
 
 ```bash
 npm version minor   # updates package.json and package-lock.json, commits, and tags, e.g. v1.3.0
 git push --follow-tags
 ```
+
+A tag with a hyphen, such as `v1.15.0-uikit.1` from `npm version 1.15.0-uikit.1`, is published as a pre-release, for trying a branch on a server.
 
 The release holds `projectionist-vr-<tag>.tar.gz`, which contains:
 

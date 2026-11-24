@@ -66,7 +66,9 @@ expected output streams before publishing an output file. Regenerate
 ## Convert AV1 videos for Quest 2
 
 The Quest 2 has no AV1 hardware decoder, so AV1 videos are decoded in software
-and play with low frame rates and stuttering. HEVC is decoded in hardware. To
+and play with low frame rates and stuttering. HEVC is decoded in hardware. The
+player's Media info page shows in red when the browser says it decodes a video
+in software. To
 list the AV1 videos in a directory tree without modifying files:
 
 ```powershell

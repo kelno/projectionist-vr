@@ -12,7 +12,7 @@ It began as a fork of [michal-repo/web_vr_video_player](https://github.com/micha
 
 - **Library:** one folder per category, thumbnails, search, and sorting by name or date. Thumbnails and media info follow a video's content, so they survive renaming and moving files.
 - **Formats:** side-by-side and top-bottom 180°, top-bottom 360°, 180° and 360° 2D, and flat videos on a virtual screen.
-- **Player:** seek bar showing the frame under the pointer, ±10 s, previous and next video, zoom and tilt of the screen, a media info page (resolution, codecs, bitrate), and a spinner while the video buffers.
+- **Player:** seek bar showing the frame under the pointer, ±10 s, previous and next video, zoom and tilt of the screen, a media info page (resolution, codecs, bitrate, and whether the headset decodes the video in hardware), and a spinner while the video buffers.
 - **Controllers:** the thumbstick zooms and seeks, A plays and pauses, B goes back to the library; holding the grip shows the extra controls. Search uses the headset's own keyboard, in your layout, where the browser offers it.
 - **Runs anywhere static files can be served:** the player is a static site. A small Python script, run whenever the library changes, writes the catalogue and the thumbnails.
 

@@ -297,7 +297,8 @@ export class PlayerPanel {
             scene: MAIN.scene,
             seekBar: this.seekBar,
             barWidth: this.BAR_WIDTH,
-            barHeight: this.PROGRESS_HEIGHT,
+            // Clear of the panel's top edge.
+            lift: this.PROGRESS_HEIGHT / 2 + this.PADDING + space(1),
             video: this.videoElement,
             thumbnails: () =>
                 MAIN.fileBrowserPanel.fileForSource(this.videoElement.getAttribute("src"))?.seek_thumbnails,

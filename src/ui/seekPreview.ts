@@ -16,15 +16,13 @@ import { RADIUS, colour, space } from "./theme.ts";
 import { clockTime, seekTile } from "../seekBar.ts";
 import type { SeekThumbnails } from "../types/catalogue.ts";
 
-// While the pointer is on the seek bar: a card just above the bar, at the
-// pointer, with the time it points at and, when the catalogue has seek
+// While the pointer is on the seek bar: a card above the bar, at the pointer, with the time it points at and, when the catalogue has seek
 // thumbnails for the video, the frame at that time over it. The card faces
 // the same way as the bar.
 const IMAGE_WIDTH = 0.5;
 const TIME_WIDTH = 0.26;
 const TIME_HEIGHT = 0.09;
-// Between the card and the bar, and around the frame inside the card.
-const GAP = space(2);
+// Around the frame inside the card.
 const FRAME = space(1);
 
 const point = new Vector3();
@@ -33,14 +31,15 @@ export function createSeekPreview({
     scene,
     seekBar,
     barWidth,
-    barHeight,
+    lift,
     video,
     thumbnails,
 }: {
     scene: Object3D;
     seekBar: Block;
     barWidth: number;
-    barHeight: number;
+    // From the bar's middle to the card's bottom edge.
+    lift: number;
     video: HTMLVideoElement;
     // The seek thumbnails of the video playing, if it has some.
     thumbnails: () => SeekThumbnails | undefined;
@@ -82,7 +81,7 @@ export function createSeekPreview({
         cardWidth = imageHeight === null ? TIME_WIDTH : IMAGE_WIDTH + 2 * FRAME;
         const cardHeight = imageHeight === null ? TIME_HEIGHT : imageHeight + 2 * FRAME + TIME_HEIGHT;
         card.set({ width: cardWidth, height: cardHeight });
-        card.position.set(0, barHeight / 2 + GAP + cardHeight / 2, 0);
+        card.position.set(0, lift + cardHeight / 2, 0);
         image.visible = imageHeight !== null;
         if (imageHeight !== null) {
             image.scale.set(IMAGE_WIDTH, imageHeight, 1);

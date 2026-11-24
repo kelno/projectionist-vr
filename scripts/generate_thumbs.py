@@ -8,12 +8,12 @@ library_store.py, so a moved or renamed video keeps its thumbnail.
 from __future__ import annotations
 
 import argparse
-import configparser
 import subprocess
 import sys
 from pathlib import Path
 
 from library_store import LibraryStore, iter_videos
+from settings import load_settings
 
 # Seconds into the video of the thumbnail frame, past most intros and fades.
 THUMBNAIL_SEEK_SECONDS = 20.0
@@ -21,20 +21,6 @@ THUMBNAIL_SEEK_SECONDS = 20.0
 SHORT_VIDEO_SEEK_FRACTION = 0.5
 # Keep the left eye of a side-by-side video, 512 pixels wide.
 THUMBNAIL_FILTER = "crop=in_w/2:in_h:0:0,scale=512:-1"
-
-
-def load_library_paths(config_path: Path) -> tuple[Path, Path]:
-    """Read the videos and thumbnails directories from the [library] section."""
-    config = configparser.ConfigParser()
-    if not config.read(config_path):
-        raise FileNotFoundError(f"Configuration file not found: {config_path}")
-    if "library" not in config:
-        raise ValueError("Configuration must contain a [library] section.")
-    library = config["library"]
-    for option in ("videos_path", "thumbnails_path"):
-        if not library.get(option):
-            raise ValueError(f"Missing required [library] value: {option}")
-    return Path(library["videos_path"]), Path(library["thumbnails_path"])
 
 
 def read_duration(video_file: Path) -> float | None:
@@ -152,15 +138,15 @@ def generate_thumbnails(videos_path: Path, thumbnails_path: Path) -> list[Path]:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("config", type=Path, help="Path to config.ini")
+    parser.add_argument("config", type=Path, help="Path to config.toml")
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     try:
-        videos_path, thumbnails_path = load_library_paths(args.config)
-        failed = generate_thumbnails(videos_path, thumbnails_path)
+        settings = load_settings(args.config)
+        failed = generate_thumbnails(settings.videos_path, settings.thumbnails_path)
     except (OSError, ValueError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 1

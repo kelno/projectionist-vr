@@ -2,10 +2,10 @@
 
 ## Generate thumbnails
 
-Configure `config.ini`, then run:
+Configure `config.toml`, then run:
 
 ```bash
-python scripts/generate_thumbs.py config.ini
+python scripts/generate_thumbs.py config.toml
 ```
 
 `ffmpeg` and `ffprobe` must be available on `PATH`.

@@ -1,0 +1,26 @@
+# Projectionist's settings, for the catalogue and thumbnail scripts and for the
+# build. Copy this file to config.toml and change what differs. On Windows,
+# write paths with forward slashes, or in single quotes ('D:\videos').
+
+[library]
+# Where the videos are, one folder per category. The scripts and npm run dev
+# read them here.
+videos_path = "/mnt/hdd/videos"
+# Where the thumbnails are kept, named by each video's fingerprint, with
+# media.json and fingerprints.json beside them.
+thumbnails_path = "/mnt/hdd/thumbnails"
+# Optional: text cut from the start of video file names to make their labels.
+# name_prefixes = ["Studio - ", "Site.com_"]
+
+[web]
+# Where the web server serves dist/; "/" for a dedicated host. A production
+# build works at any site path: the catalogue and npm run dev use this one.
+site_url_prefix = "/vr-player"
+# Where the videos and the thumbnails are served, below site_url_prefix.
+videos_url_prefix = "/media"
+thumbnails_url_prefix = "/thumbnails"
+
+[player]
+# The side-by-side screen's zoom at start, from 0 (base size) to 180. It is
+# built into the bundle: rebuild after changing it.
+default_sbs_zoom = 100

@@ -2,39 +2,17 @@ const path = require("path");
 const fs = require("fs");
 const webpack = require("webpack");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
+const { parse: parseToml } = require("smol-toml");
 
 const PROJECT_ROOT = __dirname;
 const DIST_DIRECTORY = path.resolve(PROJECT_ROOT, "dist");
 
-function parseIni(contents) {
-  const sections = {};
-  let currentSection = null;
-  for (const rawLine of contents.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith(";") || line.startsWith("#")) {
-      continue;
-    }
-    if (line.startsWith("[") && line.endsWith("]")) {
-      currentSection = line.slice(1, -1).trim();
-      sections[currentSection] ??= {};
-      continue;
-    }
-    if (currentSection) {
-      const separator = line.indexOf("=");
-      if (separator !== -1) {
-        sections[currentSection][line.slice(0, separator).trim()] = line
-          .slice(separator + 1)
-          .trim();
-      }
-    }
-  }
-  return sections;
-}
-
+// config.toml (config.toml.example describes it), or nothing: a release is
+// built without one, with the player's defaults.
 function readConfig() {
-  const configPath = path.resolve(PROJECT_ROOT, "config.ini");
+  const configPath = path.resolve(PROJECT_ROOT, "config.toml");
   return fs.existsSync(configPath)
-    ? parseIni(fs.readFileSync(configPath, "utf8"))
+    ? parseToml(fs.readFileSync(configPath, "utf8"))
     : {};
 }
 
@@ -101,7 +79,7 @@ module.exports = (env) => {
       ],
     },
     plugins: [
-      // config.ini is local deployment configuration. Embed only browser-safe
+      // config.toml is local deployment configuration. Embed only browser-safe
       // player preferences; filesystem paths remain available to Webpack only.
       new webpack.DefinePlugin({
         __PLAYER_CONFIG__: JSON.stringify(playerConfig(config)),
@@ -185,5 +163,5 @@ module.exports = (env) => {
 
 // Export the small configuration pieces so their edge cases can be checked
 // without creating a Webpack compiler.
-module.exports.parseIni = parseIni;
+module.exports.parseToml = parseToml;
 module.exports.playerConfig = playerConfig;

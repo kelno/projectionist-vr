@@ -13,7 +13,6 @@ listing them, to remux with remux_faststart.py.
 from __future__ import annotations
 
 import argparse
-import configparser
 import contextlib
 import json
 import subprocess
@@ -25,21 +24,10 @@ from urllib.parse import quote
 
 from library_store import LibraryStore, iter_videos, write_json_atomic
 from mp4_layout import BOX_CONTAINER_SUFFIXES, needs_faststart
+from settings import Settings, load_settings
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "dist" / "files.json"
-
-
-def parse_name_prefixes(value: str) -> tuple[str, ...]:
-    """Read `name_prefixes`: one prefix per line, in double quotes to keep a space at either end."""
-    prefixes = []
-    for line in value.splitlines():
-        prefix = line.strip()
-        if len(prefix) >= 2 and prefix[0] == prefix[-1] == '"':
-            prefix = prefix[1:-1]
-        if prefix:
-            prefixes.append(prefix)
-    return tuple(prefixes)
 
 
 def clean_filename(filename: str, prefixes: tuple[str, ...] = ()) -> str:
@@ -162,33 +150,16 @@ def join_url_prefix(site_prefix: str, route_prefix: str) -> str:
     return f"{site}{route}" or "/"
 
 
-def load_config(config_path: Path) -> configparser.ConfigParser:
-    """Read and validate the separate local-library and web configuration."""
-    config = configparser.ConfigParser()
-    if not config.read(config_path):
-        raise FileNotFoundError(f"Configuration file not found: {config_path}")
-    for section_name in ("library", "web"):
-        if section_name not in config:
-            raise ValueError(f"Configuration must contain a [{section_name}] section.")
-    section = config["library"]
-    for option in ("videos_path", "thumbnails_path"):
-        if not section.get(option):
-            raise ValueError(f"Missing required [library] value: {option}")
-    return config
-
-
-def url_prefixes(config: configparser.ConfigParser) -> tuple[str, str]:
+def url_prefixes(settings: Settings) -> tuple[str, str]:
     """Return the full URL prefixes of the videos and of the thumbnails, under the site path."""
-    web = config["web"]
-    site_url_prefix = web.get("site_url_prefix", "/")
     return (
-        join_url_prefix(site_url_prefix, web.get("videos_url_prefix", "/media")),
-        join_url_prefix(site_url_prefix, web.get("thumbnails_url_prefix", "/thumbnails")),
+        join_url_prefix(settings.site_url_prefix, settings.videos_url_prefix),
+        join_url_prefix(settings.site_url_prefix, settings.thumbnails_url_prefix),
     )
 
 
 def generate_category_entries(
-    config: configparser.ConfigParser,
+    settings: Settings,
     store: LibraryStore,
     probe_media: bool = True,
     slow_start: list[Path] | None = None,
@@ -199,9 +170,8 @@ def generate_category_entries(
     of newly probed videos and the fingerprints of new or changed files. The
     MP4s that start slowly are added to `slow_start`, if given.
     """
-    videos_dir = Path(config["library"]["videos_path"])
-    name_prefixes = parse_name_prefixes(config["library"].get("name_prefixes", ""))
-    videos_url_prefix, thumbnails_url_prefix = url_prefixes(config)
+    videos_dir = settings.videos_path
+    videos_url_prefix, thumbnails_url_prefix = url_prefixes(settings)
     if not videos_dir.is_dir():
         raise FileNotFoundError(f"Videos directory not found: {videos_dir}")
 
@@ -209,7 +179,7 @@ def generate_category_entries(
     for relative_path in iter_videos(videos_dir):
         video_path = videos_dir / relative_path
         entry: dict[str, object] = {
-            "name": clean_filename(relative_path.name, name_prefixes),
+            "name": clean_filename(relative_path.name, settings.name_prefixes),
             "src": url_for_file(videos_url_prefix, relative_path),
             "thumbnail": "",
             "screen_type": "sbs",
@@ -248,7 +218,7 @@ def write_catalogue(category_map: dict[str, list[dict]], output_path: Path) -> i
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("config", type=Path, help="Path to config.ini")
+    parser.add_argument("config", type=Path, help="Path to config.toml")
     parser.add_argument(
         "--output",
         type=Path,
@@ -271,11 +241,11 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     try:
-        config = load_config(args.config)
-        store = LibraryStore(Path(config["library"]["thumbnails_path"]))
+        settings = load_settings(args.config)
+        store = LibraryStore(settings.thumbnails_path)
         try:
             slow_start: list[Path] = []
-            category_map = generate_category_entries(config, store, probe_media=not args.no_media_info, slow_start=slow_start)
+            category_map = generate_category_entries(settings, store, probe_media=not args.no_media_info, slow_start=slow_start)
             if args.prune:
                 removed = store.prune()
                 print(f"Pruned {removed['thumbnails']} thumbnails, {removed['media']} media info entries and {removed['paths']} cached fingerprints")

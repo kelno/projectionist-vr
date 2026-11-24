@@ -2,7 +2,7 @@
 #
 # Replace the server name, certificate settings, and filesystem paths. The
 # URL paths below must match the [web] site_url_prefix, videos_url_prefix, and
-# thumbnails_url_prefix in config.ini before generating dist/files.json.
+# thumbnails_url_prefix in config.toml before generating dist/files.json.
 
 server {
     listen 443 ssl;

@@ -45,6 +45,12 @@ the entry in `files.json`, or provide a catalogue from another source.
             "duration": 3723.0,
             "bit_rate": 38000000,
             "faststart": true
+          },
+          "seek_thumbnails": {
+            "url": "/vr-player/thumbnails/fa56ea00-3f6c2b9e81d04a57.seek.jpg",
+            "interval": 60,
+            "columns": 8,
+            "count": 63
           }
         }
       ]
@@ -71,25 +77,36 @@ them ([Prepare media](media-preparation.md#make-mp4s-stream-efficiently)). The
 check reads only the headers of the file's boxes, a few bytes each, needs no
 FFprobe, and is kept in the store with the rest of the media info.
 
+`seek_thumbnails` is what hovering the seek bar shows: one image of `count`
+small frames in a grid `columns` wide, filled row by row, each frame standing
+for `interval` seconds from the one before. `generate_seek_thumbs.py` makes
+them ([Prepare media](media-preparation.md#generate-seek-thumbnails)); a video
+without them shows only the time under the pointer.
+
 ## Thumbnails and media info follow the video's content
 
 The generator knows each video by a fingerprint: its size and a hash of its
-first and last megabyte, such as `fa56ea00-3f6c2b9e81d04a57`. Thumbnails and
-media info are kept under that fingerprint, so a video that is moved or
-renamed keeps both, and two copies of one video share them. Only those two
+first and last megabyte, such as `fa56ea00-3f6c2b9e81d04a57`. Thumbnails, seek
+thumbnails and media info are kept under that fingerprint, so a video that is
+moved or renamed keeps them, and two copies of one video share them. Only those two
 megabytes are read, because reading a whole file from a cloud mount downloads
 it.
 
 The thumbnails directory (`thumbnails_path`) is this store, with no subfolders:
 
 - `<fingerprint>.jpg`: a thumbnail, which `thumbnail` links when it exists.
+- `<fingerprint>.seek.jpg`: the seek thumbnails, which `seek_thumbnails` links
+  when they exist.
 - `media.json`: the `media` of each fingerprint. FFprobe runs only for a
   fingerprint missing from it.
+- `seek.json`: the `interval`, `columns` and `count` of each fingerprint's seek
+  thumbnails.
 - `fingerprints.json`: the fingerprint computed for each video path, with the
   file's size and modification time then. A video whose size and modification
   time haven't changed since is not read again.
 
-Thumbnails and media info of deleted videos stay in the store until a run with
+Thumbnails, seek thumbnails and media info of deleted videos stay in the store
+until a run with
 `--prune`, which deletes those no current video uses. It refuses to prune when
 it finds no video at all, which more likely means the library isn't mounted.
 

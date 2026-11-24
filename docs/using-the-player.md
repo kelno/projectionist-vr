@@ -58,6 +58,7 @@ are connected, pull the trigger on the other one to point with it instead.
   `default_sbs_zoom`. Leaving VR, for instance when the headset sleeps, keeps
   the zoom.
 - Thumbstick left or right: back or forward 10 seconds. While the video seeks or waits for data, a small spinner shows ahead of you.
+- Pointing at the seek bar shows the time there and, when the catalogue has seek thumbnails for the video, its frame.
 - A: play or pause. B: back to the library.
 - Trigger on the video: show or hide the player controls.
 - The gear opens the settings window: screen mode, zoom and tilt, and Media

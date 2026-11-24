@@ -6,8 +6,8 @@
 # Where the videos are, one folder per category. The scripts and npm run dev
 # read them here.
 videos_path = "/mnt/hdd/videos"
-# Where the thumbnails are kept, named by each video's fingerprint, with
-# media.json and fingerprints.json beside them.
+# Where the thumbnails and seek thumbnails are kept, named by each video's
+# fingerprint, with media.json, seek.json and fingerprints.json beside them.
 thumbnails_path = "/mnt/hdd/thumbnails"
 # Optional: text cut from the start of video file names to make their labels.
 # name_prefixes = ["Studio - ", "Site.com_"]

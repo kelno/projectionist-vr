@@ -12,6 +12,21 @@ python scripts/generate_thumbs.py config.toml
 
 Each thumbnail is named by the video's fingerprint, in the thumbnails directory, so a moved or renamed video keeps its own and copies of one video share one; [Catalogue](catalogue.md#thumbnails-and-media-info-follow-the-videos-content) describes this store. It only creates missing thumbnails, from the frame 20 seconds in, keeping the part one eye sees for the layout the catalogue guesses ([Catalogue](catalogue.md)), or halfway through a video shorter than that (its duration read with `ffprobe`), through a temporary file so that an interrupted run leaves none half-written. A video it cannot make a thumbnail for, such as an unreadable file, is reported, and the script exits with an error after the others; the next run tries it again.
 
+## Generate seek thumbnails
+
+Hovering the player's seek bar shows the time under the pointer and, when the
+video has seek thumbnails, its frame there. Make them with:
+
+```bash
+python scripts/generate_seek_thumbs.py config.toml
+```
+
+then run `generate_json.py` again, which lists them in the catalogue.
+
+A video gets a frame every fortieth of its duration, rounded up to 10, 15, 20, 30 or 60 seconds: at most 40 frames for a video under 40 minutes, one a minute for a longer one (past 10 hours, a little less often). The frames are 160 pixels wide, showing what one eye sees, in one image per video named by its fingerprint, like the thumbnails. Each frame is the keyframe just before its time, so the script reads a little of the file around each one rather than the whole video, which matters on a cloud mount.
+
+It only makes what is missing, but a first run over a large library takes long, up to hours on a small server: run it after the catalogue, so that new videos show in the library without waiting for it. A video it cannot read is reported, and the script exits with an error after the others; the next run tries it again.
+
 ## Make MP4s stream efficiently
 
 Large MP4 files load promptly only when their `moov` metadata atom precedes

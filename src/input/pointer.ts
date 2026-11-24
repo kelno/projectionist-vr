@@ -1,7 +1,9 @@
 import { Raycaster, Vector2 } from "three";
+import type { Camera, Intersection, WebGLRenderer } from "three";
 
 import ThreeMeshUI from "../ui/meshUi.ts";
 import * as UI from "../UI.ts";
+import type { VRControls } from "../vr/VRControl.ts";
 
 // The pointer: the mouse or a touch outside VR, the controller in use in VR.
 // Each frame, update() finds what it points at among the components that
@@ -11,17 +13,36 @@ import * as UI from "../UI.ts";
 //
 // `hiddenSphere` surrounds everything to catch clicks outside the panels;
 // `controller()` gives the number of the controller in use.
-export function createPointer({ renderer, camera, vrControl, controller, hiddenSphere }) {
+export interface Pointer {
+    update(): UI.PointerTarget | null;
+    press(): void;
+    release(): void;
+}
+
+// What the ray hit: the component, and the point and uv of the hit.
+type Hit = Intersection & { object: UI.PointerTarget };
+
+// three.js types a Vector2's coordinates as numbers, but the mouse below
+// holds null in both when there is no pointer, and update() checks for it.
+const NO_POINTER = null as unknown as number;
+
+export function createPointer({ renderer, camera, vrControl, controller, hiddenSphere }: {
+    renderer: WebGLRenderer;
+    camera: Camera;
+    vrControl: VRControls;
+    controller: () => number;
+    hiddenSphere: UI.HiddenSphereMesh;
+}): Pointer {
     const raycaster = new Raycaster();
     raycaster.layers.set(0);
 
     // In normalized device coordinates, -1 to 1; null when there is none.
-    const mouse = new Vector2(null, null);
+    const mouse = new Vector2(NO_POINTER, NO_POINTER);
     let pressed = false;
     // What the current press selected: a press selects once, so coming back
     // over it during the same press doesn't fire it again (a button opening
     // a panel over itself would otherwise close it at once).
-    let pressedOn;
+    let pressedOn: string | undefined;
 
     const press = () => {
         pressed = true;
@@ -30,7 +51,7 @@ export function createPointer({ renderer, camera, vrControl, controller, hiddenS
         pressed = false;
         pressedOn = undefined;
     };
-    const moveTo = (x, y) => {
+    const moveTo = (x: number, y: number) => {
         mouse.x = (x / window.innerWidth) * 2 - 1;
         mouse.y = -(y / window.innerHeight) * 2 + 1;
     };
@@ -44,12 +65,12 @@ export function createPointer({ renderer, camera, vrControl, controller, hiddenS
     });
     window.addEventListener("touchend", () => {
         release();
-        mouse.set(null, null);
+        mouse.set(NO_POINTER, NO_POINTER);
     });
 
     // The closest component the ray hits, with the hit's point and uv.
-    function raycast() {
-        let closest = null;
+    function raycast(): Hit | null {
+        let closest: Hit | null = null;
         for (const object of UI.objsToTest) {
             const [hit] = raycaster.intersectObject(object, true);
             if (hit && (!closest || hit.distance < closest.distance)) {
@@ -59,8 +80,8 @@ export function createPointer({ renderer, camera, vrControl, controller, hiddenS
         return closest;
     }
 
-    function update() {
-        let hit = null;
+    function update(): UI.PointerTarget | null {
+        let hit: Hit | null = null;
         if (renderer.xr.isPresenting) {
             vrControl.setFromController(controller(), raycaster.ray);
             hit = raycast();
@@ -76,7 +97,8 @@ export function createPointer({ renderer, camera, vrControl, controller, hiddenS
 
         const target = hit?.object.isUI ? hit.object : null;
         if (target) {
-            target.uv = { x: hit.uv.x, y: hit.uv.y };
+            // A target means a hit, and every mesh here has uvs.
+            target.uv = { x: hit!.uv!.x, y: hit!.uv!.y };
             if (!pressed) {
                 target.setState("hovered");
             } else if (pressedOn === undefined) {

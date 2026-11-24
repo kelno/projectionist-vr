@@ -1,6 +1,9 @@
 import { Mesh, PlaneGeometry, SphereGeometry } from "three";
+import type { BufferGeometry, Material, Object3D } from "three";
 
 import * as ScreenManager from "./ScreenManager/ScreenManager.ts";
+import type { Eye, ScreenMode } from "./ScreenManager/Panels.ts";
+import type { ScreenType } from "./types/catalogue.ts";
 
 // The surfaces the video is shown on, one per layout and eye. A stereo video
 // shows half of each frame to each eye: three.js draws layer 1 in the left
@@ -9,13 +12,16 @@ import * as ScreenManager from "./ScreenManager/ScreenManager.ts";
 // used when the stereo effect is turned off. ScreenManager picks which ones
 // show; this module only builds them.
 
+// A texture coordinate: [u, v], 0 to 1.
+type UV = [number, number];
+
 // The video's frame, as the part of the texture a mesh shows.
 const FRAME_PARTS = {
     whole: null,
-    leftHalf: (uv) => [uv[0] * 0.5, uv[1]],
-    rightHalf: (uv) => [uv[0] * 0.5 + 0.5, uv[1]],
-    topHalf: (uv) => [uv[0], uv[1] * 0.5 + 0.5],
-    bottomHalf: (uv) => [uv[0], uv[1] * 0.5],
+    leftHalf: (uv: UV): UV => [uv[0] * 0.5, uv[1]],
+    rightHalf: (uv: UV): UV => [uv[0] * 0.5 + 0.5, uv[1]],
+    topHalf: (uv: UV): UV => [uv[0], uv[1] * 0.5 + 0.5],
+    bottomHalf: (uv: UV): UV => [uv[0], uv[1] * 0.5],
 };
 
 // The shapes, seen from inside for the spheres.
@@ -28,12 +34,15 @@ const SHAPES = {
     plane: () => new PlaneGeometry(120, 120),
 };
 
+type Shape = keyof typeof SHAPES;
+type FramePart = keyof typeof FRAME_PARTS;
+
 const FLAT_DISTANCE = -240;
 const SPHERE_CENTER = -120;
 
 // name: [shape, frame part, layer, mode, layout, eye]. A plane stands at
 // FLAT_DISTANCE and eye height; a sphere's centre is at SPHERE_CENTER.
-const SCREENS = {
+const SCREENS: Record<string, [Shape, FramePart, number, ScreenMode, ScreenType, Eye]> = {
     meshForScreenMode: ["plane", "whole", 0, "screen", "screen", "both"],
     mesh1802D: ["halfSphere", "whole", 0, "screen", "sphere180", "both"],
     mesh3602D: ["sphere", "whole", 0, "screen", "sphere360", "both"],
@@ -55,7 +64,7 @@ const SCREENS = {
     mesh2dTBScreen: ["plane", "topHalf", 2, "2d", "tb_screen", "right"],
 };
 
-function geometry(shape, part) {
+function geometry(shape: Shape, part: FramePart): BufferGeometry {
     const built = SHAPES[shape]();
     const map = FRAME_PARTS[part];
     if (map) {
@@ -69,8 +78,10 @@ function geometry(shape, part) {
 
 // Builds every screen, hidden, adds them to the scene and registers them
 // with ScreenManager, which moves, zooms and tilts them together.
-export function createScreenMeshes(scene, material, eyeHeight) {
-    const meshes = {};
+export type ScreenMeshes = ReturnType<typeof createScreenMeshes>;
+
+export function createScreenMeshes(scene: Object3D, material: Material, eyeHeight: number) {
+    const meshes: Record<string, Mesh> = {};
     for (const [name, [shape, part, layer, mode, layout, eye]] of Object.entries(SCREENS)) {
         const mesh = new Mesh(geometry(shape, part), material);
         mesh.name = name;
@@ -91,20 +102,20 @@ export function createScreenMeshes(scene, material, eyeHeight) {
     return {
         meshes,
         // Side by side, the default layout, until the player picks one.
-        showDefault() {
+        showDefault(): void {
             meshes.meshLeftSBS.visible = true;
             meshes.meshRightSBS.visible = true;
         },
-        hideAll() {
+        hideAll(): void {
             Object.values(meshes).forEach((mesh) => {
                 mesh.visible = false;
             });
         },
         // Flat videos keep their aspect ratio: the flat screens' widths.
-        setScreenAspect(aspect) {
+        setScreenAspect(aspect: number): void {
             meshes.meshForScreenMode.scale.x = aspect;
         },
-        setTBScreenAspect(aspect) {
+        setTBScreenAspect(aspect: number): void {
             for (const name of ["meshLeftTBScreen", "meshRightTBScreen", "mesh2dTBScreen"]) {
                 meshes[name].scale.x = aspect;
             }

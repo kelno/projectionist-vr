@@ -1,0 +1,10 @@
+# Built, installed, vendored or generated files, and the docs (written by hand, one paragraph per line).
+dist/
+node_modules/
+vendor/
+.venv/
+assets/
+docs/
+package-lock.json
+uv.lock
+*.md

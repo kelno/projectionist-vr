@@ -6,7 +6,7 @@ import { watchVideoTexture } from "../src/videoTextureWatchdog.ts";
 function setup() {
     const texture = {
         version: 0,
-        set needsUpdate(value) {
+        set needsUpdate(value: boolean) {
             if (value) this.version++;
         },
     };
@@ -15,15 +15,17 @@ function setup() {
         ended: false,
         readyState: 4,
         currentTime: 0,
-        callbacks: new Map(),
+        // The tests call a frame callback without the browser's arguments,
+        // which the watchdog doesn't read.
+        callbacks: new Map<number, () => void>(),
         nextId: 1,
-        cancelled: [],
-        requestVideoFrameCallback(callback) {
+        cancelled: [] as number[],
+        requestVideoFrameCallback(callback: VideoFrameRequestCallback) {
             const id = this.nextId++;
-            this.callbacks.set(id, callback);
+            this.callbacks.set(id, callback as () => void);
             return id;
         },
-        cancelVideoFrameCallback(id) {
+        cancelVideoFrameCallback(id: number) {
             this.cancelled.push(id);
             this.callbacks.delete(id);
         },

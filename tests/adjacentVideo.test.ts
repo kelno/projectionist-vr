@@ -6,8 +6,8 @@ import { adjacentVideo } from "../src/adjacentVideo.ts";
 const files = [{ src: "/a.mp4" }, { src: "/b.mp4" }, { src: "/c.mp4" }];
 
 test("finds the next and previous video in the list", () => {
-    assert.equal(adjacentVideo(files, "/b.mp4", 1).src, "/c.mp4");
-    assert.equal(adjacentVideo(files, "/b.mp4", -1).src, "/a.mp4");
+    assert.equal(adjacentVideo(files, "/b.mp4", 1)!.src, "/c.mp4");
+    assert.equal(adjacentVideo(files, "/b.mp4", -1)!.src, "/a.mp4");
 });
 
 test("stops at either end of the list", () => {

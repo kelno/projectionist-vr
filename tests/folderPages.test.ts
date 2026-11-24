@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { folderPage } from "../src/FileBrowser/folderPages.ts";
+import type { FolderPage } from "../src/FileBrowser/folderPages.ts";
 
-const describe = ({ rows }) =>
+const describe = ({ rows }: FolderPage) =>
     rows.map((row) => (row.type === "folder" ? row.index : row.type));
 
 test("all folders on one page when they fit", () => {
@@ -21,7 +22,7 @@ test("more folders: pages of ten between previous and next", () => {
 });
 
 test("every folder shows on exactly one page", () => {
-    const seen = [];
+    const seen: number[] = [];
     const { pageCount } = folderPage(40, 0, 12);
     for (let page = 0; page < pageCount; page++) {
         for (const row of folderPage(40, page, 12).rows) {

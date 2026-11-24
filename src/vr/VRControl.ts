@@ -6,12 +6,21 @@
 */
 
 import * as THREE from 'three';
+import type { XRGripSpace, XRTargetRaySpace } from 'three';
 import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
 
-export default function VRControl( renderer ) {
+// A controller, with the ray and the pointer dot VRControl adds to it.
+export type VRController = XRTargetRaySpace & {
+	ray: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>;
+	point: THREE.Sprite;
+};
 
-	const controllers = [];
-	const controllerGrips = [];
+export type VRControls = ReturnType<typeof VRControl>;
+
+export default function VRControl( renderer: THREE.WebGLRenderer ) {
+
+	const controllers: VRController[] = [];
+	const controllerGrips: XRGripSpace[] = [];
 
 	const controllerModelFactory = new XRControllerModelFactory();
 
@@ -114,8 +123,9 @@ export default function VRControl( renderer ) {
 	const controllerGrip1 = renderer.xr.getControllerGrip( 0 );
 	const controllerGrip2 = renderer.xr.getControllerGrip( 1 );
 
-	if ( controller1 ) controllers.push( controller1 );
-	if ( controller2 ) controllers.push( controller2 );
+	// The forEach below adds their ray and point.
+	if ( controller1 ) controllers.push( controller1 as VRController );
+	if ( controller2 ) controllers.push( controller2 as VRController );
 
 	if ( controllerGrip1 ) controllerGrips.push( controllerGrip1 );
 	if ( controllerGrip2 ) controllerGrips.push( controllerGrip2 );
@@ -145,7 +155,7 @@ export default function VRControl( renderer ) {
 
 	// Set the passed ray to match the given controller pointing direction
 
-	function setFromController( controllerID, ray ) {
+	function setFromController( controllerID: number, ray: THREE.Ray ): void {
 
 		const controller = controllers[ controllerID ];
 
@@ -161,7 +171,7 @@ export default function VRControl( renderer ) {
 	// Position the chosen controller's pointer at the given point in space.
 	// Should be called after raycaster.intersectObject() found an intersection point.
 
-	function setPointerAt( controllerID, vec ) {
+	function setPointerAt( controllerID: number, vec: THREE.Vector3 ): void {
 
 		const controller = controllers[ controllerID ];
 		const localVec = controller.worldToLocal( vec );
@@ -188,13 +198,13 @@ export default function VRControl( renderer ) {
 
 // Generate the texture needed to make the intersection ray fade away
 
-function generateRayTexture() {
+function generateRayTexture(): HTMLCanvasElement {
 
 	const canvas = document.createElement( 'canvas' );
 	canvas.width = 64;
 	canvas.height = 64;
 
-	const ctx = canvas.getContext( '2d' );
+	const ctx = canvas.getContext( '2d' )!;
 
 	const gradient = ctx.createLinearGradient( 0, 0, 64, 0 );
 	gradient.addColorStop( 0, 'black' );
@@ -209,13 +219,13 @@ function generateRayTexture() {
 
 // Generate the texture of the point helper sprite
 
-function generatePointerTexture() {
+function generatePointerTexture(): HTMLCanvasElement {
 
 	const canvas = document.createElement( 'canvas' );
 	canvas.width = 64;
 	canvas.height = 64;
 
-	const ctx = canvas.getContext( '2d' );
+	const ctx = canvas.getContext( '2d' )!;
 
 	ctx.beginPath();
 	ctx.arc( 32, 32, 29, 0, 2 * Math.PI );

@@ -14,13 +14,18 @@ import { BORDER_WIDTH, SURFACE_OPACITY, colour } from "./theme.ts";
 // What the controls do, shown by the help panel and, for the grip, by the
 // popup above the controller while the grip is held. A row is either a
 // thumbstick direction (`stick`) or a button (`key`), and what it does.
-export const LIBRARY_CONTROLS = [
+type StickDirection = "up" | "down" | "left" | "right";
+export type Control =
+    | { key: string; stick?: undefined; label: string }
+    | { key?: undefined; stick: StickDirection[]; label: string };
+
+export const LIBRARY_CONTROLS: Control[] = [
     { key: "TRIGGER", label: "Select" },
     { stick: ["left", "right"], label: "Page" },
     { key: "TRIGGER", label: "On the bar: move" },
 ];
 
-export const PLAYER_CONTROLS = [
+export const PLAYER_CONTROLS: Control[] = [
     { stick: ["up", "down"], label: "Zoom" },
     { stick: ["left", "right"], label: "-10 s / +10 s" },
     { key: "A", label: "Play / pause" },
@@ -28,14 +33,14 @@ export const PLAYER_CONTROLS = [
     { key: "TRIGGER", label: "On video: menu" },
 ];
 
-export const GRIP_PLAYER_CONTROLS = [
+export const GRIP_PLAYER_CONTROLS: Control[] = [
     { stick: ["up", "down"], label: "Tilt" },
     { stick: ["left"], label: "Previous video" },
     { stick: ["right"], label: "Next video" },
     { key: "B", label: "Library" },
 ];
 
-export const GRIP_LIBRARY_CONTROLS = [{ key: "B", label: "Leave VR" }];
+export const GRIP_LIBRARY_CONTROLS: Control[] = [{ key: "B", label: "Leave VR" }];
 
 const STICK_ICONS = { up: UpIcon, down: DownIcon, left: LeftIcon, right: RightIcon };
 
@@ -45,7 +50,7 @@ const FONT_SIZE = 0.065;
 
 const loader = new TextureLoader();
 
-function makeBadge(control) {
+function makeBadge(control: Control): Block {
     const badge = new Block({
         width: BADGE_WIDTH,
         height: ROW_HEIGHT - 0.02,
@@ -60,7 +65,8 @@ function makeBadge(control) {
     if (control.key) {
         badge.add(new Text({ fontSize: FONT_SIZE, content: control.key }));
     } else {
-        for (const direction of control.stick) {
+        // A control without a key has a stick; every key above is non-empty.
+        for (const direction of control.stick!) {
             const icon = new InlineBlock({
                 width: 0.1,
                 height: 0.1,
@@ -76,7 +82,7 @@ function makeBadge(control) {
     return badge;
 }
 
-function makeRow(control, width) {
+function makeRow(control: Control, width: number): Block {
     return new Block({
         width,
         height: ROW_HEIGHT,
@@ -98,7 +104,7 @@ function makeRow(control, width) {
 }
 
 // A titled column of control rows.
-export function makeControlsColumn(title, controls, width) {
+export function makeControlsColumn(title: string, controls: Control[], width: number): Block {
     const column = new Block({
         width,
         height: 0.15 + ROW_HEIGHT * Math.max(controls.length, 5),
@@ -128,7 +134,7 @@ export function makeControlsColumn(title, controls, width) {
 
 // The popup shown above the controller while its grip is held: one for the
 // player, one for the library.
-export function makeGripPopup(controls) {
+export function makeGripPopup(controls: Control[]): Block {
     const popup = new Block({
         width: 1.3,
         height: 0.2 + ROW_HEIGHT * controls.length,

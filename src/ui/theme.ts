@@ -33,19 +33,22 @@ const HEX = {
     white: 0xffffff,
 };
 
+// A theme colour's name, such as "accent".
+export type ColourName = keyof typeof HEX;
+
 // Each colour as a three.js Color for three-mesh-ui components. three.js
 // takes a hex colour as sRGB and converts it to linear values, which its own
 // materials convert back on output; three-mesh-ui's don't, so a colour given
 // the usual way shows much darker than written (#4d8dff showed as #1344ff).
 // Read as already linear, it reaches the screen as written. three-mesh-ui
 // keeps the Color object it's given, so each call returns a new one.
-export const colour = (name) => new Color().setHex(HEX[name], LinearSRGBColorSpace);
+export const colour = (name: ColourName): Color => new Color().setHex(HEX[name], LinearSRGBColorSpace);
 
 // The text colour that reads on a background of the named colour.
-export const textOn = (background) => colour(background === "accent" ? "onAccent" : "text");
+export const textOn = (background: ColourName): Color => colour(background === "accent" ? "onAccent" : "text");
 
 // The same colour for a plain three.js material, which converts it properly.
-export const materialColour = (name) => new Color(HEX[name]);
+export const materialColour = (name: ColourName): Color => new Color(HEX[name]);
 
 // Panels are solid: see-through, the video tinted them.
 export const SURFACE_OPACITY = 1;
@@ -55,7 +58,7 @@ export const BORDER_WIDTH = 0.008;
 
 // Spacing, in metres: one step and its multiples.
 export const SPACE = 0.02;
-export const space = (steps) => steps * SPACE;
+export const space = (steps: number): number => steps * SPACE;
 
 export const RADIUS = {
     panel: 0.06,

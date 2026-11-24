@@ -1,11 +1,17 @@
 import { Block } from "../ui/meshUi.ts";
+import type { Keyboard, Options } from "../ui/meshUi.ts";
 import { Color, TextureLoader } from "three";
+import type { Object3D, Texture } from "three";
 
 import ThumbnailBlock from "./ThumbnailBlock.ts";
 import { SearchBar } from "./SearchBar.ts";
 import { buildSortMenu } from "./sortMenu.ts";
+import type { SortMenu } from "./sortMenu.ts";
 import { DEFAULT_SORT, listFiles } from "./libraryList.ts";
+import type { SortId } from "./libraryList.ts";
 import { folderPage } from "./folderPages.ts";
+import type { FolderRow } from "./folderPages.ts";
+import type { Catalogue, CatalogueEntry, CatalogueFolder, ScreenType } from "../types/catalogue.ts";
 
 import clearUiChildren from "../ui/clearUiChildren.ts";
 import {
@@ -19,7 +25,9 @@ import {
     row,
     textButton,
 } from "../ui/kit.ts";
+import type { IconButton, Label, TextButton } from "../ui/kit.ts";
 import { createSpinner } from "../ui/spinner.ts";
+import type { Spinner } from "../ui/spinner.ts";
 import { createSystemKeyboard } from "../input/systemKeyboard.ts";
 import {
     GRIP_PLAYER_CONTROLS,
@@ -42,6 +50,15 @@ import RightIcon from "../../assets/icons/right.png";
 import VideoIcon from "../../assets/icons/video.png";
 import PowerIcon from "../../assets/icons/power.png";
 import SortIcon from "../../assets/icons/sort.png";
+
+// A window over the library: its background, and the buttons on it.
+interface LibraryWindow {
+    block: Block;
+    targets: Object3D[];
+}
+
+// A folder list button's label and action.
+type FolderButtonAction = [text: string, onSelect: () => void];
 
 // The library: the current folder's videos as a grid of thumbnails, a page at
 // a time, between previous and next page buttons; the folders listed on the
@@ -73,39 +90,66 @@ export class FileBrowserPanel {
     THUMBNAIL_LOAD_CONCURRENCY = 4;
 
     // The catalogue's folders, the one shown, and the folder list's page.
-    VIDEOS = [];
+    VIDEOS: CatalogueFolder[] = [];
     FOLDER = 0;
     folderListPage = 0;
 
     // The shown folder's videos, searched and sorted, and the grid's page.
-    FILES = [];
+    FILES: CatalogueEntry[] = [];
     currentPage = 0;
 
     searchPhrase = "";
-    sort = DEFAULT_SORT;
+    sort: SortId = DEFAULT_SORT;
 
     // The window open over the library (the sort menu or the controls
     // help), as { block, targets }, or null.
-    openWindow = null;
+    openWindow: LibraryWindow | null = null;
 
     // True until the catalogue has loaded, to show the spinner meanwhile.
     libraryLoading = true;
 
     // What can be clicked, besides the search bar, folders and thumbnails.
-    defaultObjsToTest = [];
-    foldersButtons = [];
-    thumbTargets = [];
+    defaultObjsToTest: Block[] = [];
+    foldersButtons: TextButton[] = [];
+    thumbTargets: ThumbnailBlock[] = [];
 
     // The thumbnails still to load for the shown page, and those loaded,
     // to free when the page changes.
-    pendingTiles = [];
+    pendingTiles: ThumbnailBlock[] = [];
     loadingThumbnails = 0;
-    loadedTextures = [];
+    loadedTextures: Texture[] = [];
     pageGeneration = 0;
 
     loader = new TextureLoader();
 
-    constructor(files) {
+    // Resolves once the placeholder thumbnail has loaded or failed to.
+    defaultVideoThumbnailReady: Promise<unknown>;
+    defaultVideoThumbnail!: Texture;
+
+    // The parts below are made by the build methods the constructor calls.
+    buttonLeft!: IconButton;
+    buttonRight!: IconButton;
+    thumbsContainerAttributes!: Options;
+    thumbsContainer!: Block;
+    fileBrowserContainer!: Block;
+    loadingSpinner!: Spinner;
+    foldersContainerAttributes!: Options;
+    foldersContainer!: Block;
+    search!: SearchBar;
+    searchBar!: Block;
+    keyboard!: Keyboard;
+    sortButton!: IconButton;
+    leaveVRButton!: IconButton;
+    sortWindow!: SortMenu;
+    sortMenu!: Block;
+    draggingBox!: Block;
+    controlsButton!: TextButton;
+    versionLabel!: Label;
+    controlsHelp!: Block;
+    controlsWindow!: LibraryWindow;
+
+    // `files` is the catalogue, or {} before it has loaded.
+    constructor(files: Partial<Catalogue>) {
         // The placeholder thumbnail must have loaded before the library
         // shows: a texture without its image breaks the UI's layout.
         this.defaultVideoThumbnailReady = new Promise((resolve) => {
@@ -134,7 +178,7 @@ export class FileBrowserPanel {
             "controlsButton",
             "versionLabel",
             "controlsHelp",
-        ]) {
+        ] as const) {
             ScreenManager.registerPanel(this[name], "fileBrowserPanel");
             ScreenManager.registerObjectToDrag(this[name], "files", "fileBrowserPanel");
         }
@@ -143,8 +187,8 @@ export class FileBrowserPanel {
     ////////////////////////////////////////////////////////////////////////////
     // Building
 
-    buildGrid() {
-        const pageButton = (icon, tooltip, onSelect) =>
+    buildGrid(): void {
+        const pageButton = (icon: string, tooltip: string, onSelect: () => void) =>
             iconButton({ icon, tooltip, onSelect, size: this.PAGE_BUTTON_SIZE, round: true });
         this.buttonLeft = pageButton(LeftIcon, "Previous page", () => this.previousPage());
         this.buttonRight = pageButton(RightIcon, "Next page", () => this.nextPage());
@@ -182,7 +226,7 @@ export class FileBrowserPanel {
         this.defaultObjsToTest.push(this.buttonLeft, this.buttonRight);
     }
 
-    buildFolderList() {
+    buildFolderList(): void {
         this.foldersContainerAttributes = {
             width: this.GRID_WIDTH / 3,
             height: this.GRID_HEIGHT,
@@ -203,7 +247,7 @@ export class FileBrowserPanel {
     }
 
     // The library's edges, which the rows above and below line up with.
-    libraryEdges() {
+    libraryEdges(): { left: number; right: number; top: number; bottom: number } {
         const width = this.fileBrowserContainer.getWidth();
         const height = this.fileBrowserContainer.getHeight();
         const { x, y } = this.fileBrowserContainer.position;
@@ -212,9 +256,9 @@ export class FileBrowserPanel {
 
     // Top row: search on the left; sorting and leaving VR on the right, each
     // row's ends at the library's edges.
-    buildTopRow() {
+    buildTopRow(): void {
         this.search = new SearchBar({
-            onSearch: (phrase) => {
+            onSearch: (phrase: string) => {
                 this.searchPhrase = phrase;
                 this.refreshList();
             },
@@ -248,7 +292,7 @@ export class FileBrowserPanel {
 
         // The sort menu opens under its button, over the library's top right.
         this.sortWindow = buildSortMenu({
-            onChoose: (sortId) => {
+            onChoose: (sortId: SortId) => {
                 this.sort = sortId;
                 this.sortWindow.setCurrent(sortId);
                 this.closeLibraryWindow();
@@ -268,7 +312,7 @@ export class FileBrowserPanel {
     // Bottom row: the Controls button under the library's left edge, the bar
     // to move the library in the middle, and the player's version, small and
     // muted, under its right edge.
-    buildBottomRow() {
+    buildBottomRow(): void {
         const { left, right, bottom } = this.libraryEdges();
         const y = bottom - this.ROW_GAP - this.ROW_HEIGHT / 2;
         this.draggingBox = dragHandle({
@@ -306,7 +350,7 @@ export class FileBrowserPanel {
     }
 
     // The controls help, over the library until a click outside it.
-    buildControlsHelp() {
+    buildControlsHelp(): void {
         this.controlsHelp = panel(
             [
                 label(Helpers.getWordFromLang("controls").toUpperCase(), {
@@ -343,7 +387,7 @@ export class FileBrowserPanel {
     // The catalogue and the list shown
 
     // A catalogue: back to its first folder, keeping the search and sort.
-    rebuildFiles(files) {
+    rebuildFiles(files: Partial<Catalogue>): void {
         if (!files.videos) {
             return;
         }
@@ -354,14 +398,14 @@ export class FileBrowserPanel {
     }
 
     // Shows a new catalogue: its folders and its first folder's videos.
-    loadCatalogue(files) {
+    loadCatalogue(files: Catalogue): void {
         this.rebuildFiles(files);
         this.regenerateFoldersButtons();
         this.regenerateFileBrowser();
     }
 
     // The shown folder's videos, searched and sorted, from the first page.
-    listFolder() {
+    listFolder(): void {
         this.currentPage = 0;
         this.FILES = listFiles(this.VIDEOS[this.FOLDER]?.list ?? [], {
             phrase: this.searchPhrase,
@@ -369,23 +413,23 @@ export class FileBrowserPanel {
         });
     }
 
-    refreshList() {
+    refreshList(): void {
         this.listFolder();
         this.regenerateFileBrowser();
     }
 
-    get pageCount() {
+    get pageCount(): number {
         return Math.max(Math.ceil(this.FILES.length / this.TILES_PER_PAGE), 1);
     }
 
-    previousPage() {
+    previousPage(): void {
         if (this.currentPage > 0) {
             this.currentPage--;
             this.regenerateFileBrowser();
         }
     }
 
-    nextPage() {
+    nextPage(): void {
         if (this.currentPage < this.pageCount - 1) {
             this.currentPage++;
             this.regenerateFileBrowser();
@@ -393,7 +437,7 @@ export class FileBrowserPanel {
     }
 
     // The catalogue entry of a source URL, in any folder, or null.
-    fileForSource(source) {
+    fileForSource(source: string | null): CatalogueEntry | null {
         for (const folder of this.VIDEOS) {
             const file = folder.list.find((entry) => entry.src === source);
             if (file) {
@@ -403,7 +447,7 @@ export class FileBrowserPanel {
         return null;
     }
 
-    adjacentFile(offset) {
+    adjacentFile(offset: number): CatalogueEntry | null {
         return adjacentVideo(this.FILES, MAIN.video.getAttribute("src"), offset);
     }
 
@@ -412,7 +456,7 @@ export class FileBrowserPanel {
 
     // Lays out the current page's tiles; their thumbnails load afterwards,
     // a few at a time, in generateThumbnails().
-    regenerateFileBrowser() {
+    regenerateFileBrowser(): void {
         this.pageGeneration++;
         clearUiChildren(this.thumbsContainer);
         this.loadedTextures.forEach((texture) => texture.dispose());
@@ -446,9 +490,9 @@ export class FileBrowserPanel {
     }
 
     // Called every frame: starts loading the next thumbnails.
-    generateThumbnails() {
+    generateThumbnails(): void {
         while (this.loadingThumbnails < this.THUMBNAIL_LOAD_CONCURRENCY && this.pendingTiles.length > 0) {
-            const tile = this.pendingTiles.shift();
+            const tile = this.pendingTiles.shift()!;
             const generation = this.pageGeneration;
             this.loadingThumbnails++;
             this.loader
@@ -475,13 +519,13 @@ export class FileBrowserPanel {
         }
     }
 
-    get thumbnailsLoading() {
+    get thumbnailsLoading(): boolean {
         return this.pendingTiles.length > 0 || this.loadingThumbnails > 0;
     }
 
     // Called every frame: the spinner turns while the catalogue or the
     // page's thumbnails load.
-    loadingAnimation() {
+    loadingAnimation(): void {
         this.loadingSpinner.visible = this.libraryLoading || this.thumbnailsLoading;
         if (this.loadingSpinner.visible) {
             this.loadingSpinner.spin();
@@ -491,7 +535,7 @@ export class FileBrowserPanel {
     ////////////////////////////////////////////////////////////////////////////
     // The folder list
 
-    generateFoldersButtons() {
+    generateFoldersButtons(): void {
         const { rows } = folderPage(this.VIDEOS.length, this.folderListPage, this.FOLDER_ROWS);
         this.foldersButtons = rows.map((entry) => this.folderListButton(entry));
         if (this.foldersButtons.length > 0) {
@@ -500,15 +544,21 @@ export class FileBrowserPanel {
         this.foldersButtonsIdleState();
     }
 
-    folderListButton(entry) {
-        const turnPage = (offset) => () => {
+    folderListButton(entry: FolderRow): TextButton {
+        const turnPage = (offset: number) => () => {
             this.folderListPage += offset;
             this.regenerateFoldersButtons();
         };
         const [text, onSelect] = {
-            previous: () => [Helpers.getWordFromLang("previous_page"), turnPage(-1)],
-            next: () => [Helpers.getWordFromLang("next_page"), turnPage(1)],
-            folder: () => [this.VIDEOS[entry.index].name, () => this.showFolder(entry.index)],
+            previous: (): FolderButtonAction => [Helpers.getWordFromLang("previous_page"), turnPage(-1)],
+            next: (): FolderButtonAction => [Helpers.getWordFromLang("next_page"), turnPage(1)],
+            folder: (): FolderButtonAction => {
+                // Only a folder's row is looked up here.
+                if (entry.type !== "folder") {
+                    throw new Error(`Not a folder row: ${entry.type}`);
+                }
+                return [this.VIDEOS[entry.index].name, () => this.showFolder(entry.index)];
+            },
         }[entry.type]();
         // One line per folder: a longer name is cut, and shows whole as the
         // tooltip.
@@ -525,7 +575,7 @@ export class FileBrowserPanel {
         return button;
     }
 
-    showFolder(index) {
+    showFolder(index: number): void {
         if (index === this.FOLDER) {
             return;
         }
@@ -535,13 +585,13 @@ export class FileBrowserPanel {
     }
 
     // The shown folder's button is marked.
-    foldersButtonsIdleState() {
+    foldersButtonsIdleState(): void {
         for (const button of this.foldersButtons) {
             markActive(button, button.folderIndex === this.FOLDER);
         }
     }
 
-    regenerateFoldersButtons() {
+    regenerateFoldersButtons(): void {
         clearUiChildren(this.foldersContainer);
         this.foldersContainer.set(this.foldersContainerAttributes);
         const { pageCount } = folderPage(this.VIDEOS.length, 0, this.FOLDER_ROWS);
@@ -555,7 +605,7 @@ export class FileBrowserPanel {
 
     // A window over the library, such as the sort menu: while it is open,
     // only its buttons count, and a click outside it closes it.
-    openLibraryWindow(window) {
+    openLibraryWindow(window: LibraryWindow): void {
         this.closeLibraryWindow();
         if (this.search.isTyping) {
             this.search.stopTyping();
@@ -566,7 +616,7 @@ export class FileBrowserPanel {
         this.registerTargets();
     }
 
-    closeLibraryWindow() {
+    closeLibraryWindow(): void {
         if (!this.openWindow) {
             return;
         }
@@ -577,7 +627,7 @@ export class FileBrowserPanel {
     }
 
     // Everything clickable in the library when nothing is open over it.
-    libraryTargets() {
+    libraryTargets(): Object3D[] {
         return [
             ...this.defaultObjsToTest,
             ...this.search.targets(),
@@ -588,7 +638,7 @@ export class FileBrowserPanel {
 
     // Registers what can be clicked now: an open window's buttons, the
     // keyboard while typing, or the whole library.
-    registerTargets() {
+    registerTargets(): void {
         if (this.openWindow) {
             UI.registerNewObjectsToTest([...this.openWindow.targets, this.openWindow.block, MAIN.hiddenSphere]);
         } else if (this.search.isTyping) {
@@ -601,7 +651,7 @@ export class FileBrowserPanel {
     ////////////////////////////////////////////////////////////////////////////
     // Showing and hiding
 
-    get panels() {
+    get panels(): Block[] {
         return [
             this.fileBrowserContainer,
             this.foldersContainer,
@@ -613,13 +663,13 @@ export class FileBrowserPanel {
         ];
     }
 
-    showFileMenuPanel() {
+    showFileMenuPanel(): void {
         MAIN.cancelVideoPlaybackRequest();
         UI.showMenu(this.panels, this.libraryTargets(), true);
         MAIN.playbackChange(false);
     }
 
-    hideFileMenuPanel(screen_type = null) {
+    hideFileMenuPanel(screen_type: ScreenType | null = null): void {
         this.closeLibraryWindow();
         this.search.stopTyping();
         UI.hideMenu([...this.panels, this.keyboard], [], true);

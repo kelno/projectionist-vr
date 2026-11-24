@@ -1,10 +1,13 @@
 import { Block, Text } from "../ui/meshUi.ts";
+import type { Texture } from "three";
 
 import { FONT } from "../ui/kit.ts";
 import { RADIUS, colour, textOn } from "../ui/theme.ts";
+import type { ColourName } from "../ui/theme.ts";
 import { sanitizeFontText } from "../font.ts";
 
 import * as MAIN from "../index.ts";
+import type { CatalogueEntry } from "../types/catalogue.ts";
 
 // One video in the library grid: its thumbnail above its name, on a card
 // that lightens under the pointer. The tile fills its grid cell less a
@@ -15,7 +18,7 @@ const PADDING = 0.04;
 const CAPTION_HEIGHT = 0.2;
 const CAPTION_FONT_SIZE = 0.065;
 
-const look = (background) => ({
+const look = (background: ColourName) => ({
     backgroundColor: colour(background),
     backgroundOpacity: 1,
     fontColor: textOn(background),
@@ -27,9 +30,16 @@ const STATES = {
 };
 
 export default class ThumbnailBlock extends Block {
+    file: CatalogueEntry;
+    thumbnailUrl: string;
+    image: Block;
+
     // `file` is the catalogue entry; `cellWidth` and `cellHeight` its grid
     // cell, `margin` the space kept free around the tile inside it.
-    constructor(file, { cellWidth, cellHeight, margin }) {
+    constructor(
+        file: CatalogueEntry,
+        { cellWidth, cellHeight, margin }: { cellWidth: number; cellHeight: number; margin: number }
+    ) {
         const width = cellWidth - margin * 2;
         const height = cellHeight - margin * 2;
         super({
@@ -80,7 +90,7 @@ export default class ThumbnailBlock extends Block {
         this.setupState({ state: "idle", attributes: STATES.idle });
     }
 
-    setImage(texture) {
+    setImage(texture: Texture): void {
         this.image.set({
             backgroundTexture: texture,
             // White, so the image shows in its own colours.

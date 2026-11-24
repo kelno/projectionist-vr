@@ -1,9 +1,13 @@
+import type { Object3D } from "three";
 import { Block, Text, Keyboard } from "../ui/meshUi.ts";
 
 import { FONT, SURFACE, iconButton } from "../ui/kit.ts";
+import type { IconButton } from "../ui/kit.ts";
 import { RADIUS, colour, space, textOn } from "../ui/theme.ts";
+import type { ColourName } from "../ui/theme.ts";
 import { sanitizeFontText } from "../font.ts";
 import * as Helpers from "../Helpers.ts";
+import type { createSystemKeyboard } from "../input/systemKeyboard.ts";
 
 import Backspace from "../../assets/icons/backspace.png";
 import Enter from "../../assets/icons/enter.png";
@@ -27,14 +31,41 @@ const FONT_SIZE = 0.11;
 const MAX_SHOWN = 34;
 
 // The bar's background under the pointer and not.
-const BACKGROUND = { idle: "raised", hovered: "hovered" };
+const BACKGROUND = { idle: "raised", hovered: "hovered" } as const;
+
+type SystemKeyboard = ReturnType<typeof createSystemKeyboard>;
+
+// What three-mesh-ui's keyboard gives each key: the command of a special
+// key, or the character a key types.
+interface KeyInfo {
+    command?: string;
+    input?: string;
+}
 
 export class SearchBar {
     phrase = "";
     searchedPhrase = "";
     hovered = false;
 
-    constructor({ onSearch, onTargetsChange, systemKeyboard }) {
+    onSearch: (phrase: string) => void;
+    onTargetsChange: () => void;
+    systemKeyboard: SystemKeyboard;
+    text: Text;
+    clearButton: IconButton;
+    bar: Block;
+    keyboard: Keyboard;
+    // Set by makeKeyboard().
+    keys!: Object3D[];
+
+    constructor({
+        onSearch,
+        onTargetsChange,
+        systemKeyboard,
+    }: {
+        onSearch: (phrase: string) => void;
+        onTargetsChange: () => void;
+        systemKeyboard: SystemKeyboard;
+    }) {
         this.onSearch = onSearch;
         this.onTargetsChange = onTargetsChange;
         this.systemKeyboard = systemKeyboard;
@@ -84,7 +115,7 @@ export class SearchBar {
                 }
             },
         });
-        for (const state of ["hovered", "idle"]) {
+        for (const state of ["hovered", "idle"] as const) {
             this.bar.setupState({
                 state,
                 attributes: { backgroundColor: colour(BACKGROUND[state]) },
@@ -100,7 +131,7 @@ export class SearchBar {
         this.render();
     }
 
-    get isTyping() {
+    get isTyping(): boolean {
         return this.keyboard.visible;
     }
 
@@ -110,7 +141,7 @@ export class SearchBar {
     // take a click meant for the symbol key in its place. The X comes before
     // the bar: the bar's hit includes its children, so both are hit at the
     // same distance, and the first one listed wins.
-    targets() {
+    targets(): Object3D[] {
         const keys = this.isTyping
             ? this.keys.filter((key) => this.keyboard.getObjectById(key.id))
             : [];
@@ -131,8 +162,8 @@ export class SearchBar {
     // the bar as it's typed and searched for when the keyboard closes.
     typeOnSystemKeyboard() {
         this.systemKeyboard.open({
-            onInput: (text) => this.setPhrase(text),
-            onClose: (text) => {
+            onInput: (text: string) => this.setPhrase(text),
+            onClose: (text: string) => {
                 this.setPhrase(text);
                 this.search(text);
             },
@@ -156,13 +187,13 @@ export class SearchBar {
         this.search("");
     }
 
-    search(phrase) {
+    search(phrase: string): void {
         this.searchedPhrase = phrase;
         this.onSearch(phrase);
         this.onTargetsChange();
     }
 
-    setPhrase(phrase) {
+    setPhrase(phrase: string): void {
         const clearShowedBefore = this.phrase !== "";
         this.phrase = phrase;
         this.render();
@@ -184,8 +215,8 @@ export class SearchBar {
         this.clearButton.visible = !empty;
     }
 
-    makeKeyboard() {
-        const keyLook = (background) => ({
+    makeKeyboard(): Keyboard {
+        const keyLook = (background: ColourName) => ({
             backgroundColor: colour(background),
             backgroundOpacity: 1,
             fontColor: textOn(background),
@@ -224,7 +255,7 @@ export class SearchBar {
         return keyboard;
     }
 
-    pressKey(keyboard, info) {
+    pressKey(keyboard: Keyboard, info: KeyInfo): void {
         switch (info.command) {
             case "switch":
                 keyboard.setNextPanel();

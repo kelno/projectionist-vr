@@ -26,25 +26,36 @@ import { createScreenMeshes } from "./screenMeshes.ts";
 import { createControllerInput, readGamepad } from "./input/controllerInput.ts";
 import { createPointer } from "./input/pointer.ts";
 import { createPopupMessage } from "./ui/popupMessage.ts";
+import type { PopupMessage } from "./ui/popupMessage.ts";
+import type { Pointer } from "./input/pointer.ts";
+import type { ControllerAction } from "./input/controllerInput.ts";
+import type { ScreenMeshes } from "./screenMeshes.ts";
+import type { VRControls } from "./vr/VRControl.ts";
+import type { Catalogue, CatalogueEntry, ScreenType } from "./types/catalogue.ts";
 
-export let scene,
-  camera,
-  renderer,
-  orbitControls,
-  vrControl,
-  vrControlCurrentlyUsedController,
-  video,
-  videoTexture,
-  playMenuPanel,
-  fileBrowserPanel,
-  hiddenSphere;
-export let camToSave = {};
+// Set by init(), once the page has loaded.
+export let scene: THREE.Scene,
+  camera: THREE.PerspectiveCamera,
+  renderer: THREE.WebGLRenderer,
+  orbitControls: OrbitControls,
+  vrControl: VRControls,
+  vrControlCurrentlyUsedController: number,
+  video: HTMLVideoElement,
+  videoTexture: THREE.VideoTexture,
+  playMenuPanel: PlayerPanel,
+  fileBrowserPanel: FileBrowserPanel,
+  hiddenSphere: UI.HiddenSphereMesh;
+export let camToSave: {
+  position?: THREE.Vector3;
+  rotation?: THREE.Euler;
+  controlCenter?: THREE.Vector3;
+} = {};
 
 // The pointer (input/pointer.js) and the popup message (ui/popupMessage.js).
-let pointer, popup;
+let pointer: Pointer, popup: PopupMessage;
 // The surfaces the video shows on (screenMeshes.js).
-let screens;
-let pendingVideoPlayback = null;
+let screens: ScreenMeshes;
+let pendingVideoPlayback: { source: string; screenType: ScreenType } | null = null;
 
 const CAMERAPOSITIONY = 1.6;
 
@@ -80,7 +91,7 @@ function init() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.xr.enabled = true;
   document.body.appendChild(VRButton.createButton(renderer));
-  document.getElementById("three_scene").appendChild(renderer.domElement);
+  document.getElementById("three_scene")!.appendChild(renderer.domElement);
 
   // Orbit controls for no-vr
 
@@ -91,7 +102,7 @@ function init() {
   // Room
   /////////
 
-  video = document.getElementById("video");
+  video = document.getElementById("video") as HTMLVideoElement;
   video.addEventListener("error", () => {
     if (!isPendingVideoPlaybackCurrent()) {
       return;
@@ -156,7 +167,7 @@ function init() {
   // one in use isn't, it takes over. Ending a session disconnects both, so
   // with a single controller, the next session would otherwise start on the
   // missing one, with no pointer and no buttons.
-  const isConnected = (id) => Boolean(vrControl.controllers[id].userData.inputSource);
+  const isConnected = (id: number) => Boolean(vrControl.controllers[id].userData.inputSource);
   vrControl.controllers.forEach((controller, id) => {
     controller.addEventListener("connected", (event) => {
       controller.userData.inputSource = event.data;
@@ -172,14 +183,14 @@ function init() {
     });
   });
 
-  function useController(id) {
+  function useController(id: number): void {
     vrControl.controllers[vrControlCurrentlyUsedController].point.visible = false;
     vrControlCurrentlyUsedController = id;
   }
 
   // A press of the controller in use clicks; a press of the other one
   // makes it the one in use.
-  function vrControlSelected(id) {
+  function vrControlSelected(id: number): void {
     if (vrControlCurrentlyUsedController == id) {
       pointer.press();
     } else {
@@ -187,7 +198,7 @@ function init() {
     }
   }
 
-  function vrControlUnselected(id) {
+  function vrControlUnselected(id: number): void {
     if (vrControlCurrentlyUsedController == id) {
       pointer.release();
     }
@@ -197,7 +208,8 @@ function init() {
   // Panel
   //////////
 
-  hiddenSphere = new UI.HiddenSphere();
+  // The constructor returns the sphere mesh itself (UI.ts).
+  hiddenSphere = new UI.HiddenSphere() as unknown as UI.HiddenSphereMesh;
   scene.add(hiddenSphere);
   UI.objsToTest.push(hiddenSphere);
   playMenuPanel = new PlayerPanel(video);
@@ -245,19 +257,19 @@ function init() {
   });
 }
 
-function setLoop() {
+function setLoop(): void {
   renderer.setAnimationLoop(loop);
 }
 
-export function showPopupMessage(message, duration = 4000) {
+export function showPopupMessage(message: string, duration = 4000): void {
   popup.show(message, duration);
 }
 
-function hidePopupMessage() {
+function hidePopupMessage(): void {
   popup.hide();
 }
 
-export function requestVideoPlayback(source, screenType) {
+export function requestVideoPlayback(source: string, screenType: ScreenType): void {
   // Explicitly abort the old resource before registering this selection. This
   // prevents late media events from a rapid previous click opening the player.
   cancelVideoPlaybackRequest();
@@ -265,8 +277,8 @@ export function requestVideoPlayback(source, screenType) {
   showPopupMessage(Helpers.getWordFromLang("loading_video"), 0);
 
   const { sourceChanged, playback } = Helpers.setVideoSrc(source);
-  playback.catch((error) => {
-    if (error.name !== "AbortError") {
+  playback.catch((error: unknown) => {
+    if ((error as Error).name !== "AbortError") {
       console.error("Unable to start video playback:", error);
     }
   });
@@ -278,7 +290,7 @@ export function requestVideoPlayback(source, screenType) {
 
 // Play an entry of the catalogue, from the library or from the player's
 // next and previous buttons.
-export function playCatalogueVideo(file) {
+export function playCatalogueVideo(file: CatalogueEntry): void {
   const aspect = (file.frame_width ?? 1) / (file.frame_height ?? 1);
   if (file.screen_type === "screen") {
     screens.setScreenAspect(aspect);
@@ -289,29 +301,30 @@ export function playCatalogueVideo(file) {
   requestVideoPlayback(file.src, file.screen_type);
 }
 
-export function leaveVR() {
+export function leaveVR(): void {
   renderer.xr.getSession()?.end();
 }
 
-export function cancelVideoPlaybackRequest() {
+export function cancelVideoPlaybackRequest(): void {
   pendingVideoPlayback = null;
   Helpers.removeVideoSrc();
   hidePopupMessage();
 }
 
-function startPendingVideoPlayback() {
+function startPendingVideoPlayback(): void {
   if (!isPendingVideoPlaybackCurrent()) {
     return;
   }
 
-  const { source, screenType } = pendingVideoPlayback;
+  // The check above found a pending playback.
+  const { source, screenType } = pendingVideoPlayback!;
   pendingVideoPlayback = null;
   Helpers.restoreVideoPosition(source);
   hidePopupMessage();
   fileBrowserPanel.hideFileMenuPanel(screenType);
 }
 
-function isPendingVideoPlaybackCurrent() {
+function isPendingVideoPlaybackCurrent(): boolean {
   return (
     pendingVideoPlayback !== null &&
     Helpers.isCurrentVideoSrc(pendingVideoPlayback.source)
@@ -321,7 +334,7 @@ function isPendingVideoPlaybackCurrent() {
 
 // Handle resizing the viewport
 
-function onWindowResize() {
+function onWindowResize(): void {
   if (camera !== undefined && renderer !== undefined) {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
@@ -333,7 +346,7 @@ function onWindowResize() {
 
 export let playbackIsActive = false;
 
-export function playbackChange(is_active = false, screen_type = null) {
+export function playbackChange(is_active = false, screen_type: ScreenType | null = null): void {
   switch (is_active) {
     case true:
       playbackIsActive = true;
@@ -359,9 +372,10 @@ export function playbackChange(is_active = false, screen_type = null) {
 
 // The grip popup floats above the controller in use while its grip is held,
 // and lists what the grip does where the user is: player or library.
-const gripPopups = {};
+// By where it shows: "player" or "library".
+const gripPopups: Record<string, THREE.Object3D> = {};
 
-function createGripPopups() {
+function createGripPopups(): void {
   gripPopups.player = makeGripPopup(GRIP_PLAYER_CONTROLS);
   gripPopups.library = makeGripPopup(GRIP_LIBRARY_CONTROLS);
   for (const popup of Object.values(gripPopups)) {
@@ -374,7 +388,7 @@ function createGripPopups() {
   }
 }
 
-function showGripPopup(held) {
+function showGripPopup(held: boolean): void {
   const shown = playbackIsActive ? gripPopups.player : gripPopups.library;
   const grip = vrControl.controllerGrips[vrControlCurrentlyUsedController];
   for (const popup of Object.values(gripPopups)) {
@@ -388,12 +402,13 @@ function showGripPopup(held) {
 
 const controllerInput = createControllerInput();
 
-function gamepadControlsUpdate() {
+function gamepadControlsUpdate(): void {
   if (!renderer.xr.isPresenting) {
     return;
   }
   const controller = vrControl.controllers[vrControlCurrentlyUsedController];
-  const gamepad = controller.userData.inputSource?.gamepad;
+  const inputSource: XRInputSource | null | undefined = controller.userData.inputSource;
+  const gamepad = inputSource?.gamepad;
   if (gamepad?.mapping !== "xr-standard") {
     showGripPopup(false);
     return;
@@ -403,7 +418,7 @@ function gamepadControlsUpdate() {
   controllerInput(state, { playing: playbackIsActive }).forEach(runControllerAction);
 }
 
-function runControllerAction(action) {
+function runControllerAction(action: ControllerAction): void {
   switch (action.type) {
     case "zoom":
       ScreenManager.zoom(action.direction, 0.5);
@@ -436,9 +451,9 @@ function runControllerAction(action) {
   }
 }
 
-let checkVideoTexture = () => {};
-let updateTooltip = () => {};
-let updateBufferingIndicator = () => {};
+let checkVideoTexture: ReturnType<typeof watchVideoTexture> = () => {};
+let updateTooltip: ReturnType<typeof createTooltip> = () => {};
+let updateBufferingIndicator: ReturnType<typeof createBufferingIndicator> = () => {};
 
 // Errors go to the server's access log, where they can be read without the
 // headset (see errorReport.mjs).
@@ -457,7 +472,7 @@ window.addEventListener("unhandledrejection", (event) =>
 // error thrown during a frame would stop every later one: the picture
 // freezes while the sound plays on, and no button responds, until the
 // headset sleeps and the VR session restarts. Catch it, report it, go on.
-function loop() {
+function loop(): void {
   try {
     renderFrame();
   } catch (error) {
@@ -468,7 +483,7 @@ function loop() {
   }
 }
 
-function renderFrame() {
+function renderFrame(): void {
   const now = performance.now();
   checkVideoTexture(now);
   updateBufferingIndicator(
@@ -511,7 +526,7 @@ if (WebGL.isWebGL2Available()) {
 
 // The catalogue (files.json, beside the page), or null when it can't be
 // loaded.
-async function loadCatalogue() {
+async function loadCatalogue(): Promise<Catalogue | null> {
   try {
     const response = await fetch("files.json");
     if (!response.ok) {

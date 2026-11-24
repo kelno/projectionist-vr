@@ -8,7 +8,7 @@ const supportedCharacters = new Set(FontJSON.info.charset);
  * labels come from user-controlled filenames, so replace only unsupported
  * display characters and leave the original file paths untouched.
  */
-export function sanitizeFontText(value) {
+export function sanitizeFontText(value: unknown): string {
     return Array.from(String(value)).map((character) => {
         return supportedCharacters.has(character) || /\s/.test(character)
             ? character
@@ -18,7 +18,7 @@ export function sanitizeFontText(value) {
 
 // The text, safe for the font, cut with "..." past `length` characters, for
 // a label that must stay on one line.
-export function shortenText(value, length) {
+export function shortenText(value: unknown, length: number): string {
     const text = sanitizeFontText(value);
     return text.length > length ? `${text.slice(0, length - 3).trimEnd()}...` : text;
 }

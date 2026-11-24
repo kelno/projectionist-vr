@@ -9,17 +9,18 @@ import {
 } from "../src/mediaSource.ts";
 
 function createVideo(source = "") {
+    const attributes: Record<string, string> = source ? { src: source } : {};
     const video = {
-        attributes: source ? { src: source } : {},
+        attributes,
         loadCalls: 0,
         pauseCalls: 0,
         playCalls: 0,
         currentSrc: source,
         ownerDocument: { baseURI: "https://player.example/" },
-        getAttribute(name) {
+        getAttribute(name: string) {
             return this.attributes[name] ?? null;
         },
-        removeAttribute(name) {
+        removeAttribute(name: string) {
             delete this.attributes[name];
         },
         load() {
@@ -32,7 +33,7 @@ function createVideo(source = "") {
             this.playCalls++;
             return Promise.resolve();
         },
-        set src(value) {
+        set src(value: string) {
             this.attributes.src = value;
             this.currentSrc = value;
         },

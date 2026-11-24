@@ -1,18 +1,37 @@
 import * as THREE from "three";
+import type { Object3D } from "three";
 
 import * as MAIN from "./index.ts";
+import type { Block } from "./ui/meshUi.ts";
 
 import * as ScreenManager from "./ScreenManager/ScreenManager.ts";
 
 import * as Helpers from "./Helpers.ts";
 
-export let objsToTest = [];
+// The sphere behind everything (HiddenSphere below), which the pointer
+// treats as a three-mesh-ui block: it has the states and the uv a block has.
+export interface HiddenSphereMesh extends THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial> {
+    isUI: boolean;
+    currentState: string | undefined;
+    states: Record<string, { onSet?: () => void }>;
+    // Whether the player's buttons show, so a click toggles them.
+    buttonsVisible: boolean;
+    // Where the pointer last hit it; input/pointer.ts sets it.
+    uv?: { x: number; y: number };
+    setupState(options: { state: string; onSet?: () => void }): void;
+    setState(state: string): void;
+}
+
+// What the pointer can click: three-mesh-ui blocks and the hidden sphere.
+export type PointerTarget = Block | HiddenSphereMesh;
+
+export let objsToTest: PointerTarget[] = [];
 
 export function hideMenu(
-    menuContainer,
-    passedObjsToTest = [],
+    menuContainer: Object3D | Object3D[],
+    passedObjsToTest: PointerTarget[] = [],
     shouldSwitch2d3d = false
-) {
+): void {
     if (shouldSwitch2d3d) {
         ScreenManager.switch2d3d("3d");
     }
@@ -21,7 +40,8 @@ export function hideMenu(
             element.visible = false;
         });
     } else {
-        menuContainer.visible = false;
+        // Not an array: the check above narrows only its own branch.
+        (menuContainer as Object3D).visible = false;
     }
     objsToTest = [];
     if (passedObjsToTest.length > 0) {
@@ -35,10 +55,10 @@ export function hideMenu(
 }
 
 export function showMenu(
-    menuContainer,
-    passedObjsToTest,
+    menuContainer: Object3D | Object3D[],
+    passedObjsToTest: PointerTarget[],
     shouldSwitch2d3d = false
-) {
+): void {
     if (shouldSwitch2d3d) {
         ScreenManager.switch2d3d("2d");
     }
@@ -47,7 +67,8 @@ export function showMenu(
             element.visible = true;
         });
     } else {
-        menuContainer.visible = true;
+        // Not an array: the check above narrows only its own branch.
+        (menuContainer as Object3D).visible = true;
     }
     objsToTest = [];
     objsToTest = passedObjsToTest.slice();
@@ -59,19 +80,21 @@ export function showMenu(
 // What a click outside the open window does, usually closing it. The window
 // sets it when it opens and clears it when it closes; the hidden sphere behind
 // everything calls it. Add MAIN.hiddenSphere to the targets for it to work.
-let closeOpenWindow = null;
+let closeOpenWindow: (() => void) | null = null;
 
-export function setOutsideClick(close) {
+export function setOutsideClick(close: (() => void) | null): void {
     closeOpenWindow = close;
 }
 
-export function registerNewObjectsToTest(passedObjsToTest) {
+export function registerNewObjectsToTest(passedObjsToTest: PointerTarget[]): void {
     objsToTest = [];
     objsToTest = passedObjsToTest.slice();
 }
 
+// `new HiddenSphere()` gives the sphere mesh, not an instance of this class:
+// the constructor returns it.
 export class HiddenSphere {
-    hiddenSphere;
+    hiddenSphere: HiddenSphereMesh;
 
     constructor() {
         //////////
@@ -84,7 +107,8 @@ export class HiddenSphere {
             transparent: true,
         });
         hiddenMaterial.side = THREE.BackSide;
-        this.hiddenSphere = new THREE.Mesh(hiddenGeometry, hiddenMaterial);
+        // The lines below add what makes it a HiddenSphereMesh.
+        this.hiddenSphere = new THREE.Mesh(hiddenGeometry, hiddenMaterial) as HiddenSphereMesh;
         this.hiddenSphere.name = "hiddenSphere";
         this.hiddenSphere.isUI = true;
         this.hiddenSphere.currentState = undefined;
@@ -137,6 +161,6 @@ export class HiddenSphere {
         // ScreenManager.registerObjectToDrag(this.hiddenSphere, "player", "meshes");
         // ??????
 
-        return this.hiddenSphere;
+        return this.hiddenSphere as unknown as HiddenSphere;
     }
 }

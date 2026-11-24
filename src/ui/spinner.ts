@@ -9,9 +9,11 @@ import {
 
 import { materialColour } from "./theme.ts";
 
+export type Spinner = Group & { spin(): void };
+
 // A ring in the accent colour turning on a dark disc, shown while something loads. Call
 // `spin()` each frame it shows.
-export function createSpinner(radius) {
+export function createSpinner(radius: number): Spinner {
     const background = new Mesh(
         new CircleGeometry(radius * 1.35, 32),
         new MeshBasicMaterial({ color: materialColour("surface"), transparent: true, opacity: 0.85 })
@@ -21,7 +23,8 @@ export function createSpinner(radius) {
         new MeshBasicMaterial({ color: materialColour("accent"), side: DoubleSide })
     );
     ring.position.z = 0.001;
-    const spinner = new Group().add(background, ring);
+    // A Spinner once spin() is set, just below.
+    const spinner = new Group().add(background, ring) as Spinner;
     spinner.visible = false;
     spinner.spin = () => {
         ring.rotation.z -= 0.15;

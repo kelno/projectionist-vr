@@ -1,6 +1,7 @@
 const PREFERENCES_STORAGE_KEY = "web-vr-video-player.preferences";
 
-function readPreferences() {
+// The saved preferences, by name; each value is whatever JSON gave back.
+function readPreferences(): Record<string, unknown> {
     try {
         const serializedPreferences = globalThis.localStorage?.getItem(
             PREFERENCES_STORAGE_KEY
@@ -18,12 +19,12 @@ function readPreferences() {
     }
 }
 
-export function loadPreference(name) {
+export function loadPreference(name: string): unknown {
     const preferences = readPreferences();
     return Object.hasOwn(preferences, name) ? preferences[name] : null;
 }
 
-export function savePreference(name, value) {
+export function savePreference(name: string, value: unknown): void {
     try {
         const preferences = readPreferences();
         preferences[name] = value;

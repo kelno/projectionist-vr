@@ -1,43 +1,57 @@
+import type { Object3D } from "three";
+
 import * as MAIN from "../index.ts";
 import PanelsList from "./Panels.ts";
+import type { Eye, PanelGroup, ScreenMode } from "./Panels.ts";
+import type { ScreenType } from "../types/catalogue.ts";
 import { playerConfig } from "../playerConfig.ts";
 import { loadPreference, savePreference } from "../browserPreferences.ts";
 
 const ZOOM_PREFERENCE = "zoom";
 const MAX_ZOOM = 180;
 
-function clampZoom(value) {
+// What can be dragged together: the video's screens and the player's panel
+// ("player"), the player's controls alone, or the library.
+export type DragView = "player" | "playerControls" | "files";
+
+interface DragObject {
+    panelName: PanelGroup;
+    ref: Object3D;
+}
+
+function clampZoom(value: unknown): number | null {
     const zoom = Number(value);
     return Number.isFinite(zoom) ? Math.min(Math.max(zoom, 0), MAX_ZOOM) : null;
 }
 
-function loadSavedZoom() {
+function loadSavedZoom(): number | null {
     const savedZoom = loadPreference(ZOOM_PREFERENCE);
     return savedZoom === null ? null : clampZoom(savedZoom);
 }
 
-function saveZoom(zoom) {
+function saveZoom(zoom: number): void {
     savePreference(ZOOM_PREFERENCE, zoom);
 }
 
 let isVRModeUsed = true;
-export let VRMode = "sbs";
+// The layout of the video playing; a flat video ("screen") keeps the last one.
+export let VRMode: Exclude<ScreenType, "screen"> = "sbs";
 let currently_3d = true;
 export let force_2d_mode = false;
 export let currentZoom = 0;
 const panels = new PanelsList();
-export const objectsToDrag = {};
+export const objectsToDrag: { [view: string]: DragObject[] } = {};
 
 // `group` is what the panel resets with: "playMenuPanel", "fileBrowserPanel"...
-export function registerPanel(ref, group) {
+export function registerPanel(ref: Object3D, group: Exclude<PanelGroup, "meshes">): void {
     panels.addPanel(ref, group);
 }
 
-export function registerMeshPanel(ref, mode, screen_type, eye) {
+export function registerMeshPanel(ref: Object3D, mode: ScreenMode, screen_type: ScreenType, eye: Eye): void {
     panels.addMesh(ref, mode, screen_type, eye);
 }
 
-export function registerObjectToDrag(obj, view, panelName) {
+export function registerObjectToDrag(obj: Object3D, view: DragView, panelName: PanelGroup): void {
     if (!(view in objectsToDrag)) {
         objectsToDrag[view] = [];
     }
@@ -49,7 +63,7 @@ export function registerObjectToDrag(obj, view, panelName) {
 
 // Leaving VR (the headset sleeping, for instance) puts every panel back in
 // place, but keeps the zoom the user was watching with.
-export function vrsessionend() {
+export function vrsessionend(): void {
     const zoomInUse = currentZoom;
     resetZoomPosition();
     resetPosition("cameras");
@@ -59,11 +73,11 @@ export function vrsessionend() {
     setZoom(zoomInUse, false);
 }
 
-export function resetPosition(group) {
+export function resetPosition(group: PanelGroup): void {
     panels[group]?.panels.forEach((panel) => panel.reset());
 }
 
-export function zoom(in_or_out, step = 10) {
+export function zoom(in_or_out: "in" | "out" | "reset", step = 10): void {
     let targetZoom = currentZoom;
     switch (in_or_out) {
         case "in":
@@ -81,7 +95,7 @@ export function zoom(in_or_out, step = 10) {
     setZoom(targetZoom, true);
 }
 
-function setZoom(targetZoom, persistPreference) {
+function setZoom(targetZoom: number, persistPreference: boolean): void {
     const oldZoom = currentZoom;
     currentZoom = clampZoom(targetZoom) ?? 0;
     if (oldZoom !== currentZoom) {
@@ -101,7 +115,7 @@ function setZoom(targetZoom, persistPreference) {
 
 // Restore the user's choice for every video. Before a choice has been saved,
 // retain the configured SBS-only behaviour and leave other modes at base size.
-export function applyPlaybackZoom() {
+export function applyPlaybackZoom(): void {
     const savedZoom = loadSavedZoom();
     const initialZoom = savedZoom ?? (VRMode === "sbs" ? playerConfig.defaultSbsZoom : 0);
     setZoom(initialZoom, false);
@@ -109,17 +123,17 @@ export function applyPlaybackZoom() {
 
 // The player reset control restores the deployment's configured starting zoom
 // and makes it the new browser preference for later videos.
-export function resetZoomToConfiguredDefault() {
+export function resetZoomToConfiguredDefault(): void {
     setZoom(playerConfig.defaultSbsZoom, true);
 }
 
 // Playback transitions need a base mesh position, but must not erase the
 // browser preference that will be restored for the next selected video.
-export function resetZoomPosition() {
+export function resetZoomPosition(): void {
     setZoom(0, false);
 }
 
-export function tilt(up_or_down, value = 0.01) {
+export function tilt(up_or_down: "up" | "down" | "reset", value = 0.01): void {
     switch (up_or_down) {
         case "up":
             for (const screen of panels.meshes.panels) {
@@ -144,7 +158,7 @@ export function tilt(up_or_down, value = 0.01) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Switch between VR and Screen mode
 
-export function switchModeVRScreen(vr_or_screen) {
+export function switchModeVRScreen(vr_or_screen: ScreenType | "vr"): void {
     if (!currently_3d) {
         switch2d3d("3d", true);
     }
@@ -186,7 +200,7 @@ export function switchModeVRScreen(vr_or_screen) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Switch between 2D and 3D mode
 
-export function switch2d3d(switch_2d_or_3d, forced = false) {
+export function switch2d3d(switch_2d_or_3d: "2d" | "3d", forced = false): void {
     if (isVRModeUsed && (!force_2d_mode || forced)) {
         panels.meshes.panels.forEach((mesh) => {
             mesh.switch2d3d(switch_2d_or_3d, VRMode);
@@ -205,7 +219,7 @@ export function switch2d3d(switch_2d_or_3d, forced = false) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Force 2D mode
 
-export function force2DMode(bool) {
+export function force2DMode(bool: boolean): void {
     force_2d_mode = bool;
 }
 
@@ -213,7 +227,7 @@ export function force2DMode(bool) {
 
 export let dragging = false;
 
-export function startDrag(view) {
+export function startDrag(view: DragView): void {
     if (MAIN.renderer.xr.isPresenting && !dragging && view in objectsToDrag) {
         objectsToDrag[view].forEach((obj) => {
             MAIN.vrControl.controllers[
@@ -224,7 +238,7 @@ export function startDrag(view) {
     }
 }
 
-export function stopDrag(view) {
+export function stopDrag(view: DragView): void {
     if (MAIN.renderer.xr.isPresenting && dragging && view in objectsToDrag) {
         objectsToDrag[view].forEach((obj) => {
             MAIN.scene.attach(obj.ref);
@@ -233,10 +247,10 @@ export function stopDrag(view) {
     }
 }
 
-export function resetDrag(view) {
+export function resetDrag(view: DragView): void {
     if (MAIN.renderer.xr.isPresenting && view in objectsToDrag) {
         resetZoomPosition();
-        const readyList = [];
+        const readyList: PanelGroup[] = [];
         objectsToDrag[view].forEach((obj) => {
             if (!(obj.panelName in readyList)) {
                 resetPosition(obj.panelName);

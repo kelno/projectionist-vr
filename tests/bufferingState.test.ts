@@ -3,7 +3,15 @@ import test from "node:test";
 
 import { createBufferingTracker, isBuffering } from "../src/bufferingState.ts";
 
-function fakeVideo(state) {
+interface FakeVideoState {
+    src?: string | null;
+    seeking?: boolean;
+    paused?: boolean;
+    ended?: boolean;
+    readyState?: number;
+}
+
+function fakeVideo(state: FakeVideoState) {
     return {
         src: "/a.mp4",
         seeking: false,

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { formatDuration, formatSize, mediaInfoLines } from "../src/mediaInfo.ts";
+import type { MediaInfo } from "../src/types/catalogue.ts";
 
 test("formats sizes and durations", () => {
     assert.equal(formatSize(512), "512 B");
@@ -38,7 +39,7 @@ test("shows the catalogue's media info", () => {
 });
 
 test("flags a video that starts slowly", () => {
-    const line = (media) => mediaInfoLines({ name: "Clip", media }, null).find(([name]) => name === "Fast start");
+    const line = (media: MediaInfo) => mediaInfoLines({ name: "Clip", media }, null).find(([name]) => name === "Fast start");
     assert.deepEqual(line({ faststart: true }), ["Fast start", "Yes"]);
     assert.deepEqual(line({ faststart: false }), ["Fast start", "No, slow to start: remux it", true]);
 });

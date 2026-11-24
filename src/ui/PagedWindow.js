@@ -1,8 +1,9 @@
 import { Block } from "./meshUi.js";
 
 import { column, iconButton, label, panel, row } from "./kit.js";
+import { space } from "./theme.js";
 
-import BackIcon from "../../assets/icons/left-arrow.png";
+import BackIcon from "../../assets/icons/left.png";
 
 // A window with pages, like a game's pause menu: a header with a back button
 // (on sub-pages) and the page's title, above the page shown. A page is
@@ -32,7 +33,7 @@ export class PagedWindow {
         const spacer = new Block({
             width: HEADER_BUTTON_SIZE,
             height: HEADER_BUTTON_SIZE,
-            margin: 0.02,
+            margin: space(1),
             backgroundOpacity: 0,
         });
         this.title = label("-", { width: innerWidth - 0.4, fontSize: 0.075, align: "center" });

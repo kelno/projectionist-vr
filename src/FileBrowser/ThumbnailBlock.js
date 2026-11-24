@@ -1,13 +1,13 @@
-import { Color } from "three";
 import { Block, Text } from "../ui/meshUi.js";
 
 import { FONT } from "../ui/kit.js";
+import { RADIUS, colour, textOn } from "../ui/theme.js";
 import { sanitizeFontText } from "../font.js";
 
 import * as MAIN from "../index.js";
 
-// One video in the library grid: its thumbnail above its name, in a frame
-// that turns yellow under the pointer. The tile fills its grid cell less a
+// One video in the library grid: its thumbnail above its name, on a card
+// that lightens under the pointer. The tile fills its grid cell less a
 // margin on every side, and pads its content evenly, so neighbouring
 // highlights never touch and none is cut off. The thumbnail covers its area
 // without stretching, and an empty frame holds its place until it loads.
@@ -15,18 +15,15 @@ const PADDING = 0.04;
 const CAPTION_HEIGHT = 0.2;
 const CAPTION_FONT_SIZE = 0.065;
 
+const look = (background) => ({
+    backgroundColor: colour(background),
+    backgroundOpacity: 1,
+    fontColor: textOn(background),
+});
 const STATES = {
-    idle: { backgroundOpacity: 0, fontColor: new Color(0xffffff) },
-    hovered: {
-        backgroundColor: new Color(0xffff00),
-        backgroundOpacity: 1,
-        fontColor: new Color(0x000000),
-    },
-    selected: {
-        backgroundColor: new Color(0x777777),
-        backgroundOpacity: 1,
-        fontColor: new Color(0x222222),
-    },
+    idle: look("raised"),
+    hovered: look("hovered"),
+    selected: look("accent"),
 };
 
 export default class ThumbnailBlock extends Block {
@@ -43,7 +40,7 @@ export default class ThumbnailBlock extends Block {
             contentDirection: "column",
             justifyContent: "start",
             alignItems: "center",
-            borderRadius: 0.05,
+            borderRadius: RADIUS.tile,
             ...FONT,
             ...STATES.idle,
         });
@@ -55,10 +52,10 @@ export default class ThumbnailBlock extends Block {
         this.image = new Block({
             width: innerWidth,
             height: innerHeight - CAPTION_HEIGHT,
-            backgroundColor: new Color(0x1a1a1a),
+            backgroundColor: colour("surface"),
             backgroundOpacity: 1,
             backgroundSize: "cover",
-            borderRadius: 0.03,
+            borderRadius: RADIUS.tile * 0.6,
         });
         const caption = new Block({
             width: innerWidth,
@@ -86,7 +83,8 @@ export default class ThumbnailBlock extends Block {
     setImage(texture) {
         this.image.set({
             backgroundTexture: texture,
-            backgroundColor: new Color(0xffffff),
+            // White, so the image shows in its own colours.
+            backgroundColor: colour("white"),
         });
     }
 }

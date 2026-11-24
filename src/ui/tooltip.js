@@ -1,8 +1,10 @@
-import { Box3, Color, Quaternion, Vector3 } from "three";
+import { Box3, Quaternion, Vector3 } from "three";
 import { Block, Text } from "./meshUi.js";
 
 import FontJSON from "../../assets/fonts/Roboto-Regular-msdf.json";
 import FontImage from "../../assets/fonts/Roboto-Regular.png";
+
+import { colour } from "./theme.js";
 
 // One tooltip for the whole scene: when the pointer rests on a component with
 // a `tooltip` string, it shows that text just above the component, facing the
@@ -23,11 +25,14 @@ export function createTooltip(scene) {
         height: 0.09,
         justifyContent: "center",
         borderRadius: 0.03,
-        backgroundColor: new Color(0x000000),
-        backgroundOpacity: 0.85,
+        backgroundColor: colour("surface"),
+        backgroundOpacity: 0.95,
+        borderWidth: 0.004,
+        borderColor: colour("border"),
+        borderOpacity: 1,
         fontFamily: FontJSON,
         fontTexture: FontImage,
-        fontColor: new Color(0xffffff),
+        fontColor: colour("text"),
     }).add(text);
     tooltip.visible = false;
     scene.add(tooltip);

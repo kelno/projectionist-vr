@@ -1,13 +1,13 @@
-import { Color } from "three";
 import { Block, Text, Keyboard } from "../ui/meshUi.js";
 
-import { FONT, iconButton } from "../ui/kit.js";
+import { FONT, SURFACE, iconButton } from "../ui/kit.js";
+import { colour, space, textOn } from "../ui/theme.js";
 import { sanitizeFontText } from "../font.js";
 import * as Helpers from "../Helpers.js";
 
-import Backspace from "../../assets/ui/keyboard/backspace.png";
-import Enter from "../../assets/ui/keyboard/enter.png";
-import Shift from "../../assets/ui/keyboard/shift.png";
+import Backspace from "../../assets/icons/backspace.png";
+import Enter from "../../assets/icons/enter.png";
+import Shift from "../../assets/icons/shift.png";
 import ClearIcon from "../../assets/icons/close.png";
 
 // The library's search box: a bar showing the phrase, or a muted "Search..."
@@ -26,10 +26,8 @@ const FONT_SIZE = 0.11;
 // Past this many characters, only the end of the phrase shows.
 const MAX_SHOWN = 34;
 
-const COLORS = {
-    idle: { background: 0x5c5c5c, text: 0xffffff, placeholder: 0x9a9a9a },
-    hovered: { background: 0xffff00, text: 0x000000, placeholder: 0x6b6b00 },
-};
+// The bar's background under the pointer and not.
+const BACKGROUND = { idle: "raised", hovered: "hovered" };
 
 export class SearchBar {
     phrase = "";
@@ -66,8 +64,8 @@ export class SearchBar {
             justifyContent: "space-between",
             alignItems: "center",
             padding: 0.02,
-            borderRadius: 0.08,
-            backgroundColor: new Color(COLORS.idle.background),
+            borderRadius: HEIGHT / 2,
+            backgroundColor: colour(BACKGROUND.idle),
             backgroundOpacity: 1,
             hiddenOverflow: true,
             ...FONT,
@@ -87,7 +85,7 @@ export class SearchBar {
         for (const state of ["hovered", "idle"]) {
             this.bar.setupState({
                 state,
-                attributes: { backgroundColor: new Color(COLORS[state].background) },
+                attributes: { backgroundColor: colour(BACKGROUND[state]) },
                 onSet: () => {
                     this.hovered = state === "hovered";
                     this.render();
@@ -172,7 +170,6 @@ export class SearchBar {
     }
 
     render() {
-        const colors = COLORS[this.hovered ? "hovered" : "idle"];
         const empty = this.phrase === "";
         const shown =
             this.phrase.length > MAX_SHOWN
@@ -180,26 +177,27 @@ export class SearchBar {
                 : this.phrase;
         this.text.set({
             content: empty ? Helpers.getWordFromLang("search") : sanitizeFontText(shown),
-            fontColor: new Color(empty ? colors.placeholder : colors.text),
+            fontColor: colour(empty ? "mutedText" : "text"),
         });
         this.clearButton.visible = !empty;
     }
 
     makeKeyboard() {
-        const colors = {
-            keyboardBack: 0x858585,
-            button: 0x363636,
-            hovered: 0x1c1c1c,
-            selected: 0x109c5d,
-        };
+        const keyLook = (background) => ({
+            backgroundColor: colour(background),
+            backgroundOpacity: 1,
+            fontColor: textOn(background),
+        });
         const keyboard = new Keyboard({
             language: "eng",
             ...FONT,
             fontSize: 0.12,
             width: 4,
             height: 1.6,
-            backgroundColor: new Color(colors.keyboardBack),
-            backgroundOpacity: 1,
+            padding: space(2),
+            // No border: the keyboard's keys would each take it (meshUi.js).
+            ...SURFACE,
+            borderWidth: 0,
             backspaceTexture: Backspace,
             shiftTexture: Shift,
             enterTexture: Enter,
@@ -209,27 +207,15 @@ export class SearchBar {
         for (const key of keyboard.keys) {
             key.setupState({
                 state: "idle",
-                attributes: {
-                    offset: 0,
-                    backgroundColor: new Color(colors.button),
-                    backgroundOpacity: 1,
-                },
+                attributes: { offset: 0, ...keyLook("raised") },
             });
             key.setupState({
                 state: "hovered",
-                attributes: {
-                    offset: 0,
-                    backgroundColor: new Color(colors.hovered),
-                    backgroundOpacity: 1,
-                },
+                attributes: { offset: 0, ...keyLook("hovered") },
             });
             key.setupState({
                 state: "selected",
-                attributes: {
-                    offset: -0.009,
-                    backgroundColor: new Color(colors.selected),
-                    backgroundOpacity: 1,
-                },
+                attributes: { offset: -0.009, ...keyLook("accent") },
                 onSet: () => this.pressKey(keyboard, key.info),
             });
         }

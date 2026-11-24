@@ -14,6 +14,7 @@ import {
     iconButton,
     label,
     markActive,
+    SURFACE,
     panel,
     row,
     textButton,
@@ -31,12 +32,13 @@ import * as MAIN from "../index.js";
 import * as UI from "../UI.js";
 import * as Helpers from "../Helpers.js";
 import * as ScreenManager from "../ScreenManager/ScreenManager.js";
-import { sanitizeFontText } from "../font.js";
+import { sanitizeFontText, shortenText } from "../font.js";
 import { adjacentVideo } from "../adjacentVideo.mjs";
 import { playerVersion } from "../playerConfig.js";
+import { space } from "../ui/theme.js";
 
-import LeftIcon from "../../assets/icons/left-arrow.png";
-import RightIcon from "../../assets/icons/right-arrow.png";
+import LeftIcon from "../../assets/icons/left.png";
+import RightIcon from "../../assets/icons/right.png";
 import VideoIcon from "../../assets/icons/video.png";
 import PowerIcon from "../../assets/icons/power.png";
 import SortIcon from "../../assets/icons/sort.png";
@@ -54,8 +56,10 @@ export class FileBrowserPanel {
     CELL_WIDTH = this.GRID_WIDTH / this.COLUMNS;
     CELL_HEIGHT = this.GRID_HEIGHT / this.ROWS;
     TILE_MARGIN = 0.03;
-    PAGE_BUTTON_SIZE = this.GRID_HEIGHT / this.ROWS - 0.5;
+    PAGE_BUTTON_SIZE = 0.32;
     FOLDER_ROWS = 12;
+    // The most characters of a folder's name that fit on its button.
+    FOLDER_NAME_LENGTH = 24;
 
     // Distances from the viewer.
     CENTER_Z = -5.2;
@@ -124,6 +128,7 @@ export class FileBrowserPanel {
             "loadingSpinner",
             "draggingBox",
             "controlsButton",
+            "versionLabel",
             "controlsHelp",
         ]) {
             ScreenManager.registerPanel(this[name], "fileBrowserPanel");
@@ -153,15 +158,14 @@ export class FileBrowserPanel {
         this.thumbsContainer = new Block(this.thumbsContainerAttributes);
 
         this.fileBrowserContainer = new Block({
-            width: this.GRID_WIDTH + 0.3 + this.PAGE_BUTTON_SIZE * 2,
+            width: this.GRID_WIDTH + space(8) + this.PAGE_BUTTON_SIZE * 2,
             // The grid's height plus the padding, or the grid overflows it.
-            height: this.GRID_HEIGHT + 0.04,
+            height: this.GRID_HEIGHT + space(4),
             contentDirection: "row",
-            justifyContent: "center",
-            padding: 0.02,
-            borderRadius: 0,
-            backgroundColor: new Color(0x292929),
-            backgroundOpacity: 1,
+            justifyContent: "space-evenly",
+            alignItems: "center",
+            padding: space(2),
+            ...SURFACE,
             ...FONT,
         }).add(this.buttonLeft, this.thumbsContainer, this.buttonRight);
         this.fileBrowserContainer.position.set(0, 1.4, this.CENTER_Z);
@@ -180,10 +184,8 @@ export class FileBrowserPanel {
             height: this.GRID_HEIGHT,
             contentDirection: "column",
             justifyContent: "start",
-            padding: 0.02,
-            borderRadius: 0,
-            backgroundColor: new Color(0x292929),
-            backgroundOpacity: 1,
+            padding: space(2),
+            ...SURFACE,
             ...FONT,
         };
         this.foldersContainer = new Block(this.foldersContainerAttributes);
@@ -221,6 +223,7 @@ export class FileBrowserPanel {
             icon: PowerIcon,
             tooltip: "Leave VR",
             size: 0.26,
+            hovered: "danger",
             onSelect: () => MAIN.leaveVR(),
         });
         this.leaveVRButton.position.set(2.82, 3.2, this.CENTER_Z);
@@ -242,7 +245,8 @@ export class FileBrowserPanel {
         this.defaultObjsToTest.push(this.sortButton, this.leaveVRButton);
     }
 
-    // Bottom row: the Controls button and the bar to move the library.
+    // Bottom row: the Controls button, the bar to move the library, and the
+    // player's version, small and muted, under the library's right edge.
     buildBottomRow() {
         this.draggingBox = dragHandle({
             width: this.GRID_WIDTH / 2,
@@ -262,7 +266,18 @@ export class FileBrowserPanel {
         });
         this.controlsButton.position.set(-1.75, -0.35, this.CENTER_Z);
 
-        MAIN.scene.add(this.draggingBox, this.controlsButton);
+        const versionWidth = 0.8;
+        this.versionLabel = label(`v${playerVersion}`, {
+            width: versionWidth,
+            height: 0.2,
+            fontSize: 0.06,
+            align: "right",
+            color: "mutedText",
+        });
+        const libraryRightEdge = this.fileBrowserContainer.getWidth() / 2;
+        this.versionLabel.position.set(libraryRightEdge - versionWidth / 2, -0.35, this.CENTER_Z);
+
+        MAIN.scene.add(this.draggingBox, this.controlsButton, this.versionLabel);
         this.defaultObjsToTest.push(this.draggingBox, this.controlsButton);
     }
 
@@ -284,24 +299,12 @@ export class FileBrowserPanel {
                     ],
                     { width: 3.7, height: 0.95, justify: "space-between" }
                 ),
-                row(
-                    [
-                        label("Left controller: X and Y instead of A and B.", {
-                            width: 3.0,
-                            height: 0.2,
-                            fontSize: 0.06,
-                            color: 0xaaaaaa,
-                        }),
-                        label(`v${playerVersion}`, {
-                            width: 0.7,
-                            height: 0.2,
-                            fontSize: 0.05,
-                            align: "right",
-                            color: 0x777777,
-                        }),
-                    ],
-                    { width: 3.7, height: 0.2, justify: "space-between" }
-                ),
+                label("Left controller: X and Y instead of A and B.", {
+                    width: 3.7,
+                    height: 0.2,
+                    fontSize: 0.06,
+                    color: "mutedText",
+                }),
             ],
             { width: 3.9, height: 1.5, padding: 0.08, justify: "space-between" }
         );
@@ -483,11 +486,15 @@ export class FileBrowserPanel {
             next: () => [Helpers.getWordFromLang("next_page"), turnPage(1)],
             folder: () => [this.VIDEOS[entry.index].name, () => this.showFolder(entry.index)],
         }[entry.type]();
+        // One line per folder: a longer name is cut, and shows whole as the
+        // tooltip.
+        const shown = shortenText(text, this.FOLDER_NAME_LENGTH);
         const button = textButton({
-            label: sanitizeFontText(text),
+            label: shown,
+            tooltip: shown === sanitizeFontText(text) ? undefined : sanitizeFontText(text),
             width: this.GRID_WIDTH / 3 - 0.1,
             height: 0.2,
-            fontSize: 0.12,
+            fontSize: 0.1,
             onSelect,
         });
         button.folderIndex = entry.type === "folder" ? entry.index : null;

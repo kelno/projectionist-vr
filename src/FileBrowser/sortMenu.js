@@ -19,7 +19,7 @@ export function buildSortMenu({ onChoose }) {
     );
     const block = panel(
         [
-            label("Sort by", { width: width - 0.08, height: 0.12, fontSize: 0.065, align: "center" }),
+            label("Sort by", { width: width - 0.08, height: 0.12, fontSize: 0.065, align: "center", color: "mutedText" }),
             ...buttons.values(),
         ],
         { width, height: 0.2 + SORT_OPTIONS.length * 0.19 }

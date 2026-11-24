@@ -1,13 +1,15 @@
-import { Color, TextureLoader } from "three";
+import { TextureLoader } from "three";
 import { Block, Text, InlineBlock } from "./meshUi.js";
 
 import FontJSON from "../../assets/fonts/Roboto-Regular-msdf.json";
 import FontImage from "../../assets/fonts/Roboto-Regular.png";
 
-import UpIcon from "../../assets/icons/up-arrow.png";
-import DownIcon from "../../assets/icons/down-arrow.png";
-import LeftIcon from "../../assets/icons/left-arrow.png";
-import RightIcon from "../../assets/icons/right-arrow.png";
+import UpIcon from "../../assets/icons/up.png";
+import DownIcon from "../../assets/icons/down.png";
+import LeftIcon from "../../assets/icons/left.png";
+import RightIcon from "../../assets/icons/right.png";
+
+import { BORDER_WIDTH, SURFACE_OPACITY, colour } from "./theme.js";
 
 // What the controls do, shown by the help panel and, for the grip, by the
 // popup above the controller while the grip is held. A row is either a
@@ -51,9 +53,9 @@ function makeBadge(control) {
         justifyContent: "center",
         contentDirection: "row",
         borderRadius: 0.06,
-        backgroundColor: new Color(0xd0d0d0),
+        backgroundColor: colour("raised"),
         backgroundOpacity: 1,
-        fontColor: new Color(0x000000),
+        fontColor: colour("text"),
     });
     if (control.key) {
         badge.add(new Text({ fontSize: FONT_SIZE, content: control.key }));
@@ -106,7 +108,7 @@ export function makeControlsColumn(title, controls, width) {
         backgroundOpacity: 0,
         fontFamily: FontJSON,
         fontTexture: FontImage,
-        fontColor: new Color(0xffffff),
+        fontColor: colour("text"),
     });
     column.add(
         new Block({
@@ -115,7 +117,7 @@ export function makeControlsColumn(title, controls, width) {
             justifyContent: "center",
             textAlign: "left",
             backgroundOpacity: 0,
-            fontColor: new Color(0xffd54f),
+            fontColor: colour("heading"),
         }).add(new Text({ fontSize: 0.075, content: title }))
     );
     for (const control of controls) {
@@ -134,11 +136,16 @@ export function makeGripPopup(controls) {
         justifyContent: "center",
         padding: 0.04,
         borderRadius: 0.06,
-        backgroundColor: new Color(0x1e1e1e),
-        backgroundOpacity: 0.9,
+        backgroundColor: colour("surface"),
+        backgroundOpacity: SURFACE_OPACITY,
+        // Shown scaled down, close to the eyes, above the controller: a wider
+        // edge gives it the same look as the panels..
+        borderWidth: BORDER_WIDTH * 3,
+        borderColor: colour("border"),
+        borderOpacity: 1,
         fontFamily: FontJSON,
         fontTexture: FontImage,
-        fontColor: new Color(0xffffff),
+        fontColor: colour("text"),
     });
     popup.add(
         new Block({
@@ -147,7 +154,7 @@ export function makeGripPopup(controls) {
             justifyContent: "center",
             textAlign: "left",
             backgroundOpacity: 0,
-            fontColor: new Color(0xffd54f),
+            fontColor: colour("heading"),
         }).add(new Text({ fontSize: 0.07, content: "HOLD GRIP +" }))
     );
     for (const control of controls) {

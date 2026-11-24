@@ -15,3 +15,10 @@ export function sanitizeFontText(value) {
             : "?";
     }).join("");
 }
+
+// The text, safe for the font, cut with "..." past `length` characters, for
+// a label that must stay on one line.
+export function shortenText(value, length) {
+    const text = sanitizeFontText(value);
+    return text.length > length ? `${text.slice(0, length - 3).trimEnd()}...` : text;
+}

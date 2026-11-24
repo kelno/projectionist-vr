@@ -14,8 +14,6 @@ import * as UI from "./UI.js";
 import * as Helpers from "./Helpers.js";
 import SourcesSelectorPanel from "./sourceSelector.js";
 
-import FontJSON from "../assets/fonts/Roboto-Regular-msdf.json";
-import FontImage from "../assets/fonts/Roboto-Regular.png";
 import { JsonLoader } from "./jsonLoader.js";
 import { watchVideoTexture } from "./videoTextureWatchdog.mjs";
 import {
@@ -29,6 +27,8 @@ import { createErrorReporter } from "./errorReport.mjs";
 import { playerVersion } from "./playerConfig.js";
 import { createScreenMeshes } from "./screenMeshes.js";
 import { createControllerInput, readGamepad } from "./input/controllerInput.mjs";
+import { createPointer } from "./input/pointer.js";
+import { createPopupMessage } from "./ui/popupMessage.js";
 
 export let scene,
   camera,
@@ -42,56 +42,15 @@ export let scene,
   fileBrowserPanel,
   sourcesSelectorPanel,
   hiddenSphere;
-export let clickedButton = undefined;
 export let camToSave = {};
 
-let popupMessage, popupContainer;
+// The pointer (input/pointer.js) and the popup message (ui/popupMessage.js).
+let pointer, popup;
 // The surfaces the video shows on (screenMeshes.js).
 let screens;
 let pendingVideoPlayback = null;
 
 const CAMERAPOSITIONY = 1.6;
-
-// compute mouse position in normalized device coordinates
-// (-1 to +1) for both directions.
-// Used to raycasting against the interactive elements
-
-const raycaster = new THREE.Raycaster();
-raycaster.layers.set(0);
-
-const mouse = new THREE.Vector2();
-mouse.x = mouse.y = null;
-
-let selectState = false;
-
-window.addEventListener("pointermove", (event) => {
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-});
-
-window.addEventListener("pointerdown", () => {
-  selectState = true;
-});
-
-window.addEventListener("pointerup", () => {
-  selectState = false;
-  clickedButton = undefined;
-});
-
-window.addEventListener("touchstart", (event) => {
-  selectState = true;
-  mouse.x = (event.touches[0].clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.touches[0].clientY / window.innerHeight) * 2 + 1;
-});
-
-window.addEventListener("touchend", () => {
-  selectState = false;
-  clickedButton = undefined;
-  mouse.x = null;
-  mouse.y = null;
-});
-
-//
 
 function init() {
   const libraryLoading = loadJsonLoader();
@@ -207,9 +166,11 @@ function init() {
     });
   });
 
+  // A press of the controller in use clicks; a press of the other one
+  // makes it the one in use.
   function vrControlSelected(id) {
     if (vrControlCurrentlyUsedController == id) {
-      selectState = true;
+      pointer.press();
     } else {
       vrControl.controllers[
         vrControlCurrentlyUsedController
@@ -220,8 +181,7 @@ function init() {
 
   function vrControlUnselected(id) {
     if (vrControlCurrentlyUsedController == id) {
-      selectState = false;
-      clickedButton = undefined;
+      pointer.release();
     }
   }
 
@@ -234,33 +194,14 @@ function init() {
   UI.objsToTest.push(hiddenSphere);
   playMenuPanel = new PlayerPanel(video);
 
-  ////////////////////////////////////////
-  popupContainer = new ThreeMeshUI.Block({
-    justifyContent: "center",
-    contentDirection: "row",
-    fontFamily: FontJSON,
-    fontTexture: FontImage,
-    fontSize: 0.07,
-    padding: 0.02,
-    borderRadius: 0,
-    backgroundOpacity: 1,
-    backgroundColor: new THREE.Color(0x5c5c5c),
-    height: 0.2,
-    width: 2,
+  pointer = createPointer({
+    renderer,
+    camera,
+    vrControl,
+    controller: () => vrControlCurrentlyUsedController,
+    hiddenSphere,
   });
-  popupMessage = new ThreeMeshUI.Text({
-    content: "",
-    fontFamily: FontJSON,
-    fontTexture: FontImage,
-    fontSize: 0.07,
-    offset: 0.035,
-    fontColor: new THREE.Color(0xffffff),
-  });
-  popupContainer.add(popupMessage);
-  popupContainer.position.set(0, 1, -2);
-  popupContainer.visible = false;
-  scene.add(popupContainer);
-  ////////////////////////////////////////
+  popup = createPopupMessage(scene);
 
   /////////////////////////////////////////////////////////////
 
@@ -312,26 +253,12 @@ function selectFirst() {
   sourcesSelectorPanel.selectFirstSourceIfOnlyOneAvailable();
 }
 
-let showPopupTimeoutID;
-
 export function showPopupMessage(message, duration = 4000) {
-  if (typeof message === "string") {
-    popupMessage.set({ content: message });
-    popupContainer.visible = true;
-    clearTimeout(showPopupTimeoutID);
-    if (duration > 0) {
-      showPopupTimeoutID = setTimeout(() => {
-        popupContainer.visible = false;
-      }, duration);
-    }
-  } else {
-    console.warn(Helpers.getWordFromLang("show_popup_message_error"));
-  }
+  popup.show(message, duration);
 }
 
 function hidePopupMessage() {
-  clearTimeout(showPopupTimeoutID);
-  popupContainer.visible = false;
+  popup.hide();
 }
 
 export function requestVideoPlayback(source, screenType) {
@@ -565,7 +492,10 @@ function renderFrame() {
 
   gamepadControlsUpdate();
 
-  updateButtons();
+  updateTooltip(
+    pointer.update(),
+    renderer.xr.isPresenting ? renderer.xr.getCamera() : camera
+  );
 
   playMenuPanel.progressBarAndDuration();
 
@@ -575,109 +505,6 @@ function renderFrame() {
     fileBrowserPanel.generateThumbnails();
   }
 }
-
-// Called in the loop, get intersection with either the mouse or the VR controllers,
-// then update the buttons states according to result
-
-function updateButtons() {
-  // Find closest intersecting object
-
-  let intersect;
-
-  if (renderer.xr.isPresenting) {
-    vrControl.setFromController(
-      vrControlCurrentlyUsedController,
-      raycaster.ray
-    );
-
-    intersect = raycast();
-
-    // Position the little white dot at the end of the controller pointing ray
-    // need to skip this if intersecting hiddenSphere because in VR it spreads points apart
-    if (intersect && intersect.object.name != hiddenSphere.name) {
-      vrControl.setPointerAt(vrControlCurrentlyUsedController, intersect.point);
-    }
-  } else if (mouse.x !== null && mouse.y !== null) {
-    raycaster.setFromCamera(mouse, camera);
-
-    intersect = raycast();
-  }
-
-  // Update targeted button state (if any)
-
-  if (intersect && intersect.object.isUI) {
-    intersect.object.uv = { x: intersect.uv.x, y: intersect.uv.y };
-
-    if (selectState) {
-      // A press selects the component under the pointer once. Coming back
-      // over it during the same press must not fire it again: a button that
-      // opens a panel covering itself would otherwise close it at once.
-      if (clickedButton === undefined) {
-        clickedButton = intersect.object.uuid;
-        intersect.object.setState("selected");
-      }
-    } else {
-      // Component.setState internally call component.set with the options you defined in component.setupState
-      intersect.object.setState("hovered");
-    }
-  }
-
-  updateTooltip(
-    intersect && intersect.object.isUI && intersect.object !== hiddenSphere
-      ? intersect.object
-      : null,
-    renderer.xr.isPresenting ? renderer.xr.getCamera() : camera
-  );
-
-  // Update non-targeted buttons state
-
-  UI.objsToTest.forEach((obj) => {
-    // The sphere catching clicks outside the panels isn't a Block, but must
-    // also go idle, or its next click is ignored as a repeat.
-    if (obj === hiddenSphere && (!intersect || obj !== intersect.object)) {
-      obj.setState("idle");
-      return;
-    }
-    if (
-      obj instanceof ThreeMeshUI.Block &&
-      (!intersect || obj !== intersect.object) &&
-      obj.isUI
-    ) {
-      obj.setState("idle");
-    }
-  });
-}
-
-//
-
-function raycast() {
-  return UI.objsToTest.reduce((closestIntersection, obj) => {
-    // Keyboard
-    if (
-      obj.type === "Key" &&
-      fileBrowserPanel !== undefined &&
-      !fileBrowserPanel.keyboard.getObjectById(obj.id)
-    ) {
-      return closestIntersection;
-    }
-
-    const intersection = raycaster.intersectObject(obj, true);
-
-    if (!intersection[0]) return closestIntersection;
-
-    if (
-      !closestIntersection ||
-      intersection[0].distance < closestIntersection.distance
-    ) {
-      intersection[0].object = obj;
-
-      return intersection[0];
-    }
-
-    return closestIntersection;
-  }, null);
-}
-
 
 if (WebGL.isWebGL2Available()) {
   window.addEventListener("resize", onWindowResize);

@@ -776,38 +776,11 @@ export function playbackChange(is_active = false, screen_type = null) {
         ScreenManager.switchModeVRScreen(screen_type);
       }
       ScreenManager.applyPlaybackZoom();
-      playMenuPanel.buttonPlay.playbackStarted();
-      switch (ScreenManager.VRMode) {
-        case "tb":
-          playMenuPanel.VRSBSTBModeButtonText.set({
-            content: Helpers.getWordFromLang("top_bottom"),
-          });
-          break;
-        case "360":
-          playMenuPanel.VRSBSTBModeButtonText.set({ content: "360" });
-          break;
-        case "sphere180":
-          ScreenManager.force2DMode(true);
-          playMenuPanel.VR2DModeButtonText.set({ content: "2D" });
-          playMenuPanel.VRSBSTBModeButtonText.set({
-            content: "2D 180",
-          });
-          break;
-        case "sphere360":
-          ScreenManager.force2DMode(true);
-          playMenuPanel.VR2DModeButtonText.set({ content: "2D" });
-          playMenuPanel.VRSBSTBModeButtonText.set({
-            content: "2D 360",
-          });
-          break;
-        default:
-        case "sbs":
-          playMenuPanel.VRSBSTBModeButtonText.set({
-            content: Helpers.getWordFromLang("side_by_side"),
-          });
-          break;
+      // The fisheye layouts are 2D only.
+      if (["sphere180", "sphere360"].includes(ScreenManager.VRMode)) {
+        ScreenManager.force2DMode(true);
       }
-
+      playMenuPanel.refreshModeLabels();
       break;
     default:
     case false:
@@ -1027,12 +1000,7 @@ function updateButtons() {
       (!intersect || obj !== intersect.object) &&
       obj.isUI
     ) {
-      // Component.setState internally call component.set with the options you defined in component.setupState
-      if (obj.muted) {
-        obj.setState("idlemuted");
-      } else {
-        obj.setState("idle");
-      }
+      obj.setState("idle");
     }
   });
 }

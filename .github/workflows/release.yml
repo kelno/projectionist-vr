@@ -92,3 +92,4 @@ jobs:
           "${{ steps.version.outputs.asset }}"
           --title "$GITHUB_REF_NAME"
           --generate-notes
+          $(case "$GITHUB_REF_NAME" in *-*) echo --prerelease;; esac)

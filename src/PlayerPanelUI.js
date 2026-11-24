@@ -187,7 +187,7 @@ export class PlayerPanel {
         this.playMenuContainer.visible = false;
         this.playMenuContainer.position.set(0, 0.6, -3);
         MAIN.scene.add(this.playMenuContainer);
-        ScreenManager.registerPanel(this.playMenuContainer, "playMenuPanel", "playMenuContainer", "playMenuContainer");
+        ScreenManager.registerPanel(this.playMenuContainer, "playMenuPanel");
 
         // A click on the controls' background closes the settings, if open.
         this.playMenuContainer.setupState({
@@ -284,7 +284,7 @@ export class PlayerPanel {
         this.draggingBox.visible = false;
         this.draggingBox.position.set(0, 0.25, -3);
         MAIN.scene.add(this.draggingBox);
-        ScreenManager.registerPanel(this.draggingBox, "playMenuPanel", "draggingBox", "draggingBox");
+        ScreenManager.registerPanel(this.draggingBox, "playMenuPanel");
         this.playMenuObjsToTest.push(this.draggingBox);
     }
 
@@ -339,12 +339,7 @@ export class PlayerPanel {
         // Just above the controls, which sit at y 0.6.
         this.settingsMenuContainer.position.set(0, 1.4, -2.95);
         MAIN.scene.add(this.settingsMenuContainer);
-        ScreenManager.registerPanel(
-            this.settingsMenuContainer,
-            "playMenuPanel",
-            "settingsMenuContainer",
-            "settingsMenuContainer"
-        );
+        ScreenManager.registerPanel(this.settingsMenuContainer, "playMenuPanel");
 
         this.settingsWindow.addPage("settings", this.buildSettingsPage(innerWidth));
         this.settingsWindow.addPage("media", this.buildMediaInfoPage(innerWidth));

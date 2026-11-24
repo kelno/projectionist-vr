@@ -27,33 +27,17 @@ import { createTooltip } from "./ui/tooltip.js";
 import { createBufferingIndicator } from "./ui/bufferingIndicator.js";
 import { createErrorReporter } from "./errorReport.mjs";
 import { playerVersion } from "./playerConfig.js";
+import { createScreenMeshes } from "./screenMeshes.js";
 import { createControllerInput, readGamepad } from "./input/controllerInput.mjs";
 
 export let scene,
   camera,
-  cameras,
   renderer,
   orbitControls,
   vrControl,
   vrControlCurrentlyUsedController,
   video,
   videoTexture,
-  meshLeftSBS,
-  meshLeftTB,
-  meshLeftTBScreen,
-  meshRightSBS,
-  meshRightTB,
-  meshRightTBScreen,
-  mesh2dSBS,
-  mesh2dTB,
-  mesh2dTBScreen,
-  meshForScreenMode,
-  meshes,
-  meshLeft360,
-  meshRight360,
-  mesh2d360,
-  mesh1802D,
-  mesh3602D,
   playMenuPanel,
   fileBrowserPanel,
   sourcesSelectorPanel,
@@ -62,6 +46,8 @@ export let clickedButton = undefined;
 export let camToSave = {};
 
 let popupMessage, popupContainer;
+// The surfaces the video shows on (screenMeshes.js).
+let screens;
 let pendingVideoPlayback = null;
 
 const CAMERAPOSITIONY = 1.6;
@@ -128,8 +114,7 @@ function init() {
   camera.layers.enable(1);
   camera.position.y = CAMERAPOSITIONY;
   scene.add(camera);
-  ScreenManager.registerPanel(camera, "cameras", "camera", "camera");
-  cameras = { camera: camera };
+  ScreenManager.registerPanel(camera, "cameras");
 
   renderer = new THREE.WebGLRenderer({
     antialias: true,
@@ -165,343 +150,11 @@ function init() {
 
   videoTexture = new THREE.VideoTexture(video);
   checkVideoTexture = watchVideoTexture(video, videoTexture);
-  const material = new THREE.MeshBasicMaterial({ map: videoTexture });
-
-  // screen mode
-  const geometryScreen = new THREE.PlaneGeometry(120, 120);
-  meshForScreenMode = new THREE.Mesh(geometryScreen, material);
-  meshForScreenMode.visible = false;
-  scene.add(meshForScreenMode);
-  meshForScreenMode.position.setZ(-240);
-  meshForScreenMode.position.setY(CAMERAPOSITIONY);
-  meshForScreenMode.scale.x = 1.5;
-
-  /////// EYES
-  const geometryLeftSBS = new THREE.SphereGeometry(
-    120,
-    60,
-    40,
-    Math.PI,
-    Math.PI
+  screens = createScreenMeshes(
+    scene,
+    new THREE.MeshBasicMaterial({ map: videoTexture }),
+    CAMERAPOSITIONY
   );
-  // invert the geometry on the x-axis so that all of the faces point inward
-  geometryLeftSBS.scale(-1, 1, 1);
-  const geometryLeftTB = new THREE.SphereGeometry(
-    120,
-    60,
-    40,
-    (Math.PI / 4) * 3,
-    (Math.PI / 2) * 3
-  );
-  geometryLeftTB.scale(-1, 1, 1);
-  const geometryRightSBS = geometryLeftSBS.clone();
-  const geometryRightTB = geometryLeftTB.clone();
-  const geometryLeftTBScreen = new THREE.PlaneGeometry(120, 120);
-  const geometryRightTBScreen = geometryLeftTBScreen.clone();
-  const geometryLeft360 = new THREE.SphereGeometry(240, 120, 80, Math.PI / 2);
-  geometryLeft360.scale(-1, 1, 1);
-  const geometryRight360 = geometryLeft360.clone();
-
-  // 2D
-  const geometryMesh1802D = geometryLeftSBS.clone();
-  const geometryMesh3602D = geometryLeft360.clone();
-
-  mesh1802D = new THREE.Mesh(geometryMesh1802D, material);
-  mesh1802D.visible = false;
-  mesh1802D.position.setZ(-120);
-  scene.add(mesh1802D);
-
-  mesh3602D = new THREE.Mesh(geometryMesh3602D, material);
-  mesh3602D.visible = false;
-  mesh3602D.position.setZ(-120);
-  scene.add(mesh3602D);
-
-  //// left eye
-  // SBS
-  const uvsLeftSBS = geometryLeftSBS.attributes.uv.array;
-  for (let i = 0; i < uvsLeftSBS.length; i += 2) {
-    uvsLeftSBS[i] *= 0.5;
-  }
-
-  meshLeftSBS = new THREE.Mesh(geometryLeftSBS, material);
-  meshLeftSBS.layers.set(1); // display in left eye only
-  meshLeftSBS.visible = false;
-  meshLeftSBS.position.setZ(-120);
-  scene.add(meshLeftSBS);
-
-  // mesh for 2d mode
-
-  mesh2dSBS = meshLeftSBS.clone();
-  mesh2dSBS.layers.set(2);
-  mesh2dSBS.visible = false;
-  scene.add(mesh2dSBS);
-
-  // TB
-  const uvsLeftTB = geometryLeftTB.attributes.uv.array;
-  for (let i = 1; i < uvsLeftTB.length; i += 2) {
-    uvsLeftTB[i] *= 0.5;
-    uvsLeftTB[i] += 0.5;
-  }
-
-  meshLeftTB = new THREE.Mesh(geometryLeftTB, material);
-  meshLeftTB.layers.set(1); // display in left eye only
-  meshLeftTB.visible = false;
-  meshLeftTB.position.setZ(-120);
-  scene.add(meshLeftTB);
-
-  // mesh for 2d mode
-
-  mesh2dTB = meshLeftTB.clone();
-  mesh2dTB.layers.set(2);
-  mesh2dTB.visible = false;
-  scene.add(mesh2dTB);
-
-  // 360
-  const uvsLeft360 = geometryLeft360.attributes.uv.array;
-  for (let i = 1; i < uvsLeft360.length; i += 2) {
-    uvsLeft360[i] *= 0.5;
-    uvsLeft360[i] += 0.5;
-  }
-
-  meshLeft360 = new THREE.Mesh(geometryLeft360, material);
-  meshLeft360.layers.set(1); // display in left eye only
-  meshLeft360.visible = false;
-  meshLeft360.position.setZ(-120);
-  scene.add(meshLeft360);
-
-  // mesh for 2d mode
-
-  mesh2d360 = meshLeft360.clone();
-  mesh2d360.layers.set(2);
-  mesh2d360.visible = false;
-  scene.add(mesh2d360);
-
-  // TBScreen
-  const uvsLeftTBScreen = geometryLeftTBScreen.attributes.uv.array;
-  for (let i = 1; i < uvsLeftTBScreen.length; i += 2) {
-    uvsLeftTBScreen[i] *= 0.5;
-    uvsLeftTBScreen[i] += 0.5;
-  }
-
-  meshLeftTBScreen = new THREE.Mesh(geometryLeftTBScreen, material);
-  meshLeftTBScreen.layers.set(1); // display in left eye only
-  meshLeftTBScreen.visible = false;
-  meshLeftTBScreen.position.setZ(-240);
-  meshLeftTBScreen.position.setY(CAMERAPOSITIONY);
-  scene.add(meshLeftTBScreen);
-
-  // mesh for 2d mode
-
-  mesh2dTBScreen = meshLeftTBScreen.clone();
-  mesh2dTBScreen.layers.set(2);
-  mesh2dTBScreen.visible = false;
-  scene.add(mesh2dTBScreen);
-
-  //// right eye
-  // SBS
-  const uvsRightSBS = geometryRightSBS.attributes.uv.array;
-
-  for (let i = 0; i < uvsRightSBS.length; i += 2) {
-    uvsRightSBS[i] *= 0.5;
-    uvsRightSBS[i] += 0.5;
-  }
-  meshRightSBS = new THREE.Mesh(geometryRightSBS, material);
-  meshRightSBS.layers.set(2); // display in right eye only
-  meshRightSBS.visible = false;
-  meshRightSBS.position.setZ(-120);
-  scene.add(meshRightSBS);
-
-  // TB
-  const uvsRightTB = geometryRightTB.attributes.uv.array;
-  for (let i = 1; i < uvsRightTB.length; i += 2) {
-    uvsRightTB[i] *= 0.5;
-  }
-
-  meshRightTB = new THREE.Mesh(geometryRightTB, material);
-  meshRightTB.layers.set(2); // display in left eye only
-  meshRightTB.visible = false;
-  meshRightTB.position.setZ(-120);
-  scene.add(meshRightTB);
-
-  // 360
-
-  const uvsRight360 = geometryRight360.attributes.uv.array;
-  for (let i = 1; i < uvsRight360.length; i += 2) {
-    uvsRight360[i] *= 0.5;
-  }
-
-  meshRight360 = new THREE.Mesh(geometryRight360, material);
-  meshRight360.layers.set(2); // display in left eye only
-  meshRight360.visible = false;
-  meshRight360.position.setZ(-120);
-  scene.add(meshRight360);
-
-  // TBScreen
-  const uvsRightTBScreen = geometryRightTBScreen.attributes.uv.array;
-  for (let i = 1; i < uvsRightTBScreen.length; i += 2) {
-    uvsRightTBScreen[i] *= 0.5;
-  }
-
-  meshRightTBScreen = new THREE.Mesh(geometryRightTBScreen, material);
-  meshRightTBScreen.layers.set(2); // display in left eye only
-  meshRightTBScreen.visible = false;
-  meshRightTBScreen.position.setZ(-240);
-  meshRightTBScreen.position.setY(CAMERAPOSITIONY);
-  scene.add(meshRightTBScreen);
-
-  ScreenManager.registerMeshPanel(
-    meshLeftSBS,
-    "meshLeftSBS",
-    "meshLeftSBS",
-    "3d",
-    "sbs",
-    "left"
-  );
-  ScreenManager.registerMeshPanel(
-    meshLeftTB,
-    "meshLeftTB",
-    "meshLeftTB",
-    "3d",
-    "tb",
-    "left"
-  );
-  ScreenManager.registerMeshPanel(
-    meshLeftTBScreen,
-    "meshLeftTBScreen",
-    "meshLeftTBScreen",
-    "3d",
-    "tb_screen",
-    "left"
-  );
-  ScreenManager.registerMeshPanel(
-    meshRightSBS,
-    "meshRightSBS",
-    "meshRightSBS",
-    "3d",
-    "sbs",
-    "right"
-  );
-  ScreenManager.registerMeshPanel(
-    meshRightTB,
-    "meshRightTB",
-    "meshRightTB",
-    "3d",
-    "tb",
-    "right"
-  );
-  ScreenManager.registerMeshPanel(
-    meshRightTBScreen,
-    "meshRightTBScreen",
-    "meshRightTBScreen",
-    "3d",
-    "tb_screen",
-    "right"
-  );
-  ScreenManager.registerMeshPanel(
-    mesh2dSBS,
-    "mesh2dSBS",
-    "mesh2dSBS",
-    "2d",
-    "sbs",
-    "right"
-  );
-  ScreenManager.registerMeshPanel(
-    mesh2dTB,
-    "mesh2dTB",
-    "mesh2dTB",
-    "2d",
-    "tb",
-    "right"
-  );
-  ScreenManager.registerMeshPanel(
-    mesh2dTBScreen,
-    "mesh2dTBScreen",
-    "mesh2dTBScreen",
-    "2d",
-    "tb_screen",
-    "right"
-  );
-  ScreenManager.registerMeshPanel(
-    meshForScreenMode,
-    "meshForScreenMode",
-    "meshForScreenMode",
-    "screen",
-    "screen",
-    "both"
-  );
-  ScreenManager.registerMeshPanel(
-    meshLeft360,
-    "meshLeft360",
-    "meshLeft360",
-    "3d",
-    "360",
-    "left"
-  );
-  ScreenManager.registerMeshPanel(
-    meshRight360,
-    "meshRight360",
-    "meshRight360",
-    "3d",
-    "360",
-    "right"
-  );
-  ScreenManager.registerMeshPanel(
-    mesh2d360,
-    "mesh2d360",
-    "mesh2d360",
-    "2d",
-    "360",
-    "right"
-  );
-  ScreenManager.registerMeshPanel(
-    mesh1802D,
-    "mesh1802D",
-    "mesh1802D",
-    "screen",
-    "sphere180",
-    "both"
-  );
-  ScreenManager.registerMeshPanel(
-    mesh3602D,
-    "mesh3602D",
-    "mesh3602D",
-    "screen",
-    "sphere360",
-    "both"
-  );
-  // register for recenter
-  ScreenManager.registerObjectToDrag(meshLeftSBS, "player", "meshes");
-  ScreenManager.registerObjectToDrag(meshLeftTB, "player", "meshes");
-  ScreenManager.registerObjectToDrag(meshRightSBS, "player", "meshes");
-  ScreenManager.registerObjectToDrag(meshRightTB, "player", "meshes");
-  ScreenManager.registerObjectToDrag(mesh2dSBS, "player", "meshes");
-  ScreenManager.registerObjectToDrag(mesh2dTB, "player", "meshes");
-  ScreenManager.registerObjectToDrag(meshForScreenMode, "player", "meshes");
-  ScreenManager.registerObjectToDrag(meshLeft360, "player", "meshes");
-  ScreenManager.registerObjectToDrag(meshRight360, "player", "meshes");
-  ScreenManager.registerObjectToDrag(mesh2d360, "player", "meshes");
-  ScreenManager.registerObjectToDrag(mesh1802D, "player", "meshes");
-  ScreenManager.registerObjectToDrag(mesh3602D, "player", "meshes");
-  ScreenManager.registerObjectToDrag(meshLeftTBScreen, "player", "meshes");
-  ScreenManager.registerObjectToDrag(meshRightTBScreen, "player", "meshes");
-  ScreenManager.registerObjectToDrag(mesh2dTBScreen, "player", "meshes");
-  meshes = {
-    meshLeftSBS: meshLeftSBS,
-    meshRightSBS: meshRightSBS,
-    meshLeftTB: meshLeftTB,
-    meshRightTB: meshRightTB,
-    mesh2dSBS: mesh2dSBS,
-    mesh2dTB: mesh2dTB,
-    meshForScreenMode: meshForScreenMode,
-    meshLeft360: meshLeft360,
-    meshRight360: meshRight360,
-    mesh2d360: mesh2d360,
-    mesh1802D: mesh1802D,
-    mesh3602D: mesh3602D,
-    meshLeftTBScreen: meshLeftTBScreen,
-    meshRightTBScreen: meshRightTBScreen,
-    mesh2dTBScreen: mesh2dTBScreen,
-  };
 
   //////////
   // Light
@@ -705,10 +358,10 @@ export function requestVideoPlayback(source, screenType) {
 export function playCatalogueVideo(file) {
   const aspect = (file.frame_width ?? 1) / (file.frame_height ?? 1);
   if (file.screen_type === "screen") {
-    scaleScreenMesh(aspect);
+    screens.setScreenAspect(aspect);
   }
   if (file.screen_type === "tb_screen") {
-    scaleTBScreenMesh(aspect);
+    screens.setTBScreenAspect(aspect);
   }
   requestVideoPlayback(file.src, file.screen_type);
 }
@@ -742,16 +395,6 @@ function isPendingVideoPlaybackCurrent() {
   );
 }
 
-function showMeshes3D() {
-  meshLeftSBS.visible = true;
-  meshRightSBS.visible = true;
-}
-
-function hideMeshes() {
-  for (let mesh in meshes) {
-    meshes[mesh].visible = false;
-  }
-}
 
 // Handle resizing the viewport
 
@@ -771,7 +414,7 @@ export function playbackChange(is_active = false, screen_type = null) {
   switch (is_active) {
     case true:
       playbackIsActive = true;
-      showMeshes3D();
+      screens.showDefault();
       if (screen_type !== null) {
         ScreenManager.switchModeVRScreen(screen_type);
       }
@@ -785,7 +428,7 @@ export function playbackChange(is_active = false, screen_type = null) {
     default:
     case false:
       playbackIsActive = false;
-      hideMeshes();
+      screens.hideAll();
       ScreenManager.resetZoomPosition();
       break;
   }
@@ -1035,14 +678,6 @@ function raycast() {
   }, null);
 }
 
-export function scaleScreenMesh(x_scale) {
-  meshForScreenMode.scale.x = x_scale;
-}
-export function scaleTBScreenMesh(x_scale) {
-  mesh2dTBScreen.scale.x = x_scale;
-  meshLeftTBScreen.scale.x = x_scale;
-  meshRightTBScreen.scale.x = x_scale;
-}
 
 if (WebGL.isWebGL2Available()) {
   window.addEventListener("resize", onWindowResize);

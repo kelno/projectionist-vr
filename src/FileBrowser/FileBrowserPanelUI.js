@@ -825,7 +825,7 @@ export class FileBrowserPanel {
 
         MAIN.scene.add(this.draggingBox);
         this.draggingBox.position.set(0, -0.35, this.CENTERPANELZDISTANCE);
-        this.draggingBox.tooltip = "Hold to move";
+        this.draggingBox.tooltip = "Move the library";
         this.draggingBox.setupState({
             state: "selected",
             onSet: () => {

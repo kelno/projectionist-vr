@@ -7,7 +7,6 @@ export default class PanelsList {
         this.playMenuPanel = new Panels();
         this.meshes = new Panels();
         this.fileBrowserPanel = new Panels();
-        this.sourcesSelectorPanel = new Panels();
     }
 
     addPanel(ref, group) {

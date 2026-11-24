@@ -1,7 +1,5 @@
 {
     "en": {
-        "parsing_failed": "Failed parsing json file, check console for details.",
-        "no_video_sources": "No video sources defined.",
         "top_bottom": "Top-Bottom",
         "top_bottom_360": "Top-Bottom 360",
         "side_by_side": "Side-By-Side",
@@ -14,9 +12,6 @@
         "video_not_found": "Video file not found.",
         "previous_page": "Previous Page",
         "next_page": "Next Page",
-        "refresh": "Refresh",
-        "close": "Close",
-        "sources": "Sources",
         "controls": "Controls",
         "no_next_video": "This is the last video in this list.",
         "no_previous_video": "This is the first video in this list.",

@@ -4,7 +4,6 @@ import { playerConfig } from "../playerConfig.js";
 import { loadPreference, savePreference } from "../browserPreferences.mjs";
 
 const ZOOM_PREFERENCE = "zoom";
-const LEGACY_ZOOM_STORAGE_KEY = "web-vr-video-player.zoom";
 const MAX_ZOOM = 180;
 
 function clampZoom(value) {
@@ -13,9 +12,7 @@ function clampZoom(value) {
 }
 
 function loadSavedZoom() {
-    const savedZoom = loadPreference(ZOOM_PREFERENCE, {
-        legacyStorageKey: LEGACY_ZOOM_STORAGE_KEY,
-    });
+    const savedZoom = loadPreference(ZOOM_PREFERENCE);
     return savedZoom === null ? null : clampZoom(savedZoom);
 }
 
@@ -58,7 +55,6 @@ export function vrsessionend() {
     resetPosition("cameras");
     resetPosition("playMenuPanel");
     resetPosition("fileBrowserPanel");
-    resetPosition("sourcesSelectorPanel");
     resetPosition("meshes");
     setZoom(zoomInUse, false);
 }

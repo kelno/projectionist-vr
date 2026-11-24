@@ -12,9 +12,6 @@ import { FileBrowserPanel } from "./FileBrowser/FileBrowserPanelUI.js";
 import * as ScreenManager from "./ScreenManager/ScreenManager.js";
 import * as UI from "./UI.js";
 import * as Helpers from "./Helpers.js";
-import SourcesSelectorPanel from "./sourceSelector.js";
-
-import { JsonLoader } from "./jsonLoader.js";
 import { watchVideoTexture } from "./videoTextureWatchdog.mjs";
 import {
   GRIP_LIBRARY_CONTROLS,
@@ -40,7 +37,6 @@ export let scene,
   videoTexture,
   playMenuPanel,
   fileBrowserPanel,
-  sourcesSelectorPanel,
   hiddenSphere;
 export let camToSave = {};
 
@@ -53,7 +49,7 @@ let pendingVideoPlayback = null;
 const CAMERAPOSITIONY = 1.6;
 
 function init() {
-  const libraryLoading = loadJsonLoader();
+  const libraryLoading = loadCatalogue();
 
   ////////////////////////
   //  Basic Three Setup
@@ -229,40 +225,28 @@ function init() {
   // FILES
 
   fileBrowserPanel = new FileBrowserPanel({});
-  sourcesSelectorPanel = new SourcesSelectorPanel(Extensions.registered);
-
-  //
 
   setTimeout(setLoop, 500);
 
   // Say the library is loading, then open it as soon as files.json arrives.
-  sourcesSelectorPanel.sourcesSelectorContainer.visible = false;
   showPopupMessage(Helpers.getWordFromLang("loading_library"), 0);
   Promise.all([
     libraryLoading,
     fileBrowserPanel.defaultVideoThumbnailReady,
-  ]).then(([jsonLoader]) => {
+  ]).then(([catalogue]) => {
     fileBrowserPanel.libraryLoading = false;
-    if (jsonLoader.status !== "success") {
+    if (catalogue === null) {
       showPopupMessage(Helpers.getWordFromLang("library_load_failed"), 0);
       return;
     }
     hidePopupMessage();
-    sourcesSelectorPanel.refreshSources();
-    if (sourcesSelectorPanel.sources.length === 1) {
-      selectFirst();
-    } else {
-      sourcesSelectorPanel.showSourcesSelectorPanel();
-    }
+    fileBrowserPanel.loadCatalogue(catalogue);
+    fileBrowserPanel.showFileMenuPanel();
   });
 }
 
 function setLoop() {
   renderer.setAnimationLoop(loop);
-}
-
-function selectFirst() {
-  sourcesSelectorPanel.selectFirstSourceIfOnlyOneAvailable();
 }
 
 export function showPopupMessage(message, duration = 4000) {
@@ -525,15 +509,17 @@ if (WebGL.isWebGL2Available()) {
   document.body.appendChild(warning);
 }
 
-let Extensions = { registered: [] };
-
-export default function registerExtension(name) {
-  Extensions.registered.push(name);
-}
-
-async function loadJsonLoader() {
-  const jsonFile = "files.json";
-  const jsonLoader = new JsonLoader(jsonFile);
-  await jsonLoader.load();
-  return jsonLoader;
+// The catalogue (files.json, beside the page), or null when it can't be
+// loaded.
+async function loadCatalogue() {
+  try {
+    const response = await fetch("files.json");
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("The catalogue could not be loaded:", error);
+    return null;
+  }
 }

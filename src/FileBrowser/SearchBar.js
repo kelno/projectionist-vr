@@ -93,12 +93,18 @@ export class SearchBar {
         return this.keyboard.visible;
     }
 
-    // The bar, the X when it shows, and the keys while typing. The X comes
-    // before the bar: the bar's hit includes its children, so both are hit at
-    // the same distance, and the first one listed wins.
+    // The bar, the X when it shows, and the keys of the keyboard's current
+    // page while typing. The other pages' keys must stay out: three.js still
+    // raycasts objects detached from the scene, so a hidden letter key would
+    // take a click meant for the symbol key in its place. The X comes before
+    // the bar: the bar's hit includes its children, so both are hit at the
+    // same distance, and the first one listed wins.
     targets() {
+        const keys = this.isTyping
+            ? this.keys.filter((key) => this.keyboard.getObjectById(key.id))
+            : [];
         return [
-            ...(this.isTyping ? this.keys : []),
+            ...keys,
             ...(this.phrase !== "" ? [this.clearButton] : []),
             this.bar,
         ];
@@ -209,6 +215,7 @@ export class SearchBar {
         switch (info.command) {
             case "switch":
                 keyboard.setNextPanel();
+                this.onTargetsChange();
                 break;
             case "switch-set":
                 keyboard.setNextCharset();

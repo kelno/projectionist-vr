@@ -8,7 +8,10 @@ python scripts/generate_json.py config.ini
 ```
 
 The generator creates one category for each video directory and uses the
-directory name as its label. Generated entries default to `sbs`. To use another
+directory name as its label. A video's label is its file name without the
+extension, with `_` and `+` read as spaces; `name_prefixes` in `config.ini`
+lists text to cut from the start of file names, such as a site's or a
+studio's name. Generated entries default to `sbs`. To use another
 projection or stereo layout, edit an entry’s `screen_type` in `files.json`, or
 provide a catalogue from another source.
 

@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from unittest import mock
 
-from generate_json import generate_category_entries, join_url_prefix, url_for_file, write_catalogue
+from generate_json import clean_filename, generate_category_entries, join_url_prefix, parse_name_prefixes, url_for_file, write_catalogue
 from generate_thumbs import generate_thumbnails
 from library_store import LibraryStore
 
@@ -77,6 +77,20 @@ class GenerateCatalogueTests(unittest.TestCase):
             count = write_catalogue({"!Uncategorized": []}, output)
             self.assertEqual(count, 0)
             self.assertEqual(json.loads(output.read_text(encoding="utf-8")), {"videos": [{"name": "!Uncategorized", "list": []}]})
+
+
+class NameTests(unittest.TestCase):
+    def test_a_name_loses_its_extension_and_separators(self):
+        self.assertEqual(clean_filename("my_holiday+trip 4k.mp4"), "My Holiday Trip 4k")
+
+    def test_configured_prefixes_are_cut_with_their_spaces(self):
+        prefixes = parse_name_prefixes('\n    "Studio - "\n    Site.com_\n')
+        self.assertEqual(prefixes, ("Studio - ", "Site.com_"))
+        self.assertEqual(clean_filename("Studio - beach day.mp4", prefixes), "Beach Day")
+        self.assertEqual(clean_filename("Site.com_beach_day.mp4", prefixes), "Beach Day")
+
+    def test_no_prefix_is_cut_unless_configured(self):
+        self.assertEqual(clean_filename("Studio - beach day.mp4"), "Studio - Beach Day")
 
 
 class StoreTests(unittest.TestCase):

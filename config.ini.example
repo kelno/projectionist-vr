@@ -4,6 +4,11 @@ videos_path=/mnt/hdd/videos
 ; thumbnails_path holds the thumbnails, named by each video's fingerprint, with
 ; media.json and fingerprints.json beside them.
 thumbnails_path=/mnt/hdd/thumbnails
+; Optional: text to cut from the start of video file names when they become
+; library labels, one per line, in double quotes to keep a space at either end.
+;name_prefixes=
+;    "Studio - "
+;    Site.com_
 
 [web]
 ; Browser and Nginx URL contract. These values contain no local filesystem paths.

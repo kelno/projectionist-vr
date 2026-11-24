@@ -383,7 +383,9 @@ function createGripPopups() {
   for (const popup of Object.values(gripPopups)) {
     popup.scale.setScalar(0.15);
     popup.position.set(0, 0.12, 0.02);
-    popup.rotation.x = -0.7;
+    // Tilted back to face the eyes with the hand held level: at -0.7 the
+    // owner had to dip their hand to read it, so it's 45° further back.
+    popup.rotation.x = -0.7 - Math.PI / 4;
     popup.visible = false;
   }
 }

@@ -18,7 +18,30 @@ const roots = new Set<Container>();
 // The player's own MSDF Roboto, the one three-mesh-ui uses, with its image's
 // address from the build. uikit's bundled Roboto would add about 400 KB to the
 // bundle, in four weights but not the regular one, with no more accents.
-const roboto = { normal: { ...FontJSON, info: { ...FontJSON.info, outline: 0 }, pages: [FontImage] } };
+// The font has no space, which three-mesh-ui handled itself and uikit takes
+// from the font: an empty glyph a quarter of the font's size wide, as in
+// Roboto, stands in for it.
+const SPACE = {
+    id: 32,
+    index: 0,
+    char: " ",
+    width: 0,
+    height: 0,
+    xoffset: 0,
+    yoffset: 0,
+    chnl: 15,
+    x: 0,
+    y: 0,
+    page: 0,
+};
+const roboto = {
+    normal: {
+        ...FontJSON,
+        info: { ...FontJSON.info, outline: 0 },
+        chars: [...FontJSON.chars, { ...SPACE, xadvance: Math.round(FontJSON.info.size / 4) }],
+        pages: [FontImage],
+    },
+};
 
 export function setupUikit(renderer: WebGLRenderer): void {
     // Without these, content clipped by its parent draws outside it, and

@@ -1,6 +1,6 @@
 # Projectionist
 
-*Since it was forked, this project has been vibe-coded: its code and docs are written by Claude, an AI.*
+*Vibe-coded since the fork: designed and tested by its maintainer, written by Claude, an AI.*
 
 Projectionist is a video player for VR headsets that runs in the headset's browser, for your own library of 180° and 360° videos. You serve a folder of videos from your own server, open the player's page in the headset, and browse and play them in VR. Nothing is uploaded anywhere, and there is no app to install on the headset.
 

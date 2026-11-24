@@ -27,21 +27,13 @@ A to Z or Z to A, newest or oldest first. Names sort as people read them, so
 "Part 2" comes before "Part 10". The current order is highlighted, and a click
 outside the menu closes it.
 
-![On-screen keyboard](https://github.com/michal-repo/web_vr_video_player/blob/main/examples/Screenshot_VR_player_4_1.png?raw=true)
-
 ### Reposition views
 
 In the Folders view, hold the trigger and drag the bottom bar to reposition it.
 
-![Reposition folders](https://github.com/michal-repo/web_vr_video_player/blob/main/examples/Screenshot_VR_player_6.png?raw=true)
-
 In Player view, the same gesture repositions the controls and video spheres.
 You can instead reposition only the player controls. Controls and spheres reset
 to their default position when you exit the current video.
-
-![Reposition player](https://github.com/michal-repo/web_vr_video_player/blob/main/examples/Screenshot_VR_player_7.png?raw=true)
-
-![Reposition controls](https://github.com/michal-repo/web_vr_video_player/blob/main/examples/Screenshot_VR_player_8.png?raw=true)
 
 ## Controls
 
@@ -70,7 +62,8 @@ are connected, pull the trigger on the other one to point with it instead.
 - Trigger on the video: show or hide the player controls.
 - The gear opens the settings window: screen mode, zoom and tilt, and Media
   info, which shows the video's resolution, codecs, frame rate, audio,
-  duration, size and bitrate from the catalogue. The arrow at the top left goes
+  duration, size and bitrate from the catalogue, and in red when the video
+  starts slowly for lack of fast start. The arrow at the top left goes
   back a page; a click anywhere outside the window closes it.
 - Grip + thumbstick up or down: tilt the screen.
 - Grip + thumbstick left or right: previous or next video in the library's
@@ -83,8 +76,8 @@ are connected, pull the trigger on the other one to point with it instead.
 
 ## Screenshots
 
-![Library view](https://github.com/michal-repo/web_vr_video_player/blob/main/examples/Screenshot_VR_player_1.png?raw=true)
+![The library](images/library.png)
 
-![Player view](https://github.com/michal-repo/web_vr_video_player/blob/main/examples/Screenshot_VR_player_2.png?raw=true)
+![The player controls and settings](images/player.png)
 
-![Playback controls](https://github.com/michal-repo/web_vr_video_player/blob/main/examples/Screenshot_VR_player_3.png?raw=true)
+![The Controls panel](images/controls.png)

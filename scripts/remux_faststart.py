@@ -11,59 +11,18 @@ conversion. No command in this script re-encodes media.
 from __future__ import annotations
 
 import argparse
-import io
 import json
 import os
 from pathlib import Path
 import shutil
-import struct
 import subprocess
 import sys
-from typing import BinaryIO
+
+from mp4_layout import needs_faststart
 
 
 VIDEO_SUFFIXES = {".mkv", ".mp4"}
 MP4_SUBTITLE_CODECS = {"mov_text"}
-
-
-def find_top_level_boxes(stream: BinaryIO) -> list[tuple[str, int, int]]:
-    """Return (type, offset, size) for valid top-level ISO BMFF boxes."""
-    boxes: list[tuple[str, int, int]] = []
-    stream.seek(0, io.SEEK_END)
-    file_size = stream.tell()
-    stream.seek(0)
-
-    while stream.tell() < file_size:
-        offset = stream.tell()
-        header = stream.read(8)
-        if len(header) != 8:
-            raise ValueError(f"Truncated box header at byte {offset}.")
-        size, raw_type = struct.unpack(">I4s", header)
-        box_type = raw_type.decode("ascii", errors="replace")
-        header_size = 8
-        if size == 1:
-            extended_size = stream.read(8)
-            if len(extended_size) != 8:
-                raise ValueError(f"Truncated extended size at byte {offset}.")
-            size = struct.unpack(">Q", extended_size)[0]
-            header_size = 16
-        elif size == 0:
-            size = file_size - offset
-        if size < header_size or offset + size > file_size:
-            raise ValueError(f"Invalid {box_type!r} box size at byte {offset}.")
-        boxes.append((box_type, offset, size))
-        stream.seek(offset + size)
-    return boxes
-
-
-def needs_faststart(path: Path) -> bool:
-    """Return whether an MP4 stores moov after mdat."""
-    with path.open("rb") as stream:
-        box_types = [box_type for box_type, _, _ in find_top_level_boxes(stream)]
-    try:
-        return box_types.index("moov") > box_types.index("mdat")
-    except ValueError as error:
-        raise ValueError("Missing required moov or mdat box.") from error
 
 
 def probe_streams(path: Path, ffprobe: str) -> list[dict[str, str]]:

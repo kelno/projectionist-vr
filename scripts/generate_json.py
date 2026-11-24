@@ -4,6 +4,10 @@
 Each video's thumbnail and media info come from the store described in
 library_store.py, by the video's fingerprint, so they follow a moved or
 renamed video. FFprobe runs only for content the store has no media info for.
+
+MP4s that keep their index after the video data start slowly in the browser
+(mp4_layout.py): the media info records it as `faststart`, and the run ends by
+listing them, to remux with remux_faststart.py.
 """
 
 from __future__ import annotations
@@ -20,6 +24,7 @@ import sys
 from urllib.parse import quote
 
 from library_store import LibraryStore, iter_videos, write_json_atomic
+from mp4_layout import BOX_CONTAINER_SUFFIXES, needs_faststart
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -119,6 +124,26 @@ def media_from_store(
     return media
 
 
+def check_faststart(video_path: Path, media: dict[str, object] | None) -> bool | None:
+    """Return whether the video keeps its index before the video data, or None when that doesn't apply or can't be read.
+
+    The answer is kept in the stored media info, when there is one: it follows
+    the content, like the rest, so each video is read once.
+    """
+    if video_path.suffix.lower() not in BOX_CONTAINER_SUFFIXES:
+        return None
+    if media is not None and "faststart" in media:
+        return bool(media["faststart"])
+    try:
+        faststart = not needs_faststart(video_path)
+    except (OSError, ValueError) as error:
+        print(f"WARNING: cannot tell where {video_path} keeps its index: {error}", file=sys.stderr)
+        return None
+    if media is not None:
+        media["faststart"] = faststart
+    return faststart
+
+
 def url_for_file(prefix: str, relative_path: Path) -> str:
     """Join a configured URL prefix to a safely escaped library-relative path."""
     if not prefix.startswith("/"):
@@ -164,11 +189,13 @@ def generate_category_entries(
     config: configparser.ConfigParser,
     store: LibraryStore,
     probe_media: bool = True,
+    slow_start: list[Path] | None = None,
 ) -> dict[str, list[dict]]:
     """Build category entries using media roots and server URL prefixes only.
 
     Thumbnails and media info come from the store, which gains the media info
-    of newly probed videos and the fingerprints of new or changed files.
+    of newly probed videos and the fingerprints of new or changed files. The
+    MP4s that start slowly are added to `slow_start`, if given.
     """
     videos_dir = Path(config["library"]["videos_path"])
     videos_url_prefix, thumbnails_url_prefix = url_prefixes(config)
@@ -193,8 +220,13 @@ def generate_category_entries(
             if store.thumbnail_path(fingerprint).exists():
                 entry["thumbnail"] = url_for_file(thumbnails_url_prefix, Path(f"{fingerprint}.jpg"))
             media = media_from_store(store, fingerprint, video_path, probe_media)
+            faststart = check_faststart(video_path, media)
+            if faststart is False and slow_start is not None:
+                slow_start.append(video_path)
             if media:
                 entry["media"] = media
+            elif faststart is not None:
+                entry["media"] = {"faststart": faststart}
         category_map[relative_path.parent.name or "!Uncategorized"].append(entry)
     return category_map
 
@@ -239,7 +271,10 @@ def main() -> int:
         config = load_config(args.config)
         store = LibraryStore(Path(config["library"]["thumbnails_path"]))
         try:
-            category_map = generate_category_entries(config, store, probe_media=not args.no_media_info)
+            slow_start: list[Path] = []
+            category_map = generate_category_entries(
+                config, store, probe_media=not args.no_media_info, slow_start=slow_start
+            )
             if args.prune:
                 removed = store.prune()
                 print(
@@ -255,6 +290,14 @@ def main() -> int:
         return 1
     print(f"files.json created at {args.output.resolve()}")
     print(f"Found {len(category_map)} categories with {video_count} total videos")
+    if slow_start:
+        print(
+            f"WARNING: {len(slow_start)} videos keep their index at the end, so they start slowly."
+            " Remux them with: python scripts/remux_faststart.py <folder> --recursive --apply",
+            file=sys.stderr,
+        )
+        for path in slow_start:
+            print(f"  {path}", file=sys.stderr)
     return 0
 
 

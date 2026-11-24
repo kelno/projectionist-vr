@@ -7,12 +7,11 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from mp4_layout import find_top_level_boxes, needs_faststart
 from remux_faststart import (
-    find_top_level_boxes,
     find_videos,
     mkv_copy_risks,
     mkv_output_path,
-    needs_faststart,
     original_backup_path,
 )
 

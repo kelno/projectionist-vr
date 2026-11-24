@@ -1140,6 +1140,17 @@ export class FileBrowserPanel {
         return button;
     }
 
+    // The catalogue entry of a source URL, in any folder, or null.
+    fileForSource(source) {
+        for (const folder of this.VIDEOS) {
+            const file = folder.list.find((entry) => entry.src === source);
+            if (file) {
+                return file;
+            }
+        }
+        return null;
+    }
+
     adjacentFile(offset) {
         return adjacentVideo(this.FILES, MAIN.video.getAttribute("src"), offset);
     }

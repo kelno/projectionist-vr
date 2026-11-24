@@ -10,6 +10,7 @@ from datetime import datetime
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 from urllib.parse import quote
 
@@ -44,6 +45,87 @@ def get_file_timestamps(filepath: Path) -> dict[str, str]:
     }
 
 
+def parse_media_info(probe: dict, size: int) -> dict[str, object]:
+    """Pick what the player's media info page shows from ffprobe's JSON output."""
+    streams = probe.get("streams", [])
+    video = next((stream for stream in streams if stream.get("codec_type") == "video"), {})
+    audio = next((stream for stream in streams if stream.get("codec_type") == "audio"), {})
+    media: dict[str, object] = {"size": size}
+    if video:
+        media["width"] = video.get("width")
+        media["height"] = video.get("height")
+        media["video_codec"] = video.get("codec_name")
+        numerator, _, denominator = str(video.get("avg_frame_rate", "0/1")).partition("/")
+        try:
+            media["fps"] = round(float(numerator) / float(denominator or 1), 2)
+        except (ValueError, ZeroDivisionError):
+            pass
+    if audio:
+        media["audio_codec"] = audio.get("codec_name")
+        media["audio_channels"] = audio.get("channels")
+    file_format = probe.get("format", {})
+    for key, cast in (("duration", float), ("bit_rate", int)):
+        try:
+            media[key] = cast(file_format[key])
+        except (KeyError, TypeError, ValueError):
+            pass
+    return {key: value for key, value in media.items() if value not in (None, "")}
+
+
+def read_media_info(video_file: Path) -> dict[str, object] | None:
+    """Return the video's resolution, codecs and the like from ffprobe, or None when it cannot tell."""
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-loglevel", "error",
+                "-show_entries",
+                "stream=codec_type,codec_name,width,height,avg_frame_rate,channels"
+                ":format=duration,bit_rate",
+                "-output_format", "json",
+                str(video_file),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        probe = json.loads(result.stdout)
+    except (OSError, ValueError):
+        return None
+    if result.returncode != 0:
+        return None
+    return parse_media_info(probe, video_file.stat().st_size)
+
+
+def load_previous_media(output_path: Path) -> dict[str, dict]:
+    """Return the previous catalogue's entries by source URL, to reuse their media info."""
+    try:
+        catalogue = json.loads(output_path.read_text(encoding="utf-8"))
+        return {
+            entry["src"]: entry
+            for category in catalogue["videos"]
+            for entry in category["list"]
+            if "media" in entry
+        }
+    except (OSError, ValueError, KeyError, TypeError):
+        return {}
+
+
+def media_for(video_path: Path, previous_entry: dict | None, epoch: str) -> dict[str, object] | None:
+    """Reuse the previous media info while the file is unchanged; probe it otherwise.
+
+    Probing reads the file's header, which over a network mount is slow, so a
+    regeneration only probes new or changed files.
+    """
+    if (
+        previous_entry is not None
+        and previous_entry.get("epoch") == epoch
+        and previous_entry["media"].get("size") == video_path.stat().st_size
+    ):
+        return previous_entry["media"]
+    return read_media_info(video_path)
+
+
 def url_for_file(prefix: str, relative_path: Path) -> str:
     """Join a configured URL prefix to a safely escaped library-relative path."""
     if not prefix.startswith("/"):
@@ -75,8 +157,16 @@ def load_config(config_path: Path) -> configparser.ConfigParser:
     return config
 
 
-def generate_category_entries(config: configparser.ConfigParser) -> dict[str, list[dict[str, str]]]:
-    """Build category entries using media roots and server URL prefixes only."""
+def generate_category_entries(
+    config: configparser.ConfigParser,
+    previous: dict[str, dict] | None = None,
+    probe_media: bool = True,
+) -> dict[str, list[dict]]:
+    """Build category entries using media roots and server URL prefixes only.
+
+    `previous` holds the last catalogue's entries by source URL, whose media
+    info is reused for unchanged files.
+    """
     library = config["library"]
     web = config["web"]
     videos_dir = Path(library["videos_path"])
@@ -89,7 +179,8 @@ def generate_category_entries(config: configparser.ConfigParser) -> dict[str, li
     if not videos_dir.is_dir():
         raise FileNotFoundError(f"Videos directory not found: {videos_dir}")
 
-    category_map: dict[str, list[dict[str, str]]] = defaultdict(list)
+    previous = previous or {}
+    category_map: dict[str, list[dict]] = defaultdict(list)
     for root, _, files in os.walk(videos_dir):
         root_path = Path(root)
         for filename in files:
@@ -99,9 +190,10 @@ def generate_category_entries(config: configparser.ConfigParser) -> dict[str, li
             relative_path = video_path.relative_to(videos_dir)
             thumbnail_path = (thumbnails_dir / relative_path).with_suffix(".jpg")
             category_name = root_path.name if root_path != videos_dir else "!Uncategorized"
+            src = url_for_file(videos_url_prefix, relative_path)
             entry = {
                 "name": clean_filename(filename),
-                "src": url_for_file(videos_url_prefix, relative_path),
+                "src": src,
                 "thumbnail": (
                     url_for_file(thumbnails_url_prefix, relative_path.with_suffix(".jpg"))
                     if thumbnail_path.exists()
@@ -110,11 +202,15 @@ def generate_category_entries(config: configparser.ConfigParser) -> dict[str, li
                 "screen_type": "sbs",
                 **get_file_timestamps(video_path),
             }
+            if probe_media:
+                media = media_for(video_path, previous.get(src), entry["epoch"])
+                if media:
+                    entry["media"] = media
             category_map[category_name].append(entry)
     return category_map
 
 
-def write_catalogue(category_map: dict[str, list[dict[str, str]]], output_path: Path) -> int:
+def write_catalogue(category_map: dict[str, list[dict]], output_path: Path) -> int:
     """Write sorted catalogue data and return the number of video entries."""
     video_data = {
         "videos": [
@@ -139,13 +235,22 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_OUTPUT_PATH,
         help=f"Catalogue output path (default: {DEFAULT_OUTPUT_PATH})",
     )
+    parser.add_argument(
+        "--no-media-info",
+        action="store_true",
+        help="Skip reading resolution and codecs with ffprobe",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     try:
-        category_map = generate_category_entries(load_config(args.config))
+        category_map = generate_category_entries(
+            load_config(args.config),
+            previous=load_previous_media(args.output),
+            probe_media=not args.no_media_info,
+        )
         video_count = write_catalogue(category_map, args.output)
     except (OSError, ValueError) as error:
         print(f"ERROR: {error}", file=sys.stderr)

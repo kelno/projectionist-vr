@@ -1007,11 +1007,10 @@ function updateButtons() {
     intersect.object.uv = { x: intersect.uv.x, y: intersect.uv.y };
 
     if (selectState) {
-      if (
-        clickedButton === undefined ||
-        clickedButton == intersect.object.uuid
-      ) {
-        // Component.setState internally call component.set with the options you defined in component.setupState
+      // A press selects the component under the pointer once. Coming back
+      // over it during the same press must not fire it again: a button that
+      // opens a panel covering itself would otherwise close it at once.
+      if (clickedButton === undefined) {
         clickedButton = intersect.object.uuid;
         intersect.object.setState("selected");
       }

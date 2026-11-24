@@ -12,14 +12,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-from pathlib import Path
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 from mp4_layout import needs_faststart
-
 
 VIDEO_SUFFIXES = {".mkv", ".mp4"}
 MP4_SUBTITLE_CODECS = {"mov_text"}
@@ -55,10 +53,7 @@ def mkv_copy_risks(streams: list[dict[str, str]]) -> list[str]:
 
 def stream_signature(streams: list[dict[str, str]]) -> list[tuple[str, str]]:
     """Create a stable comparison value for expected media streams."""
-    return sorted(
-        (stream.get("codec_type", "unknown"), stream.get("codec_name", "unknown"))
-        for stream in streams
-    )
+    return sorted((stream.get("codec_type", "unknown"), stream.get("codec_name", "unknown")) for stream in streams)
 
 
 def remux_to_mp4(
@@ -76,12 +71,8 @@ def remux_to_mp4(
         raise FileExistsError(f"Temporary output already exists: {temporary}")
     input_streams = probe_streams(source, ffprobe)
     stream_map = ["-map", "0:v?", "-map", "0:a?"] if force else ["-map", "0"]
-    expected = (
-        [stream for stream in input_streams if stream.get("codec_type") in {"video", "audio"}]
-        if force else input_streams
-    )
-    command = [ffmpeg, "-hide_banner", "-loglevel", "error", "-i", str(source), *stream_map,
-               "-c", "copy", "-movflags", "+faststart", str(temporary)]
+    expected = [stream for stream in input_streams if stream.get("codec_type") in {"video", "audio"}] if force else input_streams
+    command = [ffmpeg, "-hide_banner", "-loglevel", "error", "-i", str(source), *stream_map, "-c", "copy", "-movflags", "+faststart", str(temporary)]
     try:
         subprocess.run(command, check=True)
         if needs_faststart(temporary):
@@ -91,12 +82,12 @@ def remux_to_mp4(
         if original_backup is not None:
             if original_backup.exists():
                 raise FileExistsError(f"Original backup already exists: {original_backup}")
-            os.replace(source, original_backup)
+            source.replace(original_backup)
         try:
-            os.replace(temporary, output)
+            temporary.replace(output)
         except OSError:
             if original_backup is not None and original_backup.exists() and not source.exists():
-                os.replace(original_backup, source)
+                original_backup.replace(source)
             raise
     finally:
         temporary.unlink(missing_ok=True)

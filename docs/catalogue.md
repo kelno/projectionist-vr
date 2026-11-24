@@ -1,7 +1,7 @@
 # Catalogue and video formats
 
 The player reads a locally generated `files.json` catalogue. Configure
-`config.ini`, then run `generate_json.sh` or:
+`config.ini`, then run:
 
 ```powershell
 python scripts/generate_json.py config.ini

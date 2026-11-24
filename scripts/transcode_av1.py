@@ -17,12 +17,10 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-from pathlib import Path
 import shutil
 import subprocess
 import sys
-
+from pathlib import Path
 
 VIDEO_SUFFIXES = {".mkv", ".mov", ".mp4", ".webm"}
 TEMPORARY_MARKER = ".av1-hevc-tmp"
@@ -34,9 +32,16 @@ DURATION_TOLERANCE_SECONDS = 1.0
 def probe(path: Path, ffprobe: str) -> dict:
     """Return ffprobe's stream and format description of a file."""
     result = subprocess.run(
-        [ffprobe, "-v", "error", "-show_entries",
-         "stream=index,codec_type,codec_name,pix_fmt:stream_disposition=attached_pic:format=duration",
-         "-of", "json", str(path)],
+        [
+            ffprobe,
+            "-v",
+            "error",
+            "-show_entries",
+            "stream=index,codec_type,codec_name,pix_fmt:stream_disposition=attached_pic:format=duration",
+            "-of",
+            "json",
+            str(path),
+        ],
         check=True,
         capture_output=True,
         text=True,
@@ -50,6 +55,14 @@ def main_video_stream(info: dict) -> dict | None:
         if stream.get("codec_type") == "video" and not stream.get("disposition", {}).get("attached_pic"):
             return stream
     return None
+
+
+def required_video_stream(info: dict) -> dict:
+    """The main video stream of a file already known to have one."""
+    video = main_video_stream(info)
+    if video is None:
+        raise RuntimeError("No video stream.")
+    return video
 
 
 def audio_streams(info: dict) -> list[dict]:
@@ -81,13 +94,16 @@ def find_files(directory: Path) -> tuple[list[Path], list[Path]]:
         if not path.is_file() or path.suffix.lower() not in VIDEO_SUFFIXES:
             continue
         (leftovers if is_temporary(path) else videos).append(path)
-    key = lambda path: str(path).lower()
+
+    def key(path):
+        return str(path).lower()
+
     return sorted(videos, key=key), sorted(leftovers, key=key)
 
 
 def build_command(source: Path, temporary: Path, info: dict, ffmpeg: str, crf: int, preset: str) -> list[str]:
     """Build the ffmpeg command that re-encodes video and keeps compatible audio."""
-    video = main_video_stream(info)
+    video = required_video_stream(info)
     ten_bit = "10" in (video.get("pix_fmt") or "")
     audio = audio_streams(info)
     audio_args = ["-map", "0:a?"]
@@ -96,12 +112,31 @@ def build_command(source: Path, temporary: Path, info: dict, ffmpeg: str, crf: i
     else:
         audio_args += ["-c:a", "aac", "-b:a", "192k"]
     return [
-        ffmpeg, "-hide_banner", "-loglevel", "error", "-stats", "-nostdin",
-        "-i", str(source),
-        "-map", f"0:{video['index']}", *audio_args,
-        "-c:v", "libx265", "-crf", str(crf), "-preset", preset, "-x265-params", "log-level=error",
-        "-pix_fmt", "yuv420p10le" if ten_bit else "yuv420p",
-        "-tag:v", "hvc1", "-movflags", "+faststart",
+        ffmpeg,
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-stats",
+        "-nostdin",
+        "-i",
+        str(source),
+        "-map",
+        f"0:{video['index']}",
+        *audio_args,
+        "-c:v",
+        "libx265",
+        "-crf",
+        str(crf),
+        "-preset",
+        preset,
+        "-x265-params",
+        "log-level=error",
+        "-pix_fmt",
+        "yuv420p10le" if ten_bit else "yuv420p",
+        "-tag:v",
+        "hvc1",
+        "-movflags",
+        "+faststart",
         str(temporary),
     ]
 
@@ -125,7 +160,7 @@ def transcode(source: Path, info: dict, args: argparse.Namespace) -> Path:
     try:
         subprocess.run(build_command(source, temporary, info, args.ffmpeg, args.crf, args.preset), check=True)
         verify_output(temporary, info, args.ffprobe)
-        os.replace(temporary, output)
+        temporary.replace(output)
     finally:
         temporary.unlink(missing_ok=True)
     if output != source:
@@ -261,4 +296,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         progress.clear()
         print("\nInterrupted. Run the same command again to resume.", file=sys.stderr)
-        raise SystemExit(130)
+        raise SystemExit(130) from None

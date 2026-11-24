@@ -16,13 +16,12 @@ The store is the thumbnails directory, kept flat:
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 import hashlib
 import json
 import os
-from pathlib import Path
 import sys
-
+from collections.abc import Iterator
+from pathlib import Path
 
 VIDEO_EXTENSIONS = (".mp4", ".mkv", ".avi", ".mov", ".webm")
 # How much of each end of a video the fingerprint reads.

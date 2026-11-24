@@ -13,10 +13,9 @@ cheap even on a cloud mount.
 from __future__ import annotations
 
 import io
-from pathlib import Path
 import struct
+from pathlib import Path
 from typing import BinaryIO
-
 
 # The containers built from boxes, where the index can be at either end.
 BOX_CONTAINER_SUFFIXES = {".mp4", ".m4v", ".mov"}

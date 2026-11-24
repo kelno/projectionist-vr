@@ -9,11 +9,11 @@
 // right turn pages, with or without the grip.
 //
 // A plays or pauses and B goes back to the library, once per press, in the
-// player. Grip + B goes back to the library at once too, and held a second
-// longer leaves VR, from the library as well.
+// player. Grip + B goes back to the library from a video, and leaves VR from
+// the library, once per press: a press that left a video must be released
+// before the next one leaves VR.
 
 export const STICK_THRESHOLD = 0.35;
-export const LEAVE_VR_HOLD_MS = 1000;
 
 // The parts of a WebXR "xr-standard" gamepad this uses.
 export function readGamepad(gamepad) {
@@ -30,9 +30,8 @@ export function createControllerInput() {
     // The thumbstick: false when centred, "up" or "down" while held there,
     // true after a left or right push until it comes back to the centre.
     let stick = false;
+    // Set by a press that acted, until A and B are both released.
     let buttonHeld = false;
-    let gripBHeldSince = null;
-    let gripBLeftVR = false;
 
     function stickActions({ grip, x, y }, playing) {
         const up = y < -STICK_THRESHOLD;
@@ -72,24 +71,11 @@ export function createControllerInput() {
         return [];
     }
 
-    function buttonActions({ grip, a, b }, playing, now) {
-        if (grip && b) {
-            const actions = [];
-            if (gripBHeldSince === null) {
-                gripBHeldSince = now;
-                if (playing && !buttonHeld) {
-                    actions.push({ type: "exitToLibrary" });
-                }
-            } else if (!gripBLeftVR && now - gripBHeldSince >= LEAVE_VR_HOLD_MS) {
-                gripBLeftVR = true;
-                actions.push({ type: "leaveVR" });
-            }
+    function buttonActions({ grip, a, b }, playing) {
+        if (grip && b && !buttonHeld) {
             buttonHeld = true;
-            return actions;
+            return [{ type: playing ? "exitToLibrary" : "leaveVR" }];
         }
-        gripBHeldSince = null;
-        gripBLeftVR = false;
-
         if (a && playing && !buttonHeld) {
             buttonHeld = true;
             return [{ type: "playPause" }];
@@ -104,8 +90,8 @@ export function createControllerInput() {
         return [];
     }
 
-    // `state` from readGamepad; `playing` when a video is shown; `now` in ms.
-    return function step(state, { playing }, now) {
-        return stickActions(state, playing) ?? buttonActions(state, playing, now);
+    // `state` from readGamepad; `playing` when a video is shown.
+    return function step(state, { playing }) {
+        return stickActions(state, playing) ?? buttonActions(state, playing);
     };
 }

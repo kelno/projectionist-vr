@@ -25,6 +25,7 @@ import hashlib
 import json
 import os
 import sys
+import time
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -33,6 +34,8 @@ VIDEO_EXTENSIONS = (".mp4", ".mkv", ".avi", ".mov", ".webm")
 SAMPLE_BYTES = 1024 * 1024
 MEDIA_FILE_NAME = "media.json"
 SEEK_FILE_NAME = "seek.json"
+# A `.partial.jpg` file younger than this may be one another run is writing: pruning leaves it.
+PARTIAL_FILE_GRACE_SECONDS = 24 * 3600
 FINGERPRINTS_FILE_NAME = "fingerprints.json"
 
 
@@ -78,9 +81,13 @@ def read_json_object(path: Path) -> dict:
 
 
 def write_json_atomic(path: Path, data: object, indent: int = 1) -> None:
-    """Write JSON through a temporary file, so that a reader never sees a half-written file."""
+    """Write JSON through a temporary file, so that a reader never sees a half-written file.
+
+    The temporary file's name holds the process id, so that two runs writing
+    the same file never share one.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    partial_path = path.with_name(f"{path.name}.partial")
+    partial_path = path.with_name(f"{path.name}.{os.getpid()}.partial")
     partial_path.write_text(json.dumps(data, indent=indent, ensure_ascii=False), encoding="utf-8")
     partial_path.replace(path)
 
@@ -123,21 +130,31 @@ class LibraryStore:
         write_json_atomic(self.directory / FINGERPRINTS_FILE_NAME, dict(sorted(self.fingerprints.items())))
         write_json_atomic(self.directory / MEDIA_FILE_NAME, dict(sorted(self.media.items())))
 
-    def save_seek(self) -> None:
-        """Write the seek thumbnails' layouts.
+    # The seek thumbnails are made by a run of hours, which a catalogue run
+    # with --prune can overlap: rather than writing back what it read at its
+    # start, each re-reads seek.json and changes only its own part, so neither
+    # undoes the other's.
 
-        Kept apart from save(): the seek thumbnails are made by a long run that
-        can overlap a catalogue run, and each must only write what it changed.
-        """
+    def add_seek(self, fingerprint: str, layout: dict) -> None:
+        """Record the layout of a fingerprint's new seek thumbnails in seek.json."""
+        self.seek = read_json_object(self.directory / SEEK_FILE_NAME)
+        self.seek[fingerprint] = layout
+        write_json_atomic(self.directory / SEEK_FILE_NAME, dict(sorted(self.seek.items())))
+
+    def remove_seek(self, keep: set[str]) -> None:
+        """Remove from seek.json every fingerprint not in `keep`."""
+        seek = read_json_object(self.directory / SEEK_FILE_NAME)
+        self.seek = {fingerprint: layout for fingerprint, layout in seek.items() if fingerprint in keep}
         write_json_atomic(self.directory / SEEK_FILE_NAME, dict(sorted(self.seek.items())))
 
     def prune(self) -> dict[str, int]:
         """Delete the thumbnails, seek thumbnails, media info and cache entries of every video not seen in this run.
 
         Return how many of each were removed. Leftover `.partial.jpg` files from
-        an interrupted thumbnail go too. The caller saves with save() and save_seek(). Refuses when no video was seen, because
-        that is more likely a missing mount than an empty library, and pruning
-        then would delete the whole store.
+        an interrupted run go too, once a day old. seek.json is written at once;
+        the caller writes the rest with save(). Refuses when no video was seen,
+        because that is more likely a missing mount than an empty library, and
+        pruning then would delete the whole store.
         """
         if not self.seen:
             raise ValueError("No videos found, so nothing was pruned: is the library mounted?")
@@ -145,14 +162,16 @@ class LibraryStore:
         removed = {"thumbnails": 0, "seek": 0, "media": 0, "paths": 0}
         for path in self.directory.glob("*.jpg"):
             fingerprint = path.name.removesuffix(".jpg").removesuffix(".seek")
-            if path.is_file() and fingerprint not in used:
-                path.unlink()
-                removed["seek" if path.name.endswith(".seek.jpg") else "thumbnails"] += 1
+            if not path.is_file() or fingerprint in used:
+                continue
+            if path.name.endswith(".partial.jpg") and time.time() - path.stat().st_mtime < PARTIAL_FILE_GRACE_SECONDS:
+                continue
+            path.unlink()
+            removed["seek" if ".seek." in path.name else "thumbnails"] += 1
         for fingerprint in [key for key in self.media if key not in used]:
             del self.media[fingerprint]
             removed["media"] += 1
-        for fingerprint in [key for key in self.seek if key not in used]:
-            del self.seek[fingerprint]
+        self.remove_seek(used)
         for key in [key for key in self.fingerprints if key not in self.seen]:
             del self.fingerprints[key]
             removed["paths"] += 1

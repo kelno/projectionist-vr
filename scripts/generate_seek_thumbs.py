@@ -4,9 +4,10 @@
 Hovering the player's seek bar shows the frame nearest the time pointed at.
 A video gets a frame every duration / 40 seconds, rounded up to 10, 15, 20,
 30 or 60 seconds: at most 40 frames for a video under 40 minutes, and one a
-minute for a longer one. Each frame is the keyframe just before its time, which ffmpeg
-reaches with a short read near that time instead of decoding the whole video:
-the library can sit on a cloud mount, where reading a whole file downloads it.
+minute for a longer one. Each frame is the keyframe at or just before its time,
+the only frame ffmpeg decodes there: a short read near that time rather than
+the whole video, since the library can sit on a cloud mount, where reading a
+whole file downloads it, and little work for a small server.
 
 The image is stored by the video's fingerprint, as `<fingerprint>.seek.jpg`,
 with its layout in `seek.json` (library_store.py); generate_json.py lists the
@@ -65,13 +66,23 @@ def tile_height(layout: str, width: int, height: int) -> int:
 
 
 def grab_frame(video_file: Path, seconds: float, video_filter: str, frame_file: Path) -> bool:
-    """Write the keyframe at or before `seconds`, filtered, to frame_file, and return whether it was written."""
+    """Write the keyframe at or before `seconds`, filtered, to frame_file, and return whether it was written.
+
+    Only keyframes are decoded (-skip_frame nokey), and the first one is kept
+    as is (-fps_mode passthrough): without that, ffmpeg would decode every
+    frame from the keyframe up to `seconds` and keep the last. One thread
+    keeps the decoder's memory low on a small server.
+    """
     result = subprocess.run(
         [
             "ffmpeg",
             "-loglevel",
             "error",
             "-nostdin",
+            "-threads",
+            "1",
+            "-skip_frame",
+            "nokey",
             "-noaccurate_seek",
             "-ss",
             f"{seconds:.3f}",
@@ -79,6 +90,8 @@ def grab_frame(video_file: Path, seconds: float, video_filter: str, frame_file: 
             str(video_file),
             "-filter:v",
             video_filter,
+            "-fps_mode",
+            "passthrough",
             "-frames:v",
             "1",
             "-y",
@@ -153,8 +166,8 @@ def generate_seek_image(video_file: Path, seek_file: Path) -> dict[str, int] | N
 def generate_seek_thumbnails(videos_path: Path, thumbnails_path: Path) -> list[Path]:
     """Generate the missing seek thumbnails into the store, and return the videos that failed.
 
-    The layouts are saved after each video, so that an interrupted run keeps
-    what it made.
+    Each layout is saved as soon as its image is made, so that an interrupted
+    run keeps what it made.
     """
     if not videos_path.is_dir():
         raise FileNotFoundError(f"Videos directory not found: {videos_path}")
@@ -179,8 +192,7 @@ def generate_seek_thumbnails(videos_path: Path, thumbnails_path: Path) -> list[P
         if layout is None:
             failed.append(video_file)
             continue
-        store.seek[fingerprint] = layout
-        store.save_seek()
+        store.add_seek(fingerprint, layout)
         created += 1
     print(f"Created seek thumbnails for {created} videos, {len(failed)} failed")
     return failed

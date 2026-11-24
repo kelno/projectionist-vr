@@ -75,6 +75,9 @@ export function createSeekPreview({
     let shownUrl: string | undefined;
     let shownTime = "";
     let texture: Texture | null = null;
+    // Counts the loads started: only the latest one's image is used, even
+    // when an older one is for the same video, left and come back to.
+    let loads = 0;
 
     // Size the card for the time alone, or for a frame of this height too.
     function layout(imageHeight: number | null): void {
@@ -101,11 +104,12 @@ export function createSeekPreview({
         texture = null;
         material.map = null;
         layout(null);
+        const thisLoad = ++loads;
         if (!seek) {
             return;
         }
         new TextureLoader().load(seek.url, (loaded) => {
-            if (shownUrl !== seek.url) {
+            if (thisLoad !== loads) {
                 loaded.dispose();
                 return;
             }
@@ -141,9 +145,12 @@ export function createSeekPreview({
             timeText.set({ content: time });
         }
         if (texture && seek) {
+            // Half a pixel in from the tile's edges, so the neighbouring
+            // tiles don't blend into its border.
             const tile = seekTile(seek, seconds);
-            texture.offset.set(...tile.offset);
-            texture.repeat.set(...tile.repeat);
+            const { width, height } = texture.image as { width: number; height: number };
+            texture.offset.set(tile.offset[0] + 0.5 / width, tile.offset[1] + 0.5 / height);
+            texture.repeat.set(tile.repeat[0] - 1 / width, tile.repeat[1] - 1 / height);
         }
 
         // Over the pointer, kept within the bar's length.

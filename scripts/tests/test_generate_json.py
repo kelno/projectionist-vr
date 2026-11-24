@@ -1,8 +1,10 @@
 import json
+import os
 import struct
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from typing import Any, ClassVar
@@ -123,7 +125,6 @@ class StoreTests(unittest.TestCase):
             categories = generate_category_entries(make_config(videos, thumbnails), store)
         removed = store.prune() if prune else None
         store.save()
-        store.save_seek()
         return categories, ffmpeg, probe, removed
 
     def make_library(self, root: Path) -> tuple[Path, Path]:
@@ -165,15 +166,20 @@ class StoreTests(unittest.TestCase):
             store = LibraryStore(thumbnails)
             for cached in store.fingerprints.values():
                 store.seek_path(cached["fingerprint"]).write_bytes(b"jpeg")
-                store.seek[cached["fingerprint"]] = {"interval": 10, "columns": 1, "count": 1}
-            store.save_seek()
+                store.add_seek(cached["fingerprint"], {"interval": 10, "columns": 1, "count": 1})
             kept = store.fingerprints["Old/clip.mp4"]["fingerprint"]
             (videos / "Old" / "other.mp4").unlink()
+            day_old = time.time() - 25 * 3600
             (thumbnails / "leftover.partial.jpg").write_bytes(b"half")
+            os.utime(thumbnails / "leftover.partial.jpg", (day_old, day_old))
+            (thumbnails / f"{kept}.seek.partial.jpg").write_bytes(b"being written")
 
             _, _, _, removed = self.run_both(videos, thumbnails, prune=True)
             self.assertEqual(removed, {"thumbnails": 2, "seek": 1, "media": 1, "paths": 1})
-            self.assertEqual(sorted(path.name for path in thumbnails.glob("*.jpg")), [f"{kept}.jpg", f"{kept}.seek.jpg"])
+            self.assertEqual(
+                sorted(path.name for path in thumbnails.glob("*.jpg")),
+                [f"{kept}.jpg", f"{kept}.seek.jpg", f"{kept}.seek.partial.jpg"],
+            )
             store = LibraryStore(thumbnails)
             self.assertEqual(list(store.media), [kept])
             self.assertEqual(list(store.seek), [kept])

@@ -21,13 +21,20 @@ from video_format import guess_screen_type
 THUMBNAIL_SEEK_SECONDS = 20.0
 # For a video too short for that, the fraction of its duration to take the frame at instead.
 SHORT_VIDEO_SEEK_FRACTION = 0.5
-# The part of the frame one eye sees, by layout (video_format.py), 512 pixels wide.
-THUMBNAIL_FILTERS = {
-    "sbs": "crop=in_w/2:in_h:0:0,scale=512:-1",
-    "tb": "crop=in_w:in_h/2:0:0,scale=512:-1",
-    "360": "crop=in_w:in_h/2:0:0,scale=512:-1",
-    "screen": "scale=512:-1",
-}
+THUMBNAIL_WIDTH = 512
+# The part of the frame one eye sees, by layout (video_format.py): the frame's
+# width and height are divided by these.
+EYE_SHARE = {"sbs": (2, 1), "tb": (1, 2), "360": (1, 2), "screen": (1, 1)}
+
+
+def eye_filter(layout: str) -> str:
+    """Return the ffmpeg filter keeping the part of the frame one eye sees, or "" for a flat video."""
+    width_share, height_share = EYE_SHARE[layout]
+    if width_share == height_share == 1:
+        return ""
+    width = "in_w" if width_share == 1 else f"in_w/{width_share}"
+    height = "in_h" if height_share == 1 else f"in_h/{height_share}"
+    return f"crop={width}:{height}:0:0,"
 
 
 def read_frame(video_file: Path) -> tuple[float | None, int | None, int | None]:
@@ -103,7 +110,7 @@ def generate_thumbnail(video_file: Path, thumb_file: Path) -> bool:
             "-i",
             str(video_file),
             "-filter:v",
-            THUMBNAIL_FILTERS[layout],
+            f"{eye_filter(layout)}scale={THUMBNAIL_WIDTH}:-1",
             "-frames:v",
             "1",
             "-q:v",

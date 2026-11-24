@@ -1,8 +1,8 @@
-# Web VR video player
+# Projectionist
 
 *Since it was forked, this project has been vibe-coded: its code and docs are written by Claude, an AI.*
 
-A video player for VR headsets that runs in the headset's browser, for your own library of 180° and 360° videos. You serve a folder of videos from your own server, open the player's page in the headset, and browse and play them in VR. Nothing is uploaded anywhere, and there is no app to install on the headset.
+Projectionist is a video player for VR headsets that runs in the headset's browser, for your own library of 180° and 360° videos. You serve a folder of videos from your own server, open the player's page in the headset, and browse and play them in VR. Nothing is uploaded anywhere, and there is no app to install on the headset.
 
 It began as a fork of [michal-repo/web_vr_video_player](https://github.com/michal-repo/web_vr_video_player) and has been largely rewritten since.
 
@@ -24,7 +24,7 @@ Tested with a Meta Quest 2 in Quest Browser. Other WebXR browsers should work, b
 
 You need a server that keeps your videos and can serve files over HTTPS (browsers only allow VR on HTTPS pages), with Python 3 and FFmpeg installed. These steps use Nginx; any web server that supports HTTP range requests works.
 
-1. Download `web_vr_video_player-<version>.tar.gz` from the [latest release](../../../releases/latest) and extract it on the server, for example to `/srv/vr-player/`. It holds the site (`dist/`), the scripts (`scripts/`) and two example configuration files.
+1. Download `projectionist-vr-<version>.tar.gz` from the [latest release](../../../releases/latest) and extract it on the server, for example to `/srv/vr-player/`. It holds the site (`dist/`), the scripts (`scripts/`) and two example configuration files.
 2. Copy `config.ini.example` to `config.ini` and set:
    - `videos_path`: the folder holding your videos, one subfolder per category;
    - `thumbnails_path`: a folder the scripts can write to, for the thumbnails and media info;

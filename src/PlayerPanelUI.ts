@@ -24,7 +24,10 @@ import MoveIcon from "../assets/icons/move.png";
 import PreviousIcon from "../assets/icons/previous.png";
 import NextIcon from "../assets/icons/next.png";
 
+import type { Object3D } from "three";
+import type { ScreenType } from "./types/catalogue.ts";
 import { PagedWindow } from "./ui/PagedWindow.ts";
+import type { Page } from "./ui/PagedWindow.ts";
 import {
     BUTTON_SIZE,
     FONT,
@@ -38,18 +41,20 @@ import {
     row,
     textButton,
 } from "./ui/kit.ts";
+import type { IconButton, Label } from "./ui/kit.ts";
 import { colour, space } from "./ui/theme.ts";
+import type { ColourName } from "./ui/theme.ts";
 import { mediaInfoLines } from "./mediaInfo.ts";
 import { shortenText } from "./font.ts";
 
 // "01:02:03" for 3723 seconds.
-function clockTime(seconds) {
+function clockTime(seconds: number): string {
     return new Date(seconds * 1000).toISOString().substring(11, 19);
 }
 
 // What the layout button shows for each video layout, in the order it steps
 // through them.
-const LAYOUTS = [
+const LAYOUTS: [ScreenType, () => string][] = [
     ["sbs", () => Helpers.getWordFromLang("side_by_side")],
     ["tb", () => Helpers.getWordFromLang("top_bottom")],
     ["360", () => Helpers.getWordFromLang("top_bottom_360")],
@@ -75,9 +80,24 @@ export class PlayerPanel {
     SETTINGS_HEIGHT = 0.85;
 
     // What can be clicked while the controls show.
-    playMenuObjsToTest = [];
+    playMenuObjsToTest: Object3D[] = [];
 
-    constructor(video) {
+    videoElement: HTMLVideoElement;
+    // Set by the build methods, which the constructor calls.
+    buttonPlay!: IconButton;
+    settingsButton!: IconButton;
+    muteButton!: IconButton;
+    timeLabel!: Text;
+    playMenuContainer!: Block;
+    progressBar!: Block;
+    seekBar!: Block;
+    draggingBox!: Block;
+    settingsWindow!: PagedWindow;
+    settingsMenuContainer!: Block;
+    stereoLabel!: Text;
+    layoutLabel!: Text;
+
+    constructor(video: HTMLVideoElement) {
         this.videoElement = video;
 
         this.buildControls();
@@ -86,7 +106,7 @@ export class PlayerPanel {
 
         // The controls and the bar under them move with the screen, and
         // alone with the move button; the settings window follows both.
-        for (const view of ["player", "playerControls"]) {
+        for (const view of ["player", "playerControls"] as const) {
             for (const panel of [this.draggingBox, this.playMenuContainer, this.settingsMenuContainer]) {
                 ScreenManager.registerObjectToDrag(panel, view, "playMenuPanel");
             }
@@ -226,8 +246,8 @@ export class PlayerPanel {
 
     // The seek bar: the part played in the accent colour, a light mark at the
     // current time; a click seeks to where it lands.
-    buildSeekBar() {
-        const part = (width, color) =>
+    buildSeekBar(): Block {
+        const part = (width: number, color: ColourName) =>
             new Block({
                 width,
                 height: this.PROGRESS_HEIGHT,
@@ -352,8 +372,8 @@ export class PlayerPanel {
         this.settingsWindow.addPage("media", this.buildMediaInfoPage(innerWidth));
     }
 
-    buildSettingsPage(width) {
-        const rowLabel = (key) =>
+    buildSettingsPage(width: number): Page {
+        const rowLabel = (key: Helpers.LangKey) =>
             label(Helpers.getWordFromLang(key), { width: 0.45, fontSize: 0.05 });
 
         const screenMode = iconButton({
@@ -437,8 +457,8 @@ export class PlayerPanel {
         this.layoutLabel.set({ content: layout[1]() });
     }
 
-    buildMediaInfoPage(width) {
-        const values = [];
+    buildMediaInfoPage(width: number): Page {
+        const values: Label[] = [];
         const rows = mediaInfoLines(null, null).map(([name]) => {
             const value = label("-", { width: width - 0.5, height: 0.09, fontSize: 0.055 });
             values.push(value);
@@ -468,7 +488,7 @@ export class PlayerPanel {
 
     // Play the next (offset 1) or previous (offset -1) video of the list the
     // library shows. The screen stays where the user put it.
-    playAdjacentVideo(offset) {
+    playAdjacentVideo(offset: number) {
         const file = MAIN.fileBrowserPanel.adjacentFile(offset);
         if (file === null) {
             MAIN.showPopupMessage(
@@ -491,7 +511,7 @@ export class PlayerPanel {
         MAIN.fileBrowserPanel.showFileMenuPanel();
     }
 
-    videoPlaybackFFRew(direction, seconds = 10) {
+    videoPlaybackFFRew(direction: "FF" | "Rew", seconds = 10) {
         if (Helpers.videoSrcExists()) {
             this.videoElement.currentTime += direction === "FF" ? seconds : -seconds;
         }

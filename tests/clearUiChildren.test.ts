@@ -3,7 +3,7 @@ import test from "node:test";
 
 import clearUiChildren from "../src/ui/clearUiChildren.ts";
 
-function createChild(name, cleared) {
+function createChild(name: string, cleared: string[]) {
     return {
         name,
         clear() {
@@ -13,12 +13,12 @@ function createChild(name, cleared) {
 }
 
 test("clears and removes every direct UI child", () => {
-    const cleared = [];
+    const cleared: string[] = [];
     const first = createChild("first", cleared);
     const second = createChild("second", cleared);
     const container = {
         children: [first, second],
-        remove(child) {
+        remove(child: { name: string; clear(): void }) {
             this.children.splice(this.children.indexOf(child), 1);
         },
     };

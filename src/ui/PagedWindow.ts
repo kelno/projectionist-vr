@@ -1,6 +1,8 @@
+import type { Object3D } from "three";
 import { Block } from "./meshUi.ts";
 
 import { column, iconButton, label, panel, row } from "./kit.ts";
+import type { IconButton, Label } from "./kit.ts";
 import { space } from "./theme.ts";
 
 import BackIcon from "../../assets/icons/left.png";
@@ -15,8 +17,34 @@ import BackIcon from "../../assets/icons/left.png";
 // parts change, so the owner can register them.
 const HEADER_BUTTON_SIZE = 0.11;
 
+export interface Page {
+    title: string;
+    block: Block;
+    targets: Object3D[];
+    onShow?: () => void;
+}
+
 export class PagedWindow {
-    constructor({ width, bodyHeight, onTargetsChange }) {
+    onTargetsChange: (targets: Object3D[]) => void;
+    pages: Map<string, Page>;
+    // The ids of the pages opened since the window opened, the shown one last.
+    history: string[];
+    isOpen: boolean;
+    backButton: IconButton;
+    title: Label;
+    header: Block;
+    body: Block;
+    container: Block;
+
+    constructor({
+        width,
+        bodyHeight,
+        onTargetsChange,
+    }: {
+        width: number;
+        bodyHeight: number;
+        onTargetsChange: (targets: Object3D[]) => void;
+    }) {
         this.onTargetsChange = onTargetsChange;
         this.pages = new Map();
         this.history = [];
@@ -51,22 +79,22 @@ export class PagedWindow {
         this.container.visible = false;
     }
 
-    addPage(id, page) {
+    addPage(id: string, page: Page): void {
         this.pages.set(id, page);
     }
 
-    get currentPage() {
+    get currentPage(): Page | undefined {
         return this.pages.get(this.history[this.history.length - 1]);
     }
 
     // The clickable parts: the back button, the current page's, and the
     // window itself.
-    targets() {
+    targets(): Object3D[] {
         const buttons = this.history.length > 1 ? [this.backButton] : [];
         return [...buttons, ...(this.currentPage?.targets ?? []), this.container];
     }
 
-    open(pageId) {
+    open(pageId: string): void {
         this.history = [];
         this.isOpen = true;
         this.container.visible = true;
@@ -78,7 +106,7 @@ export class PagedWindow {
         this.container.visible = false;
     }
 
-    show(pageId) {
+    show(pageId: string): void {
         const previous = this.currentPage;
         if (previous) {
             this.body.remove(previous.block);
@@ -91,13 +119,17 @@ export class PagedWindow {
         if (this.history.length < 2) {
             return;
         }
-        this.body.remove(this.currentPage.block);
+        // With two pages or more in the history, the last one was added.
+        this.body.remove(this.currentPage!.block);
         this.history.pop();
         this.render();
     }
 
     render() {
         const page = this.currentPage;
+        if (!page) {
+            throw new Error(`No page "${this.history[this.history.length - 1]}" in this window.`);
+        }
         page.onShow?.();
         this.body.add(page.block);
         this.title.text.set({ content: page.title });

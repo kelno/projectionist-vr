@@ -8,7 +8,7 @@ const files = [
     { name: "beach", epoch: "100" },
     { name: "Part 2", epoch: "200" },
 ];
-const names = (list) => list.map((file) => file.name);
+const names = (list: { name: string }[]) => list.map((file) => file.name);
 
 test("sorts names as people read them", () => {
     assert.deepEqual(names(sortFiles(files, "name-asc")), ["beach", "Part 2", "Part 10"]);

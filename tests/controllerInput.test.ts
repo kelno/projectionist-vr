@@ -2,18 +2,19 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createControllerInput, readGamepad } from "../src/input/controllerInput.ts";
+import type { ControllerState } from "../src/input/controllerInput.ts";
 
 const idle = { grip: false, a: false, b: false, x: 0, y: 0 };
 const PLAYER = { playing: true };
 const LIBRARY = { playing: false };
 
-function run(frames, context = PLAYER) {
+function run(frames: [Partial<ControllerState>][], context = PLAYER) {
     const step = createControllerInput();
     return frames.map(([state]) => step({ ...idle, ...state }, context));
 }
 
 test("reads an xr-standard gamepad, missing parts as released", () => {
-    const pressed = (value) => ({ pressed: value });
+    const pressed = (value: boolean) => ({ pressed: value });
     const gamepad = {
         buttons: [pressed(false), pressed(true), pressed(false), pressed(false), pressed(true)],
         axes: [0, 0, 0.5],
@@ -82,7 +83,7 @@ test("buttons aren't read while the stick is pushed", () => {
 
 // Runs frames where the context follows the actions, as in the app: leaving
 // the video brings the library.
-function runApp(frames, playing = true) {
+function runApp(frames: Partial<ControllerState>[], playing = true) {
     const step = createControllerInput();
     return frames.map((state) => {
         const actions = step({ ...idle, ...state }, { playing });

@@ -4,15 +4,15 @@ import test from "node:test";
 import { loadPreference, savePreference } from "../src/browserPreferences.ts";
 
 function installStorage() {
-    const values = new Map();
+    const values = new Map<string, string>();
     const originalStorage = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
     Object.defineProperty(globalThis, "localStorage", {
         configurable: true,
         value: {
-            getItem(key) {
+            getItem(key: string) {
                 return values.get(key) ?? null;
             },
-            setItem(key, value) {
+            setItem(key: string, value: string) {
                 values.set(key, value);
             },
         },
@@ -21,7 +21,8 @@ function installStorage() {
         if (originalStorage) {
             Object.defineProperty(globalThis, "localStorage", originalStorage);
         } else {
-            delete globalThis.localStorage;
+            // Only the fake was there: take it away again.
+            delete (globalThis as { localStorage?: Storage }).localStorage;
         }
     };
 }

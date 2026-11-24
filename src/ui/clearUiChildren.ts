@@ -1,3 +1,10 @@
+// What clearUiChildren() needs of a container: a three.js object fits, and so
+// does the tests' stand-in.
+interface Container<Child> {
+    children: Child[];
+    remove(child: Child): unknown;
+}
+
 /**
  * Dispose and remove each direct Three-Mesh-UI child from a container.
  *
@@ -5,7 +12,7 @@
  * releases its UI update state, geometry, and materials. Copy the children
  * first because `remove()` changes the live Object3D children collection.
  */
-export default function clearUiChildren(container) {
+export default function clearUiChildren<Child extends { clear(): unknown }>(container: Container<Child>): void {
     const children = [...container.children];
 
     for (const child of children) {

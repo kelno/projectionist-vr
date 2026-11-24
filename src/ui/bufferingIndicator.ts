@@ -1,4 +1,5 @@
 import { Vector3 } from "three";
+import type { Camera, Object3D } from "three";
 
 import { createBufferingTracker, isBuffering } from "../bufferingState.ts";
 import { createSpinner } from "./spinner.ts";
@@ -11,14 +12,16 @@ const RADIUS = 0.04;
 
 const forward = new Vector3();
 
-export function createBufferingIndicator(scene) {
+export function createBufferingIndicator(
+    scene: Object3D
+): (video: HTMLVideoElement | null | undefined, camera: Camera, now: number) => void {
     const spinner = createSpinner(RADIUS);
     scene.add(spinner);
 
     const shouldShow = createBufferingTracker();
 
     // Call once per frame.
-    return function update(video, camera, now) {
+    return function update(video: HTMLVideoElement | null | undefined, camera: Camera, now: number): void {
         spinner.visible = shouldShow(isBuffering(video), now);
         if (!spinner.visible) {
             return;

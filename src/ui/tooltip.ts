@@ -1,4 +1,5 @@
 import { Box3, Quaternion, Vector3 } from "three";
+import type { Camera, Object3D } from "three";
 import { Block, Text } from "./meshUi.ts";
 
 import FontJSON from "../../assets/fonts/Roboto-Regular-msdf.json";
@@ -18,7 +19,10 @@ const center = new Vector3();
 const cameraPosition = new Vector3();
 const quaternion = new Quaternion();
 
-export function createTooltip(scene) {
+// A component the pointer can rest on; a button from kit.ts has a tooltip.
+export type TooltipTarget = Object3D & { tooltip?: string };
+
+export function createTooltip(scene: Object3D): (target: TooltipTarget | null, camera: Camera) => void {
     const text = new Text({ fontSize: FONT_SIZE, content: " " });
     const tooltip = new Block({
         width: 0.3,
@@ -37,10 +41,10 @@ export function createTooltip(scene) {
     tooltip.visible = false;
     scene.add(tooltip);
 
-    let shownFor = null;
+    let shownFor: TooltipTarget | null = null;
 
     // Call once per frame with the hovered component, or null.
-    return function update(target, camera) {
+    return function update(target: TooltipTarget | null, camera: Camera): void {
         if (!target || !target.tooltip || !target.visible) {
             tooltip.visible = false;
             shownFor = null;

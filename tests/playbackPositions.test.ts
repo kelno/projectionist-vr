@@ -27,13 +27,13 @@ test("forgets a position at the very start or near the end", () => {
     assert.equal(positions.positionFor("/a.mp4"), null);
 });
 
-function createVideo(src, { currentTime = 0, duration = 600, readyState = 4, ended = false } = {}) {
+function createVideo(src: string, { currentTime = 0, duration = 600, readyState = 4, ended = false } = {}) {
     return {
         currentTime,
         duration,
         readyState,
         ended,
-        getAttribute(name) {
+        getAttribute(name: string) {
             return name === "src" ? src : null;
         },
     };

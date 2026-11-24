@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Node.js and npm to install dependencies and build the browser bundle.
+- Node.js 24 or later and npm, to install dependencies, build the browser bundle and run the tests (Node runs the TypeScript tests directly).
 - A static web server: opening `index.html` directly from disk cannot load `files.json`.
 - Python 3.13 or later to generate `files.json`. The scripts use only the standard library.
 - [uv](https://docs.astral.sh/uv/), only to run the checks below.
@@ -62,12 +62,22 @@ Run every check before committing:
 npm run check
 ```
 
-It runs the JavaScript tests, then checks the Python scripts with
-[ruff](https://docs.astral.sh/ruff/) (lint and formatting) and
-[basedpyright](https://docs.basedpyright.com/) (types), then runs their tests.
-`uv run ruff format` formats the scripts; their settings are in
-`pyproject.toml`. The same command runs on GitHub for each push to `main` and
-each pull request, and before each release is built.
+It checks the player's TypeScript with the compiler (`npm run typecheck`,
+settings in `tsconfig.json`), [ESLint](https://eslint.org/) (`npm run lint`,
+`eslint.config.mjs`) and [Prettier](https://prettier.io/) (`npm run
+format:check`, `.prettierrc.json`), and runs its tests. Then it checks the
+Python scripts with [ruff](https://docs.astral.sh/ruff/) (lint and formatting)
+and [basedpyright](https://docs.basedpyright.com/) (types), set in
+`pyproject.toml`, and runs their tests. `npm run format` and `uv run ruff
+format` format the code. The same command runs on GitHub for each push to
+`main` and each pull request, and before each release is built.
+
+The player is written in TypeScript. webpack only strips the types when it
+builds; the compiler checks them. Imports name the `.ts` file, and only
+syntax that can simply be stripped is allowed (no `enum`, no `namespace`), so
+Node can run the tests and `scripts/make_icons.ts` without a build step.
+three-mesh-ui, which draws the panels, is typed loosely on purpose
+(`src/types/three-mesh-ui.d.ts`): it is unmaintained and due to be replaced.
 
 Dependabot (`.github/dependabot.yml`) opens a pull request each week when the npm
 packages, the Python dev tools or the GitHub Actions have new versions; the

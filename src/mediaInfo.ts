@@ -2,7 +2,12 @@
 // video playing (its `media`, written by the catalogue generator) and, for
 // what the catalogue lacks, from the video element itself.
 
-const CODEC_NAMES = {
+import type { CatalogueEntry, MediaInfo } from "./types/catalogue.ts";
+
+// One line of the page: [name, text], with `true` after them for a problem.
+export type MediaInfoLine = [name: string, text: string, problem?: true];
+
+const CODEC_NAMES: Record<string, string> = {
     h264: "H.264",
     hevc: "HEVC (H.265)",
     av1: "AV1",
@@ -18,15 +23,15 @@ const CODEC_NAMES = {
     vorbis: "Vorbis",
 };
 
-const CHANNEL_NAMES = { 1: "mono", 2: "stereo", 6: "5.1", 8: "7.1" };
+const CHANNEL_NAMES: Record<number, string> = { 1: "mono", 2: "stereo", 6: "5.1", 8: "7.1" };
 
 const UNKNOWN = "Unknown";
 
-export function codecName(codec) {
+export function codecName(codec: string): string {
     return CODEC_NAMES[codec] ?? String(codec).toUpperCase();
 }
 
-export function formatSize(bytes) {
+export function formatSize(bytes: number): string {
     const units = ["B", "KB", "MB", "GB", "TB"];
     let value = bytes;
     let unit = 0;
@@ -37,7 +42,7 @@ export function formatSize(bytes) {
     return `${value.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
 }
 
-export function formatDuration(seconds) {
+export function formatDuration(seconds: number): string {
     const total = Math.round(seconds);
     const hours = Math.floor(total / 3600);
     const minutes = Math.floor((total % 3600) / 60);
@@ -49,7 +54,7 @@ export function formatDuration(seconds) {
 
 // Whether the video keeps its index before the video data, as the catalogue
 // generator recorded: without it, the video starts slowly.
-function faststartLine(media) {
+function faststartLine(media: MediaInfo): MediaInfoLine {
     if (media.faststart === true) return ["Fast start", "Yes"];
     if (media.faststart === false) return ["Fast start", "No, slow to start: remux it", true];
     return ["Fast start", UNKNOWN];
@@ -57,13 +62,16 @@ function faststartLine(media) {
 
 // `entry` is the catalogue entry (or null), `video` the playing element. Each
 // line is [name, text], with `true` after them for a problem to show as such.
-export function mediaInfoLines(entry, video) {
-    const media = entry?.media ?? {};
+export function mediaInfoLines(
+    entry: Pick<CatalogueEntry, "name" | "media"> | null | undefined,
+    video: Pick<HTMLVideoElement, "videoWidth" | "videoHeight" | "duration"> | null | undefined
+): MediaInfoLine[] {
+    const media: MediaInfo = entry?.media ?? {};
     const width = media.width ?? video?.videoWidth;
     const height = media.height ?? video?.videoHeight;
     const duration = media.duration ?? video?.duration;
 
-    const videoParts = [];
+    const videoParts: string[] = [];
     if (media.video_codec) videoParts.push(codecName(media.video_codec));
     if (media.fps) videoParts.push(`${media.fps} fps`);
 
@@ -81,7 +89,7 @@ export function mediaInfoLines(entry, video) {
         ["Resolution", width && height ? `${width} x ${height}` : UNKNOWN],
         ["Video", videoParts.length > 0 ? videoParts.join(", ") : UNKNOWN],
         ["Audio", audio],
-        ["Duration", Number.isFinite(duration) && duration > 0 ? formatDuration(duration) : UNKNOWN],
+        ["Duration", duration !== undefined && Number.isFinite(duration) && duration > 0 ? formatDuration(duration) : UNKNOWN],
         ["Size", media.size ? formatSize(media.size) : UNKNOWN],
         ["Bitrate", media.bit_rate ? `${(media.bit_rate / 1e6).toFixed(1)} Mb/s` : UNKNOWN],
         faststartLine(media),

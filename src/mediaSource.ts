@@ -3,7 +3,7 @@
  * the video element's `src` property avoids an empty nested <source> candidate
  * being selected before the user has chosen a video.
  */
-export function hasMediaSource(video) {
+export function hasMediaSource(video: Pick<HTMLVideoElement, "getAttribute">): boolean {
     return Boolean(video.getAttribute("src"));
 }
 
@@ -12,7 +12,10 @@ export function hasMediaSource(video) {
  * browser. `src` is often relative while `currentSrc` is absolute, so compare
  * their resolved URLs rather than the original strings.
  */
-export function isCurrentMediaSource(video, source) {
+export function isCurrentMediaSource(
+    video: Pick<HTMLVideoElement, "currentSrc"> & { ownerDocument?: { baseURI: string } | null },
+    source: string | null | undefined
+): boolean {
     if (typeof source !== "string" || source.length === 0 || !video.currentSrc) {
         return false;
     }
@@ -27,7 +30,10 @@ export function isCurrentMediaSource(video, source) {
     }
 }
 
-export function setMediaSource(video, source) {
+export function setMediaSource(
+    video: Pick<HTMLVideoElement, "getAttribute" | "src" | "load" | "pause" | "play">,
+    source: string
+): { sourceChanged: boolean; playback: Promise<void> } {
     if (typeof source !== "string" || source.length === 0) {
         throw new TypeError("A media source must be a non-empty string.");
     }
@@ -49,7 +55,9 @@ export function setMediaSource(video, source) {
     };
 }
 
-export function clearMediaSource(video) {
+export function clearMediaSource(
+    video: Pick<HTMLVideoElement, "getAttribute" | "removeAttribute" | "load" | "pause">
+): void {
     if (!hasMediaSource(video)) {
         return;
     }

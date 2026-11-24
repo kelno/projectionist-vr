@@ -11,15 +11,24 @@
 // the keyboard didn't show within FAIL_MS, so the caller can use its own.
 const FAIL_MS = 1500;
 
-export function createSystemKeyboard(getSession) {
-    let field;
+export interface SystemKeyboard {
+    isAvailable(): boolean;
+    open(handlers: {
+        onInput(text: string): void;
+        onClose(text: string): void;
+        onFail(): void;
+    }): void;
+}
+
+export function createSystemKeyboard(getSession: () => XRSession | null): SystemKeyboard {
+    let field: HTMLInputElement | undefined;
 
     const isAvailable = () => Boolean(getSession()?.isSystemKeyboardSupported);
 
     // The field must be in the page for the keyboard to show. Fixed at the
     // top left, and transparent, it never shows and the page doesn't scroll
     // to it.
-    function makeField() {
+    function makeField(): HTMLInputElement {
         const input = document.createElement("input");
         input.type = "text";
         input.setAttribute("aria-hidden", "true");
@@ -36,11 +45,12 @@ export function createSystemKeyboard(getSession) {
         return input;
     }
 
-    function open({ onInput, onClose, onFail }) {
-        const session = getSession();
-        field ??= makeField();
+    function open({ onInput, onClose, onFail }: Parameters<SystemKeyboard["open"]>[0]): void {
+        // Called only once isAvailable() said there is a session.
+        const session = getSession()!;
+        const input = (field ??= makeField());
         // Each time the keyboard shows, typing starts a new text.
-        field.value = "";
+        input.value = "";
 
         let shown = false;
         const onVisibilityChange = () => {
@@ -51,24 +61,24 @@ export function createSystemKeyboard(getSession) {
         const failTimer = setTimeout(() => {
             if (!shown) {
                 stop();
-                field.blur();
+                input.blur();
                 onFail();
             }
         }, FAIL_MS);
         function stop() {
             clearTimeout(failTimer);
             session.removeEventListener("visibilitychange", onVisibilityChange);
-            field.oninput = null;
-            field.onblur = null;
+            input.oninput = null;
+            input.onblur = null;
         }
 
         session.addEventListener("visibilitychange", onVisibilityChange);
-        field.oninput = () => onInput(field.value);
-        field.onblur = () => {
+        input.oninput = () => onInput(input.value);
+        input.onblur = () => {
             stop();
-            onClose(field.value);
+            onClose(input.value);
         };
-        field.focus();
+        input.focus();
     }
 
     return { isAvailable, open };

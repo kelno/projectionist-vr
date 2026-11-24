@@ -3,8 +3,8 @@ import test from "node:test";
 
 import { createErrorReporter } from "../src/errorReport.ts";
 
-function reporter(max) {
-    const queries = [];
+function reporter(max?: number) {
+    const queries: URLSearchParams[] = [];
     const report = createErrorReporter({
         send: (query) => queries.push(new URLSearchParams(query)),
         version: "1.7.0",

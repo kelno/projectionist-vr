@@ -1,7 +1,14 @@
 // The folder list shows `perPage` rows at most. When there are more folders,
 // a page's first row goes back a page and its last goes forward, so each
 // page holds `perPage - 2` folders and page n starts at n times that.
-export function folderPage(folderCount, page, perPage) {
+export type FolderRow = { type: "previous" } | { type: "next" } | { type: "folder"; index: number };
+
+export interface FolderPage {
+    rows: FolderRow[];
+    pageCount: number;
+}
+
+export function folderPage(folderCount: number, page: number, perPage: number): FolderPage {
     if (folderCount <= perPage) {
         return { rows: range(0, folderCount).map(folderRow), pageCount: 1 };
     }
@@ -19,10 +26,10 @@ export function folderPage(folderCount, page, perPage) {
     return { rows, pageCount };
 }
 
-function folderRow(index) {
+function folderRow(index: number): FolderRow {
     return { type: "folder", index };
 }
 
-function range(start, end) {
+function range(start: number, end: number): number[] {
     return Array.from({ length: Math.max(end - start, 0) }, (_, i) => start + i);
 }

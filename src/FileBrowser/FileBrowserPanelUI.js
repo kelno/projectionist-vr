@@ -108,83 +108,31 @@ export class FileBrowserPanel {
 
     BUTTONWIDTHHEIGHT = this.PANELMAXHEIGHT / this.FILES_ROWS - 0.5;
 
-    THUMBTEXTUREWIDTH =
-        (this.PANELMAXWIDTH - this.PANELMAXWIDTH / 16) / this.FILES_PER_ROW -
-        0.05;
-    THUMB_FRAME_PADDING = 0.025;
-
-    THUMB_CONTENT_HEIGHT =
-        this.PANELMAXHEIGHT / this.FILES_ROWS -
-        this.THUMB_FRAME_PADDING * 2;
-    THUMB_CONTENT_WIDTH = this.THUMBTEXTUREWIDTH - this.THUMB_FRAME_PADDING * 2;
-
-    THUMBTEXTUREHEIGHT = this.THUMB_CONTENT_HEIGHT * 0.75;
+    // The grid: FILES_ROWS rows of FILES_PER_ROW cells filling the panel,
+    // filled from the top left; each cell holds one tile.
+    CELL_WIDTH = this.PANELMAXWIDTH / this.FILES_PER_ROW;
+    CELL_HEIGHT = this.PANELMAXHEIGHT / this.FILES_ROWS;
+    TILE_MARGIN = 0.03;
 
     thumbRowContainerAttributes = {
         width: this.PANELMAXWIDTH,
-        height: this.PANELMAXHEIGHT / this.FILES_ROWS,
+        height: this.CELL_HEIGHT,
         contentDirection: "row",
-        justifyContent: "center",
-        offset: 0.05,
-        margin: 0.02,
-        hiddenOverflow: true,
-        backgroundOpacity: 1,
-        borderRadius: 0.08,
+        justifyContent: "start",
+        backgroundOpacity: 0,
     };
 
     thumbsContainerAttributes = {
-        justifyContent: "center",
+        justifyContent: "start",
         contentDirection: "column",
         fontFamily: FontJSON,
         fontTexture: FontImage,
-        fontSize: 0.07,
         padding: 0,
         borderRadius: 0,
         backgroundOpacity: 0,
-        hiddenOverflow: true,
         width: this.PANELMAXWIDTH,
         height: this.PANELMAXHEIGHT,
     };
-
-    thumbButtonContainerAttributes = {
-        height: this.PANELMAXHEIGHT / this.FILES_ROWS,
-        width:
-            (this.PANELMAXWIDTH - this.PANELMAXWIDTH / 16) / this.FILES_PER_ROW,
-        justifyContent: "start",
-        contentDirection: "column",
-        // Reserve a consistent frame around the thumbnail. Its background is
-        // transparent at rest and becomes the yellow hover indicator.
-        padding: this.THUMB_FRAME_PADDING,
-        backgroundOpacity: 0,
-        hiddenOverflow: true,
-        borderRadius: 0,
-    };
-
-    textureAttributes(texture) {
-        return {
-            height: this.THUMBTEXTUREHEIGHT,
-            width: this.THUMB_CONTENT_WIDTH,
-            backgroundTexture: texture,
-            borderRadius: 0,
-        };
-    }
-
-    thumbTextContainerAttributes = {
-        height:
-            this.THUMB_CONTENT_HEIGHT - this.THUMBTEXTUREHEIGHT,
-        width: this.THUMB_CONTENT_WIDTH,
-        backgroundOpacity: 0,
-        bestFit: "shrink",
-    };
-
-    thumbTextAttributes(name) {
-        return {
-            fontFamily: FontJSON,
-            fontTexture: FontImage,
-            fontSize: this.PANELMAXHEIGHT * 0.029,
-            content: sanitizeFontText(name),
-        };
-    }
 
     bigButtonAttributes = {
         height: this.BUTTONWIDTHHEIGHT,
@@ -231,12 +179,6 @@ export class FileBrowserPanel {
     idleState = {
         state: "idle",
         attributes: this.idleStateAttributes,
-    };
-
-    thumbnailIdleStateAttributes = {
-        offset: 0.035,
-        backgroundOpacity: 0,
-        fontColor: new Color(0xffffff),
     };
 
     folderActiveIdleStateAttributes = {
@@ -387,7 +329,8 @@ export class FileBrowserPanel {
             backgroundOpacity: 1,
             backgroundColor: new Color(0x292929),
             width: this.PANELMAXWIDTH + 0.3 + this.BUTTONWIDTHHEIGHT * 2,
-            height: this.PANELMAXHEIGHT,
+            // The grid's height plus the padding, or the grid overflows it.
+            height: this.PANELMAXHEIGHT + 0.04,
         });
 
         MAIN.scene.add(this.fileBrowserContainer);
@@ -685,25 +628,11 @@ export class FileBrowserPanel {
                     break;
                 }
 
-                const thumb = new ThumbnailBlock(
-                    this.thumbButtonContainerAttributes,
-                    this.FILES[iterate].src,
-                    this.FILES[iterate].name.replace(
-                        /[^ qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890,\.\/\?;:\'"\[\{\}\]=\+-_!@#\$%\^\&\*\(\)\\\|\`\~]+/,
-                        ""
-                    ),
-                    this.FILES[iterate].thumbnail,
-                    this.FILES[iterate].screen_type,
-                    this.FILES[iterate].frame_height
-                        ? this.FILES[iterate].frame_height
-                        : "1",
-                    this.FILES[iterate].frame_width
-                        ? this.FILES[iterate].frame_width
-                        : "1",
-                    this.selectedAttributes,
-                    this.hoveredStateAttributes,
-                    this.thumbnailIdleStateAttributes
-                );
+                const thumb = new ThumbnailBlock(this.FILES[iterate], {
+                    cellWidth: this.CELL_WIDTH,
+                    cellHeight: this.CELL_HEIGHT,
+                    margin: this.TILE_MARGIN,
+                });
 
                 thumbsContainerButtonsRow.add(thumb);
                 this.thumbTargets.push(thumb);
@@ -732,7 +661,7 @@ export class FileBrowserPanel {
         ) {
             const thumbnailBlock =
                 this.viewGeneratorThumbs[this.viewGeneratorThumbsIterator++];
-            const thumbnailUrl = thumbnailBlock.fileThumbnail;
+            const thumbnailUrl = thumbnailBlock.thumbnailUrl;
             const viewGeneration = this.thumbnailViewGeneration;
             this.viewGeneratorPending++;
 
@@ -776,18 +705,10 @@ export class FileBrowserPanel {
     }
 
     addThumbnailToBlock(thumbnailBlock, texture, shouldDisposeTexture) {
-        const inlineBlock = new InlineBlock(this.textureAttributes(texture));
         if (shouldDisposeTexture) {
-            this.listOfVideoThumbnailTextures.push(
-                inlineBlock.getBackgroundTexture()
-            );
+            this.listOfVideoThumbnailTextures.push(texture);
         }
-        thumbnailBlock.add(
-            inlineBlock,
-            new Block(this.thumbTextContainerAttributes).add(
-                new Text(this.thumbTextAttributes(thumbnailBlock.fileNameButton))
-            )
-        );
+        thumbnailBlock.setImage(texture);
     }
 
     regenerateFileBrowser() {

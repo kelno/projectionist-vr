@@ -25,6 +25,7 @@ from urllib.parse import quote
 from library_store import LibraryStore, iter_videos, write_json_atomic
 from mp4_layout import BOX_CONTAINER_SUFFIXES, needs_faststart
 from settings import Settings, load_settings
+from video_format import guess_screen_type
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "dist" / "files.json"
@@ -182,7 +183,7 @@ def generate_category_entries(
             "name": clean_filename(relative_path.name, settings.name_prefixes),
             "src": url_for_file(videos_url_prefix, relative_path),
             "thumbnail": "",
-            "screen_type": "sbs",
+            "screen_type": guess_screen_type(relative_path.name),
             **get_file_timestamps(video_path),
         }
         try:
@@ -198,6 +199,10 @@ def generate_category_entries(
                 slow_start.append(video_path)
             if media:
                 entry["media"] = media
+                entry["screen_type"] = guess_screen_type(relative_path.name, media.get("width"), media.get("height"))
+                if entry["screen_type"] == "screen" and media.get("width") and media.get("height"):
+                    # A flat screen takes the video's proportions.
+                    entry["frame_width"], entry["frame_height"] = media["width"], media["height"]
             elif faststart is not None:
                 entry["media"] = {"faststart": faststart}
         category_map[relative_path.parent.name or "!Uncategorized"].append(entry)

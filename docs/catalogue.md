@@ -11,9 +11,13 @@ The generator creates one category for each video directory and uses the
 directory name as its label. A video's label is its file name without the
 extension, with `_` and `+` read as spaces; `name_prefixes` in `config.toml`
 lists text to cut from the start of file names, such as a site's or a
-studio's name (`name_prefixes = ["Studio - "]`). Generated entries default to `sbs`. To use another
-projection or stereo layout, edit an entry’s `screen_type` in `files.json`, or
-provide a catalogue from another source.
+studio's name (`name_prefixes = ["Studio - "]`). Each entry's `screen_type`, its layout (below), is
+guessed: from a marker in the file name, as a whole word (`sbs`, `lr`, `3dh` or
+`180` for side-by-side; `tb`, `ou` or `3dv` for top-bottom; `360` for
+top-bottom 360°; `2d` or `flat` for a flat screen), else from the frame's shape
+in the media info (2:1 side-by-side, 1:2 top-bottom, 1:1 top-bottom 360°, 16:9
+flat), else side-by-side. To set another, rename the file with a marker, edit
+the entry in `files.json`, or provide a catalogue from another source.
 
 ## Catalogue structure
 

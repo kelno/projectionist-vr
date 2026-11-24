@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 import tempfile
@@ -11,12 +12,13 @@ from generate_thumbs import THUMBNAIL_SEEK_SECONDS, generate_thumbnails, thumbna
 from library_store import LibraryStore
 
 
-def fake_ffmpeg(writes_output, duration="60.0"):
-    """Stand in for subprocess.run: ffprobe prints the duration, ffmpeg writes its output file (the last argument) when asked."""
+def fake_ffmpeg(writes_output, duration="60.0", size=(5760, 2880)):
+    """Stand in for subprocess.run: ffprobe prints the duration and frame size, ffmpeg writes its output file (the last argument) when asked."""
 
     def run(command, check, **kwargs):
         if command[0] == "ffprobe":
-            return subprocess.CompletedProcess(command, 0, stdout=f"{duration}\n", stderr="")
+            probe = {"format": {"duration": duration}, "streams": [{"width": size[0], "height": size[1]}]}
+            return subprocess.CompletedProcess(command, 0, stdout=json.dumps(probe), stderr="")
         if writes_output:
             Path(command[-1]).write_bytes(b"jpeg")
         return subprocess.CompletedProcess(command, 0)
@@ -73,6 +75,22 @@ class GenerateThumbnailsTests(unittest.TestCase):
 
 
 class ThumbnailSeekTests(unittest.TestCase):
+    def test_keeps_the_part_of_the_frame_one_eye_sees(self):
+        for name, size, expected in (
+            ("clip.mp4", (5760, 2880), "crop=in_w/2:in_h:0:0"),
+            ("clip.mp4", (2880, 5760), "crop=in_w:in_h/2:0:0"),
+            ("clip_360.mp4", (4096, 4096), "crop=in_w:in_h/2:0:0"),
+            ("clip.mp4", (1920, 1080), "scale=512:-1"),
+        ):
+            with tempfile.TemporaryDirectory() as directory:
+                videos = Path(directory) / "videos"
+                (videos / "Music").mkdir(parents=True)
+                (videos / "Music" / name).write_bytes(b"")
+                with mock.patch("generate_thumbs.subprocess.run", side_effect=fake_ffmpeg(True, size=size)) as run:
+                    generate_thumbnails(videos, Path(directory) / "thumbnails")
+                command = ffmpeg_calls(run)[0]
+                self.assertTrue(command[command.index("-filter:v") + 1].startswith(expected), (name, size))
+
     def test_long_video_keeps_the_usual_frame(self):
         self.assertEqual(thumbnail_seek_seconds(3600.0), THUMBNAIL_SEEK_SECONDS)
 

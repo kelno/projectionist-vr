@@ -8,32 +8,44 @@ library_store.py, so a moved or renamed video keeps its thumbnail.
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 from pathlib import Path
 
 from library_store import LibraryStore, iter_videos
 from settings import load_settings
+from video_format import guess_screen_type
 
 # Seconds into the video of the thumbnail frame, past most intros and fades.
 THUMBNAIL_SEEK_SECONDS = 20.0
 # For a video too short for that, the fraction of its duration to take the frame at instead.
 SHORT_VIDEO_SEEK_FRACTION = 0.5
-# Keep the left eye of a side-by-side video, 512 pixels wide.
-THUMBNAIL_FILTER = "crop=in_w/2:in_h:0:0,scale=512:-1"
+# The part of the frame one eye sees, by layout (video_format.py), 512 pixels wide.
+THUMBNAIL_FILTERS = {
+    "sbs": "crop=in_w/2:in_h:0:0,scale=512:-1",
+    "tb": "crop=in_w:in_h/2:0:0,scale=512:-1",
+    "360": "crop=in_w:in_h/2:0:0,scale=512:-1",
+    "screen": "scale=512:-1",
+}
 
 
-def read_duration(video_file: Path) -> float | None:
-    """Return the video's duration in seconds, from its header, or None when ffprobe cannot tell."""
+def read_frame(video_file: Path) -> tuple[float | None, int | None, int | None]:
+    """Return the video's duration in seconds and its frame's width and height, from its header.
+
+    Each is None when ffprobe cannot tell.
+    """
     result = subprocess.run(
         [
             "ffprobe",
             "-loglevel",
             "error",
+            "-select_streams",
+            "v:0",
             "-show_entries",
-            "format=duration",
+            "format=duration:stream=width,height",
             "-output_format",
-            "csv=print_section=0",
+            "json",
             str(video_file),
         ],
         capture_output=True,
@@ -41,10 +53,20 @@ def read_duration(video_file: Path) -> float | None:
         check=False,
     )
     try:
-        duration = float(result.stdout.strip())
+        probe = json.loads(result.stdout)
     except ValueError:
-        return None
-    return duration if duration > 0 else None
+        return None, None, None
+    try:
+        duration = float(probe.get("format", {}).get("duration"))
+    except (TypeError, ValueError):
+        duration = None
+    streams = probe.get("streams") or [{}]
+    width, height = streams[0].get("width"), streams[0].get("height")
+    return (
+        duration if duration and duration > 0 else None,
+        width if isinstance(width, int) else None,
+        height if isinstance(height, int) else None,
+    )
 
 
 def thumbnail_seek_seconds(duration: float | None) -> float:
@@ -65,8 +87,9 @@ def generate_thumbnail(video_file: Path, thumb_file: Path) -> bool:
     that later runs would treat as done.
     """
     partial_file = thumb_file.with_name(f"{thumb_file.stem}.partial.jpg")
-    duration = read_duration(video_file)
+    duration, width, height = read_frame(video_file)
     seek_seconds = thumbnail_seek_seconds(duration)
+    layout = guess_screen_type(video_file.name, width, height)
     if duration is None:
         print(f"WARNING: unknown duration, taking the frame at {seek_seconds:g} s: {video_file}", file=sys.stderr)
     result = subprocess.run(
@@ -80,7 +103,7 @@ def generate_thumbnail(video_file: Path, thumb_file: Path) -> bool:
             "-i",
             str(video_file),
             "-filter:v",
-            THUMBNAIL_FILTER,
+            THUMBNAIL_FILTERS[layout],
             "-frames:v",
             "1",
             "-q:v",

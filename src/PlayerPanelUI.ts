@@ -498,7 +498,7 @@ export class PlayerPanel {
             values.push(value);
             return row([label(name, { width: 0.45, height: 0.09, fontSize: 0.055, color: "mutedText" }), value], {
                 width,
-                height: 0.095,
+                height: 0.09,
             });
         });
         // Counts the page's showings, so a late answer from the browser about

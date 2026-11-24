@@ -87,12 +87,7 @@ export default class SourcesSelectorPanel {
         this.sources = sources;
         this.sourcesSelectorContainer.position.set(0, 1.3, -5);
         scene.add(this.sourcesSelectorContainer);
-        registerPanel(
-            this.sourcesSelectorContainer,
-            "sourcesSelectorPanel",
-            "sourcesSelectorContainer",
-            "sourcesSelectorContainer"
-        );
+        registerPanel(this.sourcesSelectorContainer, "sourcesSelectorPanel");
         registerObjectToDrag(
             this.sourcesSelectorContainer,
             "files",

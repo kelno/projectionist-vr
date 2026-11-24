@@ -125,7 +125,7 @@ export class FileBrowserPanel {
             "controlsButton",
             "controlsHelp",
         ]) {
-            ScreenManager.registerPanel(this[name], "fileBrowserPanel", name, name);
+            ScreenManager.registerPanel(this[name], "fileBrowserPanel");
             ScreenManager.registerObjectToDrag(this[name], "files", "fileBrowserPanel");
         }
     }

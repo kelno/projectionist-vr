@@ -31,19 +31,13 @@ export let currentZoom = 0;
 const panels = new PanelsList();
 export const objectsToDrag = {};
 
-export function registerPanel(ref, container, ui_name, save_as_name) {
-    panels.addPanel(ref, container, ui_name, save_as_name);
+// `group` is what the panel resets with: "playMenuPanel", "fileBrowserPanel"...
+export function registerPanel(ref, group) {
+    panels.addPanel(ref, group);
 }
 
-export function registerMeshPanel(
-    ref,
-    ui_name,
-    save_as_name,
-    mode,
-    screen_type,
-    eye
-) {
-    panels.addMesh(ref, ui_name, save_as_name, mode, screen_type, eye);
+export function registerMeshPanel(ref, mode, screen_type, eye) {
+    panels.addMesh(ref, mode, screen_type, eye);
 }
 
 export function registerObjectToDrag(obj, view, panelName) {
@@ -69,15 +63,8 @@ export function vrsessionend() {
     setZoom(zoomInUse, false);
 }
 
-export function resetPosition(ui) {
-    for (const [name, elements] of Object.entries(panels)) {
-        if (name === ui) {
-            elements.panels.forEach((panel) => {
-                MAIN[name][panel.ui_name].position.copy(panel.position);
-                MAIN[name][panel.ui_name].rotation.copy(panel.rotation);
-            });
-        }
-    }
+export function resetPosition(group) {
+    panels[group]?.panels.forEach((panel) => panel.reset());
 }
 
 export function zoom(in_or_out, step = 10) {
@@ -102,19 +89,12 @@ function setZoom(targetZoom, persistPreference) {
     const oldZoom = currentZoom;
     currentZoom = clampZoom(targetZoom) ?? 0;
     if (oldZoom !== currentZoom) {
-        for (let mesh in MAIN.meshes) {
+        for (const screen of panels.meshes.panels) {
+            const start = screen.position.clone();
             if (currentZoom === 0) {
-                const temp = panels.meshes.panels
-                    .find((element) => element.ui_name === mesh)
-                    .position.clone();
-                temp.applyEuler(MAIN.meshes[mesh].rotation);
-                MAIN.meshes[mesh].position.copy(temp);
+                screen.reference.position.copy(start.applyEuler(screen.reference.rotation));
             } else {
-                const temp = panels.meshes.panels.find(
-                    (element) => element.ui_name === mesh
-                ).position.clone();
-                temp.normalize();
-                MAIN.meshes[mesh].translateOnAxis(temp, oldZoom - currentZoom);
+                screen.reference.translateOnAxis(start.normalize(), oldZoom - currentZoom);
             }
         }
     }
@@ -146,20 +126,18 @@ export function resetZoomPosition() {
 export function tilt(up_or_down, value = 0.01) {
     switch (up_or_down) {
         case "up":
-            for (let mesh in MAIN.meshes) {
-                MAIN.meshes[mesh].rotation.x -= value;
+            for (const screen of panels.meshes.panels) {
+                screen.reference.rotation.x -= value;
             }
             break;
         case "down":
-            for (let mesh in MAIN.meshes) {
-                MAIN.meshes[mesh].rotation.x += value;
+            for (const screen of panels.meshes.panels) {
+                screen.reference.rotation.x += value;
             }
             break;
         case "reset":
-            for (let mesh in MAIN.meshes) {
-                MAIN.meshes[mesh].rotation.x = panels.meshes.panels.find(
-                    (element) => element.ui_name === mesh
-                ).rotation.x;
+            for (const screen of panels.meshes.panels) {
+                screen.reference.rotation.x = screen.rotation.x;
             }
             break;
         default:

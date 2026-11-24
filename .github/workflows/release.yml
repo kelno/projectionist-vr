@@ -54,7 +54,7 @@ jobs:
             version="$package_version-$(git rev-parse --short HEAD)"
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "asset=web_vr_video_player-$version.tar.gz" >> "$GITHUB_OUTPUT"
+          echo "asset=projectionist-vr-$version.tar.gz" >> "$GITHUB_OUTPUT"
 
       - name: Install dependencies
         run: npm ci

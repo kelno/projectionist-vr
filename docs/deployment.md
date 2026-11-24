@@ -11,7 +11,7 @@ npm version minor   # updates package.json and package-lock.json, commits, and t
 git push --follow-tags
 ```
 
-The release holds `web_vr_video_player-<tag>.tar.gz`, which contains:
+The release holds `projectionist-vr-<tag>.tar.gz`, which contains:
 
 - `dist/`: the built site, without `files.json`.
 - `scripts/`: the catalogue and thumbnail generators, which need only Python 3 and FFmpeg (for thumbnails, and for the media info the catalogue records). The other media preparation scripts come along.

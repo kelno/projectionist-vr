@@ -24,7 +24,7 @@ def make_config(videos: Path, thumbnails: Path) -> Settings:
 def fake_ffmpeg(command, check, **kwargs):
     """Stand in for subprocess.run in generate_thumbs: ffprobe gives a duration, ffmpeg writes its output file."""
     if command[0] == "ffprobe":
-        return subprocess.CompletedProcess(command, 0, stdout="60.0\n", stderr="")
+        return subprocess.CompletedProcess(command, 0, stdout='{"format": {"duration": "60.0"}}', stderr="")
     Path(command[-1]).write_bytes(b"jpeg")
     return subprocess.CompletedProcess(command, 0)
 
@@ -63,6 +63,30 @@ class GenerateCatalogueTests(unittest.TestCase):
             self.assertEqual(entry["thumbnail"], f"/vr-player/thumbnails/{fingerprint}.jpg")
             # A video without a thumbnail in the store gets none.
             self.assertEqual(categories["!Uncategorized"][0]["thumbnail"], "")
+
+    def test_guesses_each_layout_and_gives_a_flat_video_its_proportions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            videos, thumbnails = root / "videos", root / "thumbnails"
+            (videos / "Clips").mkdir(parents=True)
+            thumbnails.mkdir()
+            sizes = {"wide.mp4": (5760, 2880), "flat.mp4": (1920, 1080), "beach_TB.mp4": (5760, 2880), "unknown.mp4": None}
+            for name in sizes:
+                (videos / "Clips" / name).write_bytes(name.encode())
+
+            def media_of(path: Path):
+                size = sizes[path.name]
+                return {"width": size[0], "height": size[1]} if size else None
+
+            with mock.patch("generate_json.read_media_info", side_effect=media_of):
+                categories = generate_category_entries(make_config(videos, thumbnails), LibraryStore(thumbnails))
+            entries = {Path(entry["src"]).name: entry for entry in categories["Clips"]}
+            self.assertEqual(
+                {name: entry["screen_type"] for name, entry in entries.items()},
+                {"wide.mp4": "sbs", "flat.mp4": "screen", "beach_TB.mp4": "tb", "unknown.mp4": "sbs"},
+            )
+            self.assertEqual((entries["flat.mp4"]["frame_width"], entries["flat.mp4"]["frame_height"]), (1920, 1080))
+            self.assertNotIn("frame_width", entries["wide.mp4"])
 
     def test_writes_catalogue_to_requested_release_directory(self):
         with tempfile.TemporaryDirectory() as directory:

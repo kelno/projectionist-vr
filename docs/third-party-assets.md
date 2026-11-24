@@ -4,7 +4,7 @@
 
 The icons are Google's [Material Symbols](https://fonts.google.com/icons)
 (rounded, weight 600), licensed under the Apache License, Version 2.0.
-`scripts/make_icons.mjs` renders them to `assets/icons/`; see
+`scripts/make_icons.ts` renders them to `assets/icons/`; see
 `assets/icons/README.md`.
 
 ## Fonts

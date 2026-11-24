@@ -27,6 +27,7 @@ import { createTooltip } from "./ui/tooltip.js";
 import { createBufferingIndicator } from "./ui/bufferingIndicator.js";
 import { createErrorReporter } from "./errorReport.mjs";
 import { playerVersion } from "./playerConfig.js";
+import { createControllerInput, readGamepad } from "./input/controllerInput.mjs";
 
 export let scene,
   camera,
@@ -35,7 +36,6 @@ export let scene,
   orbitControls,
   vrControl,
   vrControlCurrentlyUsedController,
-  gamepad,
   video,
   videoTexture,
   meshLeftSBS,
@@ -539,6 +539,21 @@ function init() {
     vrControlUnselected(1);
   });
 
+  // Each controller keeps the input source three.js gives it on connecting.
+  // The session's own list of input sources shifts when one disconnects (a
+  // controller low on battery), so it can't be read by controller number.
+  vrControl.controllers.forEach((controller, id) => {
+    controller.addEventListener("connected", (event) => {
+      controller.userData.inputSource = event.data;
+    });
+    controller.addEventListener("disconnected", () => {
+      controller.userData.inputSource = null;
+      if (vrControlCurrentlyUsedController === id) {
+        vrControlCurrentlyUsedController = 1 - id;
+      }
+    });
+  });
+
   function vrControlSelected(id) {
     if (vrControlCurrentlyUsedController == id) {
       selectState = true;
@@ -750,7 +765,6 @@ function onWindowResize() {
 
 //
 
-let gamepadAxisActive = false;
 export let playbackIsActive = false;
 
 export function playbackChange(is_active = false, screen_type = null) {
@@ -831,142 +845,58 @@ function showGripPopup(held) {
   }
 }
 
+const controllerInput = createControllerInput();
+
 function gamepadControlsUpdate() {
-  if (renderer.xr.isPresenting) {
-    if (renderer.xr.getSession() !== null) {
-      if (
-        typeof renderer.xr.getSession().inputSources !== "undefined" &&
-        renderer.xr.getSession().inputSources.length >= 1
-      ) {
-        if (renderer.xr.getSession().inputSources.length >= 1) {
-          gamepad =
-            renderer.xr.getSession().inputSources[
-              vrControlCurrentlyUsedController
-            ].gamepad;
-          if (typeof gamepad !== "undefined" && gamepad !== null) {
-            if (gamepad.mapping === "xr-standard") {
-              showGripPopup(gamepad.buttons[1].pressed);
-              if (
-                gamepad.buttons[1].pressed &&
-                gamepad.axes[3] < -0.35 &&
-                (gamepadAxisActive === false || gamepadAxisActive === "up")
-              ) {
-                if (playbackIsActive) {
-                  ScreenManager.tilt("up", 0.005);
-                }
-                gamepadAxisActive = "up";
-              } else if (
-                gamepad.buttons[1].pressed &&
-                gamepad.axes[3] > 0.35 &&
-                (gamepadAxisActive === false || gamepadAxisActive === "down")
-              ) {
-                if (playbackIsActive) {
-                  ScreenManager.tilt("down", 0.005);
-                }
-                gamepadAxisActive = "down";
-              } else if (
-                gamepad.buttons[1].pressed &&
-                Math.abs(gamepad.axes[2]) > 0.35 &&
-                gamepadAxisActive === false
-              ) {
-                // Grip + left/right: previous or next video; pages in the library.
-                const forward = gamepad.axes[2] > 0;
-                if (playbackIsActive) {
-                  playMenuPanel.playAdjacentVideo(forward ? 1 : -1);
-                } else if (forward) {
-                  fileBrowserPanel.NextPage();
-                } else {
-                  fileBrowserPanel.PreviousPage();
-                }
-                gamepadAxisActive = true;
-              } else if (
-                gamepad.axes[2] > 0.35 &&
-                gamepadAxisActive === false
-              ) {
-                if (playbackIsActive) {
-                  playMenuPanel.videoPlaybackFFRew("FF", 10);
-                } else {
-                  fileBrowserPanel.NextPage();
-                }
-                gamepadAxisActive = true;
-              } else if (
-                gamepad.axes[2] < -0.35 &&
-                gamepadAxisActive === false
-              ) {
-                if (playbackIsActive) {
-                  playMenuPanel.videoPlaybackFFRew("Rew", 10);
-                } else {
-                  fileBrowserPanel.PreviousPage();
-                }
-                gamepadAxisActive = true;
-              } else if (
-                gamepad.axes[3] > 0.35 &&
-                (gamepadAxisActive === false || gamepadAxisActive === "down")
-              ) {
-                if (playbackIsActive) {
-                  ScreenManager.zoom("out", 0.5);
-                }
-                gamepadAxisActive = "down";
-              } else if (
-                gamepad.axes[3] < -0.35 &&
-                (gamepadAxisActive === false || gamepadAxisActive === "up")
-              ) {
-                if (playbackIsActive) {
-                  ScreenManager.zoom("in", 0.5);
-                }
-                gamepadAxisActive = "up";
-              } else if (gamepad.axes[2] < 0.35 && gamepad.axes[2] > -0.35) {
-                gamepadAxisActive = false;
-                gamepadButtonsCheck(gamepad.buttons);
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-// A and B (X and Y on the left controller) act once per press. Grip + B
-// leaves the video at once, as B does, and held a second longer leaves VR,
-// from the library too.
-const LEAVE_VR_HOLD_MS = 1000;
-let buttonABXYpressed = false;
-let gripBHeldSince = null;
-let gripBLeftVR = false;
-
-function gamepadButtonsCheck(buttons) {
-  const grip = buttons[1].pressed;
-  const a = buttons[4].pressed;
-  const b = buttons[5].pressed;
-
-  if (grip && b) {
-    if (gripBHeldSince === null) {
-      gripBHeldSince = performance.now();
-      if (playbackIsActive && !buttonABXYpressed) {
-        playMenuPanel.ExitToMain();
-      }
-    } else if (
-      !gripBLeftVR &&
-      performance.now() - gripBHeldSince >= LEAVE_VR_HOLD_MS
-    ) {
-      gripBLeftVR = true;
-      leaveVR();
-    }
-    buttonABXYpressed = true;
+  if (!renderer.xr.isPresenting) {
     return;
   }
-  gripBHeldSince = null;
-  gripBLeftVR = false;
+  const controller = vrControl.controllers[vrControlCurrentlyUsedController];
+  const gamepad = controller.userData.inputSource?.gamepad;
+  if (gamepad?.mapping !== "xr-standard") {
+    showGripPopup(false);
+    return;
+  }
+  const state = readGamepad(gamepad);
+  showGripPopup(state.grip);
+  const actions = controllerInput(
+    state,
+    { playing: playbackIsActive },
+    performance.now()
+  );
+  actions.forEach(runControllerAction);
+}
 
-  if (a && playbackIsActive && !buttonABXYpressed) {
-    playMenuPanel.playPause();
-    buttonABXYpressed = true;
-  } else if (b && playbackIsActive && !buttonABXYpressed) {
-    playMenuPanel.ExitToMain();
-    buttonABXYpressed = true;
-  } else if (!a && !b) {
-    buttonABXYpressed = false;
+function runControllerAction(action) {
+  switch (action.type) {
+    case "zoom":
+      ScreenManager.zoom(action.direction, 0.5);
+      break;
+    case "tilt":
+      ScreenManager.tilt(action.direction, 0.005);
+      break;
+    case "seek":
+      playMenuPanel.videoPlaybackFFRew(action.seconds > 0 ? "FF" : "Rew", Math.abs(action.seconds));
+      break;
+    case "adjacentVideo":
+      playMenuPanel.playAdjacentVideo(action.offset);
+      break;
+    case "page":
+      if (action.offset > 0) {
+        fileBrowserPanel.NextPage();
+      } else {
+        fileBrowserPanel.PreviousPage();
+      }
+      break;
+    case "playPause":
+      playMenuPanel.playPause();
+      break;
+    case "exitToLibrary":
+      playMenuPanel.ExitToMain();
+      break;
+    case "leaveVR":
+      leaveVR();
+      break;
   }
 }
 

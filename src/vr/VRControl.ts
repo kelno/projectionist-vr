@@ -42,10 +42,7 @@ export default function VRControl( renderer: THREE.WebGLRenderer ) {
 
 	for ( let i = 0; i < uvAttribute.count; i++ ) {
 
-		let u = uvAttribute.getX( i );
-		let v = uvAttribute.getY( i );
-
-		[ u, v ] = ( () => {
+		const [ u, v ] = ( () => {
 
 			switch ( i ) {
 

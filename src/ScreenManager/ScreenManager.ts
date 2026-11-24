@@ -78,7 +78,7 @@ export function resetPosition(group: PanelGroup): void {
 }
 
 export function zoom(in_or_out: "in" | "out" | "reset", step = 10): void {
-    let targetZoom = currentZoom;
+    let targetZoom: number;
     switch (in_or_out) {
         case "in":
             targetZoom = currentZoom + step;

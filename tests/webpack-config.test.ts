@@ -3,7 +3,18 @@ import { createRequire } from "node:module";
 import test from "node:test";
 
 const require = createRequire(import.meta.url);
-const webpackConfig = require("../webpack.config.js");
+// webpack.config.js is plain CommonJS: these are the parts the tests use.
+interface PlayerSettings {
+    library?: { videos_path?: string };
+    web?: { site_url_prefix?: string };
+    player?: { default_sbs_zoom?: number };
+}
+interface WebpackConfigModule {
+    (env: Record<string, boolean>): { output: { publicPath: string } }[];
+    parseToml: (text: string) => PlayerSettings;
+    playerConfig: (config: PlayerSettings) => { defaultSbsZoom: number };
+}
+const webpackConfig = require("../webpack.config.js") as WebpackConfigModule;
 const { parseToml, playerConfig } = webpackConfig;
 
 test("keeps local library paths separate from web and player settings", () => {
@@ -18,8 +29,8 @@ site_url_prefix = "/vr-player"
 default_sbs_zoom = 75.5
 `);
 
-    assert.equal(config.library.videos_path, "/library");
-    assert.equal(config.web.site_url_prefix, "/vr-player");
+    assert.equal(config.library?.videos_path, "/library");
+    assert.equal(config.web?.site_url_prefix, "/vr-player");
     assert.deepEqual(playerConfig(config), { defaultSbsZoom: 75.5 });
 });
 

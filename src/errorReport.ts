@@ -18,7 +18,7 @@ export function createErrorReporter({ send, version, max = 20 }: {
             return false;
         }
         sent.add(key);
-        const stack = String(thrown?.stack ?? "")
+        const stack = (typeof thrown?.stack === "string" ? thrown.stack : "")
             .split("\n")
             .slice(1, 4)
             .map((line) => line.trim())

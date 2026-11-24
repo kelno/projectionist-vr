@@ -110,7 +110,7 @@ export class HiddenSphere {
             state: "selected",
             onSet: () => {
                 // A click outside the settings closes only the settings.
-                if (MAIN.playMenuPanel.settingsMenuContainer.settingsVisible) {
+                if (MAIN.playMenuPanel.settingsWindow.isOpen) {
                     MAIN.playMenuPanel.hideSettingsMenuContainer();
                 } else if (
                     Helpers.videoSrcExists() &&

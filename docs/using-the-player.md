@@ -63,8 +63,11 @@ are connected, pull the trigger on the other one to point with it instead.
   the zoom.
 - Thumbstick left or right: back or forward 10 seconds.
 - A: play or pause. B: back to the library.
-- Trigger on the video: show or hide the player controls. A click outside the
-  settings closes them.
+- Trigger on the video: show or hide the player controls.
+- The gear opens the settings window: screen mode, zoom and tilt, and Media
+  info, which shows the video's resolution, codecs, frame rate, audio,
+  duration, size and bitrate from the catalogue. The arrow at the top left goes
+  back a page; a click anywhere outside the window closes it.
 - Grip + thumbstick up or down: tilt the screen.
 - Grip + thumbstick left or right: previous or next video in the library's
   current list, as searched and sorted. The arrow buttons at either end of the

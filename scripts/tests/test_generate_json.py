@@ -56,3 +56,82 @@ class GenerateCatalogueTests(unittest.TestCase):
             count = write_catalogue({"!Uncategorized": []}, output)
             self.assertEqual(count, 0)
             self.assertEqual(json.loads(output.read_text(encoding="utf-8")), {"videos": [{"name": "!Uncategorized", "list": []}]})
+
+
+class MediaInfoTests(unittest.TestCase):
+    PROBE = {
+        "streams": [
+            {"codec_type": "video", "codec_name": "hevc", "width": 5760, "height": 2880, "avg_frame_rate": "60000/1001"},
+            {"codec_type": "audio", "codec_name": "aac", "channels": 2},
+        ],
+        "format": {"duration": "120.5", "bit_rate": "38000000"},
+    }
+
+    def test_parses_resolution_codecs_and_rates(self):
+        from generate_json import parse_media_info
+
+        self.assertEqual(
+            parse_media_info(self.PROBE, 4200),
+            {
+                "size": 4200,
+                "width": 5760,
+                "height": 2880,
+                "video_codec": "hevc",
+                "fps": 59.94,
+                "audio_codec": "aac",
+                "audio_channels": 2,
+                "duration": 120.5,
+                "bit_rate": 38000000,
+            },
+        )
+
+    def test_a_video_without_audio_has_no_audio_fields(self):
+        from generate_json import parse_media_info
+
+        probe = {"streams": [self.PROBE["streams"][0]], "format": {}}
+        media = parse_media_info(probe, 10)
+        self.assertNotIn("audio_codec", media)
+        self.assertNotIn("bit_rate", media)
+
+    def test_reuses_media_info_of_an_unchanged_file_only(self):
+        from generate_json import media_for
+
+        with tempfile.TemporaryDirectory() as directory:
+            video = Path(directory) / "video.mp4"
+            video.write_bytes(b"12345")
+            previous = {"epoch": "1", "media": {"size": 5, "video_codec": "hevc"}}
+            self.assertEqual(media_for(video, previous, "1"), previous["media"])
+            # A new date, or a new size, means the file changed: it is probed
+            # again, and this one isn't a video, so there is nothing to show.
+            self.assertIsNone(media_for(video, previous, "2"))
+            self.assertIsNone(media_for(video, {"epoch": "1", "media": {"size": 6}}, "1"))
+
+    def test_reads_previous_media_by_source(self):
+        from generate_json import load_previous_media
+
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "files.json"
+            output.write_text(json.dumps({"videos": [{"name": "C", "list": [
+                {"src": "/a.mp4", "epoch": "1", "media": {"size": 5}},
+                {"src": "/b.mp4", "epoch": "1"},
+            ]}]}), encoding="utf-8")
+            self.assertEqual(list(load_previous_media(output)), ["/a.mp4"])
+            self.assertEqual(load_previous_media(Path(directory) / "missing.json"), {})
+
+    def test_probes_a_real_video(self):
+        import shutil
+        import subprocess
+
+        from generate_json import read_media_info
+
+        if not (shutil.which("ffmpeg") and shutil.which("ffprobe")):
+            self.skipTest("FFmpeg is not installed")
+        with tempfile.TemporaryDirectory() as directory:
+            video = Path(directory) / "test.mp4"
+            subprocess.run(
+                ["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=320x160:rate=30:duration=1",
+                 "-pix_fmt", "yuv420p", str(video)],
+                check=True,
+            )
+            media = read_media_info(video)
+            self.assertEqual((media["width"], media["height"], media["video_codec"], media["fps"]), (320, 160, "h264", 30.0))

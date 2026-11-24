@@ -5,7 +5,7 @@
 - Node.js and npm to install dependencies and build the browser bundle.
 - A static web server: opening `index.html` directly from disk cannot load `files.json`.
 - Python 3 to generate `files.json`.
-- FFmpeg and FFprobe, only when generating thumbnails or preparing media.
+- FFmpeg and FFprobe, for thumbnails, for the media info in the catalogue (`--no-media-info` skips it) and for preparing media.
 
 ## First-time setup
 

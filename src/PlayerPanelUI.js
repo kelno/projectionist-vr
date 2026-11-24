@@ -28,7 +28,6 @@ import RewIcon from "../assets/icons/rewind.png";
 import MuteIcon from "../assets/icons/mute.png";
 import VolumeIcon from "../assets/icons/volume.png";
 import ExitIcon from "../assets/icons/logout.png";
-import CloseIcon from "../assets/icons/close.png";
 import SettingsIcon from "../assets/icons/setting.png";
 import ZoomOutIcon from "../assets/icons/zoom-out.png";
 import ZoomInIcon from "../assets/icons/zoom-in.png";
@@ -38,13 +37,23 @@ import VRIcon from "../assets/icons/vr-glasses.png";
 import WideScreenIcon from "../assets/icons/wide.png";
 import ResetIcon from "../assets/icons/reset.png";
 import FullScreenIcon from "../assets/icons/fullscreen.png";
+
+import RightIcon from "../assets/icons/right-arrow.png";
+
+import { PagedWindow } from "./ui/PagedWindow.js";
+import { BUTTON_SIZE, column, iconButton, label, row, textButton } from "./ui/kit.js";
+import { mediaInfoLines } from "./mediaInfo.mjs";
+import { sanitizeFontText } from "./font.js";
+
+function shorten(text, length) {
+    return text.length > length ? `${text.slice(0, length - 3)}...` : text;
+}
 import PreviousVideoIcon from "../assets/icons/left-arrow.png";
 import NextVideoIcon from "../assets/icons/right-arrow.png";
 
 export class PlayerPanel {
     playMenuContainer;
     playMenuObjsToTest = [];
-    settingsMenuObjsToTest = [];
     progressBar;
     progressBarContainer;
     settingsMenuContainer;
@@ -154,15 +163,6 @@ export class PlayerPanel {
         offset: 0.005,
     };
 
-    closeSettingsButtonAttributes = {
-        width: 0.07,
-        height: 0.07,
-        justifyContent: "center",
-        offset: 0.05,
-        margin: 0.02,
-        borderRadius: 0.035,
-    };
-
     progressBarContainerAttributes = {
         height: this.PROGRESSPANELHEIGHT,
         width: this.PROGRESSPANELMAXWIDTH,
@@ -173,30 +173,6 @@ export class PlayerPanel {
         contentDirection: "row",
         backgroundOpacity: 1,
         backgroundColor: new Color(0x5b5b5b),
-    };
-
-    settingsBlockAttributes = {
-        justifyContent: "center",
-        contentDirection: "column",
-        fontFamily: FontJSON,
-        fontTexture: FontImage,
-        fontSize: 0.07,
-        padding: 0.02,
-        borderRadius: 0,
-        backgroundOpacity: 1,
-        width: this.SETTINGSPANELMAXWIDTH,
-    };
-
-    settingsRowBlockAttributes = {
-        justifyContent: "start",
-        contentDirection: "row",
-        fontFamily: FontJSON,
-        fontTexture: FontImage,
-        fontSize: 0.07,
-        padding: 0.005,
-        borderRadius: 0.11,
-        backgroundOpacity: 0,
-        width: this.SETTINGSPANELMAXWIDTH,
     };
 
     iconElementAttributes = {
@@ -215,28 +191,8 @@ export class PlayerPanel {
     // We start by creating objects containing options that we will use with the two buttons,
     // in order to write less code.
 
-    bigButtonOptions = {
-        width: 0.4,
-        height: 0.15,
-        justifyContent: "center",
-        offset: 0.05,
-        margin: 0.02,
-        backgroundOpacity: 1,
-        borderRadius: 0.075,
-    };
-
     buttonOptions = {
         width: 0.15,
-        height: 0.15,
-        justifyContent: "center",
-        offset: 0.05,
-        margin: 0.02,
-        backgroundOpacity: 1,
-        borderRadius: 0.08,
-    };
-
-    biggerButtonOptions = {
-        width: 0.55,
         height: 0.15,
         justifyContent: "center",
         offset: 0.05,
@@ -317,7 +273,7 @@ export class PlayerPanel {
         this.playMenuContainer.setupState({
             state: "selected",
             onSet: () => {
-                if (this.settingsMenuContainer.settingsVisible) {
+                if (this.settingsWindow.isOpen) {
                     this.hideSettingsMenuContainer();
                 }
             },
@@ -593,7 +549,7 @@ export class PlayerPanel {
             state: "selected",
             attributes: this.selectedAttributes,
             onSet: () => {
-                switch (this.settingsMenuContainer.settingsVisible) {
+                switch (this.settingsWindow.isOpen) {
                     case true:
                         this.hideSettingsMenuContainer();
                         break;
@@ -714,327 +670,13 @@ export class PlayerPanel {
             MAIN.hiddenSphere
         );
 
-        // Settings container
-
-        this.settingsMenuContainer = new Block(this.settingsBlockAttributes);
-        this.settingsMenuContainer.visible = false;
-        MAIN.scene.add(this.settingsMenuContainer);
-        this.settingsMenuContainer.settingsVisible = false;
-        this.settingsMenuContainer.position.set(0, 1, -2.95);
-        this.settingsMenuContainer.setupState({ state: "selected" });
-        this.settingsMenuContainer.setupState({ state: "hovered" });
-        this.settingsMenuContainer.setupState({ state: "idle" });
-        ScreenManager.registerPanel(
-            this.settingsMenuContainer,
-            "playMenuPanel",
-            "settingsMenuContainer",
-            "settingsMenuContainer"
-        );
-
-        const settingsMenuTopBar = new Block(this.settingsRowBlockAttributes);
-        settingsMenuTopBar.set({
-            justifyContent: "end",
-            width: this.SETTINGSPANELMAXWIDTH - this.SETTINGSPANELMAXWIDTH / 16,
-        });
-        const settingsMenuZoom = new Block(this.settingsRowBlockAttributes);
-        const settingsMenuTilt = new Block(this.settingsRowBlockAttributes);
-        const settingsMenuModes = new Block(this.settingsRowBlockAttributes);
-
-        const closeSettingsButton = new Block(
-            this.closeSettingsButtonAttributes
-        );
-        const zoomOutButton = new Block(this.buttonOptions);
-        const zoomInButton = new Block(this.buttonOptions);
-        const zoomResetButton = new Block(this.buttonOptions);
-        const tiltUpButton = new Block(this.buttonOptions);
-        const tiltDownButton = new Block(this.buttonOptions);
-        const tiltResetButton = new Block(this.buttonOptions);
-        const VRModeButton = new Block(this.buttonOptions);
-        const ScreenModeButton = new Block(this.buttonOptions);
-        const VR2DModeButton = new Block(this.buttonOptions);
-        const VRSBSTBModeButton = new Block(this.biggerButtonOptions);
-
-        // Shown on hover.
-        closeSettingsButton.tooltip = "Close settings";
-        zoomOutButton.tooltip = "Zoom out";
-        zoomInButton.tooltip = "Zoom in";
-        zoomResetButton.tooltip = "Default zoom";
-        tiltUpButton.tooltip = "Tilt up";
-        tiltDownButton.tooltip = "Tilt down";
-        tiltResetButton.tooltip = "Reset tilt";
-        VRModeButton.tooltip = "VR view";
-        ScreenModeButton.tooltip = "Flat screen";
-        VR2DModeButton.tooltip = "3D / 2D";
-        VRSBSTBModeButton.tooltip = "Video layout";
-
-        this.VR2DModeButtonText = new Text({
-            content: "3D",
-            fontSize: 0.07,
-        });
-        VR2DModeButton.add(this.VR2DModeButtonText);
-
-        this.VRSBSTBModeButtonText = new Text({
-            content: Helpers.getWordFromLang("side_by_side"),
-            fontSize: 0.07,
-        });
-        VRSBSTBModeButton.add(this.VRSBSTBModeButtonText);
-
-        this.loader.load(CloseIcon, (texture) => {
-            closeSettingsButton.add(
-                new InlineBlock({
-                    height: 0.06,
-                    width: 0.06,
-                    backgroundTexture: texture,
-                    borderRadius: 0,
-                })
-            );
-        });
-
-        this.loader.load(ZoomOutIcon, (texture) => {
-            zoomOutButton.add(new InlineBlock(this.textureAttributes(texture)));
-        });
-
-        this.loader.load(ZoomInIcon, (texture) => {
-            zoomInButton.add(new InlineBlock(this.textureAttributes(texture)));
-        });
-
         this.loader.load(ResetIcon, (texture) => {
-            zoomResetButton.add(
-                new InlineBlock(this.textureAttributes(texture))
-            );
             moveResetButton.add(
                 new InlineBlock(this.textureAttributes(texture))
             );
         });
 
-        this.loader.load(UpIcon, (texture) => {
-            tiltUpButton.add(new InlineBlock(this.textureAttributes(texture)));
-        });
-
-        this.loader.load(DownIcon, (texture) => {
-            tiltDownButton.add(
-                new InlineBlock(this.textureAttributes(texture))
-            );
-        });
-
-        this.loader.load(ResetIcon, (texture) => {
-            tiltResetButton.add(
-                new InlineBlock(this.textureAttributes(texture))
-            );
-        });
-
-        this.loader.load(VRIcon, (texture) => {
-            VRModeButton.add(new InlineBlock(this.textureAttributes(texture)));
-        });
-
-        this.loader.load(WideScreenIcon, (texture) => {
-            ScreenModeButton.add(
-                new InlineBlock(this.textureAttributes(texture))
-            );
-        });
-
-        closeSettingsButton.setupState({
-            state: "selected",
-            attributes: this.selectedAttributes,
-            onSet: () => {
-                this.hideSettingsMenuContainer();
-            },
-        });
-        closeSettingsButton.setupState(this.hoveredState);
-        closeSettingsButton.setupState(this.idleState);
-
-        zoomOutButton.setupState({
-            state: "selected",
-            attributes: this.selectedAttributes,
-            onSet: () => {
-                ScreenManager.zoom("out");
-            },
-        });
-        zoomOutButton.setupState(this.hoveredState);
-        zoomOutButton.setupState(this.idleState);
-
-        zoomInButton.setupState({
-            state: "selected",
-            attributes: this.selectedAttributes,
-            onSet: () => {
-                ScreenManager.zoom("in");
-            },
-        });
-        zoomInButton.setupState(this.hoveredState);
-        zoomInButton.setupState(this.idleState);
-
-        zoomResetButton.setupState({
-            state: "selected",
-            attributes: this.selectedAttributes,
-            onSet: () => {
-                ScreenManager.resetZoomToConfiguredDefault();
-            },
-        });
-        zoomResetButton.setupState(this.hoveredState);
-        zoomResetButton.setupState(this.idleState);
-
-        tiltUpButton.setupState({
-            state: "selected",
-            attributes: this.selectedAttributes,
-            onSet: () => {
-                ScreenManager.tilt("up");
-            },
-        });
-        tiltUpButton.setupState(this.hoveredState);
-        tiltUpButton.setupState(this.idleState);
-
-        tiltDownButton.setupState({
-            state: "selected",
-            attributes: this.selectedAttributes,
-            onSet: () => {
-                ScreenManager.tilt("down");
-            },
-        });
-        tiltDownButton.setupState(this.hoveredState);
-        tiltDownButton.setupState(this.idleState);
-
-        tiltResetButton.setupState({
-            state: "selected",
-            attributes: this.selectedAttributes,
-            onSet: () => {
-                ScreenManager.tilt("reset");
-            },
-        });
-        tiltResetButton.setupState(this.hoveredState);
-        tiltResetButton.setupState(this.idleState);
-
-        VRModeButton.setupState({
-            state: "selected",
-            attributes: this.selectedAttributes,
-            onSet: () => {
-                ScreenManager.switchModeVRScreen(ScreenManager.VRMode);
-            },
-        });
-        VRModeButton.setupState(this.hoveredState);
-        VRModeButton.setupState(this.idleState);
-
-        ScreenModeButton.setupState({
-            state: "selected",
-            attributes: this.selectedAttributes,
-            onSet: () => {
-                ScreenManager.switchModeVRScreen("screen");
-            },
-        });
-        ScreenModeButton.setupState(this.hoveredState);
-        ScreenModeButton.setupState(this.idleState);
-
-        VR2DModeButton.setupState({
-            state: "selected",
-            attributes: this.selectedAttributes,
-            onSet: () => {
-                if (ScreenManager.force_2d_mode) {
-                    ScreenManager.force2DMode(false);
-                    this.VR2DModeButtonText.set({ content: "3D" });
-                } else {
-                    ScreenManager.force2DMode(true);
-                    this.VR2DModeButtonText.set({ content: "2D" });
-                }
-            },
-        });
-        VR2DModeButton.setupState(this.hoveredState);
-        VR2DModeButton.setupState(this.idleState);
-
-        VRSBSTBModeButton.setupState({
-            state: "selected",
-            attributes: this.selectedAttributes,
-            onSet: () => {
-                if (ScreenManager.VRMode === "sbs") {
-                    ScreenManager.switchModeVRScreen("tb");
-                    this.VRSBSTBModeButtonText.set({
-                        content: Helpers.getWordFromLang("top_bottom"),
-                    });
-                } else if (ScreenManager.VRMode === "tb") {
-                    ScreenManager.switchModeVRScreen("360");
-                    this.VRSBSTBModeButtonText.set({
-                        content: Helpers.getWordFromLang("top_bottom_360"),
-                    });
-                } else if (ScreenManager.VRMode === "360") {
-                    ScreenManager.switchModeVRScreen("sphere180");
-                    this.VRSBSTBModeButtonText.set({ content: "2D 180" });
-                } else if (ScreenManager.VRMode === "sphere180") {
-                    ScreenManager.switchModeVRScreen("sphere360");
-                    this.VRSBSTBModeButtonText.set({ content: "2D 360" });
-                } else if (ScreenManager.VRMode === "sphere360") {
-                    ScreenManager.switchModeVRScreen("sbs");
-                    this.VRSBSTBModeButtonText.set({
-                        content: Helpers.getWordFromLang("side_by_side"),
-                    });
-                }
-            },
-        });
-        VRSBSTBModeButton.setupState(this.hoveredState);
-        VRSBSTBModeButton.setupState(this.idleState);
-
-        // Labels
-        const zoomLabel = new Block(this.bigButtonOptions).add(
-            new Text({
-                content: Helpers.getWordFromLang("zoom_video"),
-                fontSize: 0.05,
-            })
-        );
-
-        const tiltLabel = new Block(this.bigButtonOptions).add(
-            new Text({
-                content: Helpers.getWordFromLang("tilt_video"),
-                fontSize: 0.05,
-            })
-        );
-
-        const modeLabel = new Block(this.bigButtonOptions).add(
-            new Text({
-                content: Helpers.getWordFromLang("switch_mode"),
-                fontSize: 0.05,
-            })
-        );
-
-        settingsMenuTopBar.add(closeSettingsButton);
-        settingsMenuZoom.add(
-            zoomLabel,
-            zoomOutButton,
-            zoomInButton,
-            zoomResetButton
-        );
-        settingsMenuTilt.add(
-            tiltLabel,
-            tiltDownButton,
-            tiltUpButton,
-            tiltResetButton
-        );
-        settingsMenuModes.add(
-            modeLabel,
-            ScreenModeButton,
-            VRModeButton,
-            VR2DModeButton,
-            VRSBSTBModeButton
-        );
-        this.settingsMenuContainer.add(
-            settingsMenuTopBar,
-            settingsMenuModes,
-            settingsMenuZoom,
-            settingsMenuTilt
-        );
-        this.settingsMenuObjsToTest.push(
-            closeSettingsButton,
-            zoomInButton,
-            zoomOutButton,
-            zoomResetButton,
-            tiltUpButton,
-            tiltDownButton,
-            tiltResetButton,
-            ScreenModeButton,
-            VRModeButton,
-            VR2DModeButton,
-            VRSBSTBModeButton,
-            settingsButton,
-            this.settingsMenuContainer,
-            this.playMenuContainer,
-            MAIN.hiddenSphere
-        );
+        this.buildSettingsWindow(settingsButton);
 
         this.draggingBox = new Block({
             justifyContent: "center",
@@ -1131,7 +773,7 @@ export class PlayerPanel {
     }
 
     hidePlayMenuPanel() {
-        if (this.settingsMenuContainer.settingsVisible) {
+        if (this.settingsWindow.isOpen) {
             this.hideSettingsMenuContainer();
         }
         UI.hideMenu([this.playMenuContainer, this.draggingBox], [], true);
@@ -1139,13 +781,157 @@ export class PlayerPanel {
     }
 
     showSettingsMenuContainer() {
-        UI.showMenu(this.settingsMenuContainer, this.settingsMenuObjsToTest);
-        this.settingsMenuContainer.settingsVisible = true;
+        this.settingsWindow.open("settings");
     }
 
     hideSettingsMenuContainer() {
-        UI.hideMenu(this.settingsMenuContainer, this.playMenuObjsToTest);
-        this.settingsMenuContainer.settingsVisible = false;
+        this.settingsWindow.close();
+        UI.registerNewObjectsToTest(this.playMenuObjsToTest);
+    }
+
+    // The settings window: a main page (mode, zoom, tilt) and sub-pages.
+    buildSettingsWindow(settingsButton) {
+        const width = this.SETTINGSPANELMAXWIDTH;
+        const innerWidth = width - 0.08;
+        this.settingsWindow = new PagedWindow({
+            width,
+            bodyHeight: 0.8,
+            onClose: () => this.hideSettingsMenuContainer(),
+            onTargetsChange: (targets) => {
+                // While open, only the window, the gear and outside clicks count.
+                UI.registerNewObjectsToTest([
+                    ...targets,
+                    settingsButton,
+                    this.playMenuContainer,
+                    MAIN.hiddenSphere,
+                ]);
+            },
+        });
+        // ScreenManager finds panels by this property name to reset them.
+        this.settingsMenuContainer = this.settingsWindow.container;
+        // Just above the controls, which sit at y 0.6.
+        this.settingsMenuContainer.position.set(0, 1.4, -2.95);
+        MAIN.scene.add(this.settingsMenuContainer);
+        ScreenManager.registerPanel(
+            this.settingsMenuContainer,
+            "playMenuPanel",
+            "settingsMenuContainer",
+            "settingsMenuContainer"
+        );
+
+        this.settingsWindow.addPage("settings", this.buildSettingsPage(innerWidth));
+        this.settingsWindow.addPage("media", this.buildMediaInfoPage(innerWidth));
+    }
+
+    buildSettingsPage(width) {
+        const rowLabel = (key) =>
+            label(Helpers.getWordFromLang(key), { width: 0.45, fontSize: 0.05 });
+
+        const screenMode = iconButton({
+            icon: WideScreenIcon,
+            tooltip: "Flat screen",
+            onSelect: () => ScreenManager.switchModeVRScreen("screen"),
+        });
+        const vrMode = iconButton({
+            icon: VRIcon,
+            tooltip: "VR view",
+            onSelect: () => ScreenManager.switchModeVRScreen(ScreenManager.VRMode),
+        });
+        const stereo = textButton({
+            label: "3D",
+            tooltip: "3D / 2D",
+            width: BUTTON_SIZE,
+            onSelect: () => {
+                ScreenManager.force2DMode(!ScreenManager.force_2d_mode);
+                this.VR2DModeButtonText.set({
+                    content: ScreenManager.force_2d_mode ? "2D" : "3D",
+                });
+            },
+        });
+        this.VR2DModeButtonText = stereo.text;
+        const layout = textButton({
+            label: Helpers.getWordFromLang("side_by_side"),
+            tooltip: "Video layout",
+            onSelect: () => this.nextVideoLayout(),
+        });
+        this.VRSBSTBModeButtonText = layout.text;
+
+        const zoomOut = iconButton({ icon: ZoomOutIcon, tooltip: "Zoom out", onSelect: () => ScreenManager.zoom("out") });
+        const zoomIn = iconButton({ icon: ZoomInIcon, tooltip: "Zoom in", onSelect: () => ScreenManager.zoom("in") });
+        const zoomReset = iconButton({
+            icon: ResetIcon,
+            tooltip: "Default zoom",
+            onSelect: () => ScreenManager.resetZoomToConfiguredDefault(),
+        });
+        const tiltDown = iconButton({ icon: DownIcon, tooltip: "Tilt down", onSelect: () => ScreenManager.tilt("down") });
+        const tiltUp = iconButton({ icon: UpIcon, tooltip: "Tilt up", onSelect: () => ScreenManager.tilt("up") });
+        const tiltReset = iconButton({ icon: ResetIcon, tooltip: "Reset tilt", onSelect: () => ScreenManager.tilt("reset") });
+        const mediaInfo = textButton({
+            label: "Media info",
+            icon: RightIcon,
+            width: width - 0.04,
+            onSelect: () => this.settingsWindow.show("media"),
+        });
+
+        const targets = [screenMode, vrMode, stereo, layout, zoomOut, zoomIn, zoomReset, tiltDown, tiltUp, tiltReset, mediaInfo];
+        return {
+            title: "Settings",
+            targets,
+            block: column(
+                [
+                    row([rowLabel("switch_mode"), screenMode, vrMode, stereo, layout], { width }),
+                    row([rowLabel("zoom_video"), zoomOut, zoomIn, zoomReset], { width }),
+                    row([rowLabel("tilt_video"), tiltDown, tiltUp, tiltReset], { width }),
+                    row([mediaInfo], { width }),
+                ],
+                { width, height: 0.8 }
+            ),
+        };
+    }
+
+    // Steps through the video layouts: SBS, TB, 360, then the 2D spheres.
+    nextVideoLayout() {
+        const layouts = [
+            ["sbs", Helpers.getWordFromLang("side_by_side")],
+            ["tb", Helpers.getWordFromLang("top_bottom")],
+            ["360", Helpers.getWordFromLang("top_bottom_360")],
+            ["sphere180", "2D 180"],
+            ["sphere360", "2D 360"],
+        ];
+        const index = layouts.findIndex(([mode]) => mode === ScreenManager.VRMode);
+        if (index === -1) {
+            return;
+        }
+        const [mode, name] = layouts[(index + 1) % layouts.length];
+        ScreenManager.switchModeVRScreen(mode);
+        this.VRSBSTBModeButtonText.set({ content: name });
+    }
+
+    buildMediaInfoPage(width) {
+        const values = [];
+        const rows = mediaInfoLines(null, null).map(([name]) => {
+            const value = label("-", { width: width - 0.5, height: 0.1, fontSize: 0.055 });
+            values.push(value);
+            return row(
+                [label(name, { width: 0.45, height: 0.1, fontSize: 0.055, color: 0xaaaaaa }), value],
+                { width, height: 0.105 }
+            );
+        });
+        return {
+            title: "Media info",
+            targets: [],
+            block: column(rows, { width, height: 0.8 }),
+            onShow: () => {
+                const entry = MAIN.fileBrowserPanel.fileForSource(
+                    MAIN.video.getAttribute("src")
+                );
+                mediaInfoLines(entry, MAIN.video).forEach(([, text], index) => {
+                    values[index].text.set({
+                        content: sanitizeFontText(shorten(text, 40)),
+                    });
+                });
+            },
+        };
     }
 
     // Play the next (offset 1) or previous (offset -1) video of the list the

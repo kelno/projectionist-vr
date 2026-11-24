@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { formatDuration, formatSize, mediaInfoLines } from "../src/mediaInfo.ts";
+import type { Decoding } from "../src/decoding.ts";
 import type { MediaInfoLine } from "../src/mediaInfo.ts";
 import type { MediaInfo } from "../src/types/catalogue.ts";
 
@@ -41,7 +42,17 @@ test("shows the catalogue's media info", () => {
         ["Size", "4.2 GB"],
         ["Bitrate", "38.0 Mb/s"],
         ["Fast start", "Unknown"],
+        ["Decoding", "Unknown"],
     ]);
+});
+
+test("shows the browser's answer about decoding, a problem when not in hardware", () => {
+    const line = (decoding: Decoding | "checking") =>
+        mediaInfoLines(null, null, decoding).find(([name]) => name === "Decoding");
+    assert.deepEqual(line("hardware"), ["Decoding", "Hardware"]);
+    assert.deepEqual(line("checking"), ["Decoding", "Checking..."]);
+    assert.deepEqual(line("software"), ["Decoding", "Software, slow: convert it", true]);
+    assert.deepEqual(line("unsupported"), ["Decoding", "Not supported by this browser", true]);
 });
 
 test("flags a video that starts slowly", () => {

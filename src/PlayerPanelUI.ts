@@ -44,6 +44,8 @@ import {
 import type { IconButton, Label } from "./ui/kit.ts";
 import { colour, space } from "./ui/theme.ts";
 import type { ColourName } from "./ui/theme.ts";
+import { browserDecoding } from "./decoding.ts";
+import type { Decoding } from "./decoding.ts";
 import { mediaInfoLines } from "./mediaInfo.ts";
 import { shortenText } from "./font.ts";
 import { clockTime } from "./seekBar.ts";
@@ -499,17 +501,27 @@ export class PlayerPanel {
                 height: 0.095,
             });
         });
+        // Counts the page's showings, so a late answer from the browser about
+        // a video shown before is dropped.
+        let showings = 0;
         return {
             title: "Media info",
             targets: [],
             block: column(rows, { width, height: this.SETTINGS_HEIGHT }),
             onShow: () => {
                 const entry = MAIN.fileBrowserPanel.fileForSource(this.videoElement.getAttribute("src"));
-                mediaInfoLines(entry, this.videoElement).forEach(([, text, problem], index) => {
-                    values[index].text.set({
-                        content: shortenText(text, 40),
-                        fontColor: colour(problem ? "danger" : "text"),
+                const show = (decoding: Decoding | "checking") => {
+                    mediaInfoLines(entry, this.videoElement, decoding).forEach(([, text, problem], index) => {
+                        values[index].text.set({
+                            content: shortenText(text, 40),
+                            fontColor: colour(problem ? "danger" : "text"),
+                        });
                     });
+                };
+                show("checking");
+                const showing = ++showings;
+                void browserDecoding(entry?.media, navigator.mediaCapabilities).then((decoding) => {
+                    if (showing === showings) show(decoding);
                 });
             },
         };

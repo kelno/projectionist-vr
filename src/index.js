@@ -24,6 +24,7 @@ import {
   makeGripPopup,
 } from "./ui/controlHints.js";
 import { createTooltip } from "./ui/tooltip.js";
+import { createBufferingIndicator } from "./ui/bufferingIndicator.js";
 
 export let scene,
   camera,
@@ -520,6 +521,7 @@ function init() {
   scene.add(vrControl.controllerGrips[1], vrControl.controllers[1]);
   createGripPopups();
   updateTooltip = createTooltip(scene);
+  updateBufferingIndicator = createBufferingIndicator(scene);
 
   vrControl.controllers[0].addEventListener("selectstart", () => {
     vrControlSelected(0);
@@ -968,9 +970,16 @@ function gamepadButtonsCheck(buttons) {
 
 let checkVideoTexture = () => {};
 let updateTooltip = () => {};
+let updateBufferingIndicator = () => {};
 
 function loop() {
-  checkVideoTexture(performance.now());
+  const now = performance.now();
+  checkVideoTexture(now);
+  updateBufferingIndicator(
+    video,
+    renderer.xr.isPresenting ? renderer.xr.getCamera() : camera,
+    now
+  );
 
   renderer.render(scene, camera);
 

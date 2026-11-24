@@ -225,7 +225,7 @@ export default class SourcesSelectorPanel {
 
     hideSourcesSelectorPanel() {
         hideMenu([this.sourcesSelectorContainer], []);
-        registerNewObjectsToTest(fileBrowserPanel.fileBrowserObjectsToTest);
+        fileBrowserPanel.registerTargets();
     }
 
     selectSource(data) {

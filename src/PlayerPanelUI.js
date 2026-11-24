@@ -782,10 +782,12 @@ export class PlayerPanel {
 
     showSettingsMenuContainer() {
         this.settingsWindow.open("settings");
+        UI.setOutsideClick(() => this.hideSettingsMenuContainer());
     }
 
     hideSettingsMenuContainer() {
         this.settingsWindow.close();
+        UI.setOutsideClick(null);
         UI.registerNewObjectsToTest(this.playMenuObjsToTest);
     }
 
@@ -796,7 +798,6 @@ export class PlayerPanel {
         this.settingsWindow = new PagedWindow({
             width,
             bodyHeight: 0.8,
-            onClose: () => this.hideSettingsMenuContainer(),
             onTargetsChange: (targets) => {
                 // While open, only the window, the gear and outside clicks count.
                 UI.registerNewObjectsToTest([

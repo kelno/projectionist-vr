@@ -30,9 +30,20 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "dist" / "files.json"
 
 
-def clean_filename(filename: str) -> str:
-    """Turn a source filename into a readable library label."""
-    prefixes = ("SpankBang.com_", "vrporncom_", "WankzVR - ", " - ")
+def parse_name_prefixes(value: str) -> tuple[str, ...]:
+    """Read `name_prefixes`: one prefix per line, in double quotes to keep a space at either end."""
+    prefixes = []
+    for line in value.splitlines():
+        prefix = line.strip()
+        if len(prefix) >= 2 and prefix[0] == prefix[-1] == '"':
+            prefix = prefix[1:-1]
+        if prefix:
+            prefixes.append(prefix)
+    return tuple(prefixes)
+
+
+def clean_filename(filename: str, prefixes: tuple[str, ...] = ()) -> str:
+    """Turn a source filename into a readable library label, without the given prefixes."""
     for prefix in prefixes:
         if filename.startswith(prefix):
             filename = filename[len(prefix) :]
@@ -189,6 +200,7 @@ def generate_category_entries(
     MP4s that start slowly are added to `slow_start`, if given.
     """
     videos_dir = Path(config["library"]["videos_path"])
+    name_prefixes = parse_name_prefixes(config["library"].get("name_prefixes", ""))
     videos_url_prefix, thumbnails_url_prefix = url_prefixes(config)
     if not videos_dir.is_dir():
         raise FileNotFoundError(f"Videos directory not found: {videos_dir}")
@@ -197,7 +209,7 @@ def generate_category_entries(
     for relative_path in iter_videos(videos_dir):
         video_path = videos_dir / relative_path
         entry: dict[str, object] = {
-            "name": clean_filename(relative_path.name),
+            "name": clean_filename(relative_path.name, name_prefixes),
             "src": url_for_file(videos_url_prefix, relative_path),
             "thumbnail": "",
             "screen_type": "sbs",

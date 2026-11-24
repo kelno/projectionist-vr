@@ -19,6 +19,7 @@ import {
     textButton,
 } from "../ui/kit.js";
 import { createSpinner } from "../ui/spinner.js";
+import { createSystemKeyboard } from "../input/systemKeyboard.js";
 import {
     GRIP_PLAYER_CONTROLS,
     LIBRARY_CONTROLS,
@@ -200,6 +201,7 @@ export class FileBrowserPanel {
                 this.refreshList();
             },
             onTargetsChange: () => this.registerTargets(),
+            systemKeyboard: createSystemKeyboard(() => MAIN.renderer.xr.getSession()),
         });
         // ScreenManager finds panels by these property names.
         this.searchBar = this.search.bar;

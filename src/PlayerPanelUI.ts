@@ -41,13 +41,15 @@ import {
     row,
     textButton,
 } from "./ui/kit.ts";
-import type { IconButton, Label } from "./ui/kit.ts";
-import { colour, space } from "./ui/theme.ts";
+import type { IconButton } from "./ui/kit.ts";
+import { colour, materialColour, space } from "./ui/theme.ts";
 import type { ColourName } from "./ui/theme.ts";
 import { mediaInfoLines } from "./mediaInfo.ts";
 import { shortenText } from "./font.ts";
 import { clockTime } from "./seekBar.ts";
 import { createSeekPreview } from "./ui/seekPreview.ts";
+import { Container as UiContainer, Text as UiText } from "@pmndrs/uikit";
+import { uikitPanel } from "./ui/uikit.ts";
 
 // What the layout button shows for each video layout, in the order it steps
 // through them.
@@ -489,26 +491,38 @@ export class PlayerPanel {
         this.layoutLabel.set({ content: layout[1]() });
     }
 
+    // The first panel drawn with uikit (ui/uikit.ts), on the uikit-trial
+    // branch: the rows sit on a uikit panel in front of an empty page of the
+    // three-mesh-ui window.
     buildMediaInfoPage(width: number): Page {
-        const values: Label[] = [];
-        const rows = mediaInfoLines(null, null).map(([name]) => {
-            const value = label("-", { width: width - 0.5, height: 0.09, fontSize: 0.055 });
-            values.push(value);
-            return row([label(name, { width: 0.45, height: 0.09, fontSize: 0.055, color: "mutedText" }), value], {
-                width,
-                height: 0.095,
-            });
+        const values: UiText[] = [];
+        const panel = uikitPanel(width, this.SETTINGS_HEIGHT, {
+            flexDirection: "column",
+            justifyContent: "center",
+            fontSize: 55,
+            color: materialColour("text"),
         });
+        for (const [name] of mediaInfoLines(null, null)) {
+            const value = new UiText({ text: "-", flexGrow: 1 });
+            values.push(value);
+            const line = new UiContainer({ flexDirection: "row", alignItems: "center", height: 95, flexShrink: 0 });
+            line.add(new UiText({ text: name, width: 450, flexShrink: 0, color: materialColour("mutedText") }), value);
+            panel.add(line);
+        }
+        const block = new Block({ width, height: this.SETTINGS_HEIGHT, backgroundOpacity: 0 });
+        // Slightly in front of the window, so it isn't hidden behind it.
+        panel.position.z = 0.005;
+        block.add(panel);
         return {
             title: "Media info",
             targets: [],
-            block: column(rows, { width, height: this.SETTINGS_HEIGHT }),
+            block,
             onShow: () => {
                 const entry = MAIN.fileBrowserPanel.fileForSource(this.videoElement.getAttribute("src"));
                 mediaInfoLines(entry, this.videoElement).forEach(([, text, problem], index) => {
-                    values[index].text.set({
-                        content: shortenText(text, 40),
-                        fontColor: colour(problem ? "danger" : "text"),
+                    values[index].setProperties({
+                        text: shortenText(text, 40),
+                        color: materialColour(problem ? "danger" : "text"),
                     });
                 });
             },

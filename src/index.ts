@@ -15,6 +15,7 @@ import * as Helpers from "./Helpers.ts";
 import { watchVideoTexture } from "./videoTextureWatchdog.ts";
 import { GRIP_LIBRARY_CONTROLS, GRIP_PLAYER_CONTROLS, makeGripPopup } from "./ui/controlHints.ts";
 import { createTooltip } from "./ui/tooltip.ts";
+import { setupUikit, updateUikit } from "./ui/uikit.ts";
 import { createBufferingIndicator } from "./ui/bufferingIndicator.ts";
 import { createErrorReporter } from "./errorReport.ts";
 import { playerVersion } from "./playerConfig.ts";
@@ -77,7 +78,7 @@ function init() {
         antialias: true,
         powerPreference: "high-performance",
     });
-    renderer.localClippingEnabled = true;
+    setupUikit(renderer);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.xr.enabled = true;
@@ -462,10 +463,16 @@ function loop(): void {
     }
 }
 
+// When the last frame was drawn, for uikit's update.
+let lastFrame: number | null = null;
+
 function renderFrame(): void {
     const now = performance.now();
     checkVideoTexture(now);
     updateBufferingIndicator(video, renderer.xr.isPresenting ? renderer.xr.getCamera() : camera, now);
+
+    updateUikit(lastFrame === null ? 0 : now - lastFrame);
+    lastFrame = now;
 
     renderer.render(scene, camera);
 

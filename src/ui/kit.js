@@ -20,6 +20,11 @@ const idleAttributes = {
     backgroundOpacity: 1,
     fontColor: new Color(0xffffff),
 };
+// Text buttons are darker, for their white label to read well.
+const textIdleAttributes = {
+    ...idleAttributes,
+    backgroundColor: new Color(0x4f4f4f),
+};
 const hoveredAttributes = {
     offset: 0.035,
     backgroundColor: new Color(0xffff00),
@@ -33,15 +38,16 @@ const selectedAttributes = {
     fontColor: new Color(0x222222),
 };
 
-function makeButton(block, { tooltip, onSelect }) {
+function makeButton(block, { tooltip, onSelect, idle = idleAttributes }) {
     block.tooltip = tooltip;
+    block.idleAttributes = idle;
     block.setupState({
         state: "selected",
         attributes: selectedAttributes,
         onSet: onSelect,
     });
     block.setupState({ state: "hovered", attributes: hoveredAttributes });
-    block.setupState({ state: "idle", attributes: idleAttributes });
+    block.setupState({ state: "idle", attributes: idle });
     return block;
 }
 
@@ -58,8 +64,8 @@ export function iconButton({ icon, tooltip, onSelect, size = BUTTON_SIZE }) {
     loader.load(icon, (texture) => {
         button.add(
             new InlineBlock({
-                width: size * 0.66,
-                height: size * 0.66,
+                width: size * 0.8,
+                height: size * 0.8,
                 backgroundTexture: texture,
                 borderRadius: 0,
             })
@@ -81,7 +87,7 @@ export function textButton({ label, tooltip, onSelect, width = 0.55, fontSize = 
         margin: 0.02,
         borderRadius: 0.08,
         ...FONT,
-        ...idleAttributes,
+        ...textIdleAttributes,
     }).add(text);
     if (icon) {
         loader.load(icon, (texture) => {
@@ -96,7 +102,7 @@ export function textButton({ label, tooltip, onSelect, width = 0.55, fontSize = 
             );
         });
     }
-    makeButton(button, { tooltip, onSelect });
+    makeButton(button, { tooltip, onSelect, idle: textIdleAttributes });
     button.text = text;
     return button;
 }
@@ -136,6 +142,38 @@ export function row(children, { width, height = BUTTON_SIZE + 0.04, justify = "s
         backgroundOpacity: 0,
         ...FONT,
     }), children);
+}
+
+// A window's background: dark and rounded. A click on it is inside the window
+// and does nothing, so it doesn't count as a click outside, which closes it.
+export function panel(children, { width, height, padding = 0.04, justify = "start" }) {
+    const block = withChildren(new Block({
+        width,
+        height,
+        contentDirection: "column",
+        justifyContent: justify,
+        padding,
+        borderRadius: 0.06,
+        backgroundColor: new Color(0x1e1e1e),
+        backgroundOpacity: 1,
+        ...FONT,
+    }), children);
+    block.setupState({ state: "selected" });
+    block.setupState({ state: "hovered" });
+    block.setupState({ state: "idle" });
+    return block;
+}
+
+// Shows a button as the chosen one of a set, such as the current sort.
+const activeAttributes = {
+    ...idleAttributes,
+    backgroundColor: new Color(0x008e7f),
+};
+
+export function markActive(button, active) {
+    const attributes = active ? activeAttributes : button.idleAttributes;
+    button.setupState({ state: "idle", attributes });
+    button.set(attributes);
 }
 
 export function column(children, { width, height, justify = "start" }) {

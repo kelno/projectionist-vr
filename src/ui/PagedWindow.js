@@ -1,23 +1,21 @@
-import { Color } from "three";
 import { Block } from "./meshUi.js";
 
-import { FONT, column, iconButton, label, row } from "./kit.js";
+import { column, iconButton, label, panel, row } from "./kit.js";
 
 import BackIcon from "../../assets/icons/left-arrow.png";
-import CloseIcon from "../../assets/icons/close.png";
 
 // A window with pages, like a game's pause menu: a header with a back button
-// (on sub-pages), the page's title and a close button, above the page shown.
-// A page is { title, block, targets, onShow }: `targets` are its buttons, for
-// the raycaster, and `onShow` refreshes it each time it opens.
+// (on sub-pages) and the page's title, above the page shown. A page is
+// { title, block, targets, onShow }: `targets` are its buttons, for the
+// raycaster, and `onShow` refreshes it each time it opens.
 //
-// The window doesn't decide what an outside click does; its owner closes it.
-// `onTargetsChange(targets)` is called whenever the clickable parts change,
-// so the owner can register them.
+// There is no close button: a click outside closes the window, which its
+// owner handles. `onTargetsChange(targets)` is called whenever the clickable
+// parts change, so the owner can register them.
+const HEADER_BUTTON_SIZE = 0.11;
+
 export class PagedWindow {
-    constructor({ width, bodyHeight, onClose, onTargetsChange }) {
-        this.width = width;
-        this.onClose = onClose;
+    constructor({ width, bodyHeight, onTargetsChange }) {
         this.onTargetsChange = onTargetsChange;
         this.pages = new Map();
         this.history = [];
@@ -27,38 +25,28 @@ export class PagedWindow {
         this.backButton = iconButton({
             icon: BackIcon,
             tooltip: "Back",
-            size: 0.11,
+            size: HEADER_BUTTON_SIZE,
             onSelect: () => this.back(),
         });
-        this.closeButton = iconButton({
-            icon: CloseIcon,
-            tooltip: "Close",
-            size: 0.11,
-            onSelect: () => this.onClose(),
+        // As wide as the back button, so the title stays centred.
+        const spacer = new Block({
+            width: HEADER_BUTTON_SIZE,
+            height: HEADER_BUTTON_SIZE,
+            margin: 0.02,
+            backgroundOpacity: 0,
         });
         this.title = label("-", { width: innerWidth - 0.4, fontSize: 0.075, align: "center" });
-        this.header = row([this.backButton, this.title, this.closeButton], {
+        this.header = row([this.backButton, this.title, spacer], {
             width: innerWidth,
             height: 0.16,
             justify: "space-between",
         });
         this.body = column([], { width: innerWidth, height: bodyHeight });
 
-        this.container = new Block({
+        this.container = panel([this.header, this.body], {
             width,
             height: bodyHeight + 0.28,
-            contentDirection: "column",
-            justifyContent: "start",
-            padding: 0.04,
-            borderRadius: 0.06,
-            backgroundColor: new Color(0x1e1e1e),
-            backgroundOpacity: 1,
-            ...FONT,
-        }).add(this.header, this.body);
-        // A click on the window's background is inside the window: nothing.
-        this.container.setupState({ state: "selected" });
-        this.container.setupState({ state: "hovered" });
-        this.container.setupState({ state: "idle" });
+        });
         this.container.visible = false;
     }
 
@@ -70,11 +58,11 @@ export class PagedWindow {
         return this.pages.get(this.history[this.history.length - 1]);
     }
 
-    // The clickable parts: the header's buttons, the current page's, and the
+    // The clickable parts: the back button, the current page's, and the
     // window itself.
     targets() {
         const buttons = this.history.length > 1 ? [this.backButton] : [];
-        return [...buttons, this.closeButton, ...(this.currentPage?.targets ?? []), this.container];
+        return [...buttons, ...(this.currentPage?.targets ?? []), this.container];
     }
 
     open(pageId) {

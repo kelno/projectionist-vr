@@ -7,20 +7,15 @@ import {
     Mesh,
     CircleGeometry,
 } from "three";
-import {
-    Block,
-    Text,
-    InlineBlock,
-    Keyboard,
-} from "../ui/meshUi.js";
+import { Block, Text, InlineBlock } from "../ui/meshUi.js";
 
 import ThumbnailBlock from "./ThumbnailBlock.js";
-
-import Backspace from "../../assets/ui/keyboard/backspace.png";
-import Enter from "../../assets/ui/keyboard/enter.png";
-import Shift from "../../assets/ui/keyboard/shift.png";
+import { SearchBar } from "./SearchBar.js";
+import { buildSortMenu } from "./sortMenu.js";
+import { DEFAULT_SORT, listFiles } from "./libraryList.mjs";
 
 import clearUiChildren from "../ui/clearUiChildren.mjs";
+import { iconButton, label, panel, row, textButton } from "../ui/kit.js";
 
 import FontJSON from "../../assets/fonts/Roboto-Regular-msdf.json";
 import FontImage from "../../assets/fonts/Roboto-Regular.png";
@@ -40,6 +35,7 @@ import LeftIcon from "../../assets/icons/left-arrow.png";
 import RightIcon from "../../assets/icons/right-arrow.png";
 import VideoIcon from "../../assets/icons/video.png";
 import PowerIcon from "../../assets/icons/power.png";
+import SortIcon from "../../assets/icons/sort.png";
 
 import { adjacentVideo } from "../adjacentVideo.mjs";
 import {
@@ -52,7 +48,6 @@ import {
 export class FileBrowserPanel {
     fileBrowserContainer;
     foldersContainer;
-    folderIndex = 1;
     folderPageIndex = 0;
     currentFolderPageIndex = 0;
     MAXFOLDERSPERPAGE = 12;
@@ -62,22 +57,18 @@ export class FileBrowserPanel {
     defaultVideoThumbnail;
     listOfVideoThumbnailTextures = [];
 
-    searchContainer;
-    searchText;
-    clearSearch;
+    // The search bar and its keyboard, and the phrase last searched for.
+    search;
     keyboard;
-    defaultSearchText = Helpers.getWordFromLang("search_in_folders");
+    searchPhrase = "";
 
-    sortContainer;
-    sortActiveColor = new Color(0xf9dc77);
-    sortInactiveColor = new Color(0xc5d564);
-    sortByName;
-    sortByNameColorRef = this.sortActiveColor;
-    sortByDate;
-    sortByDateColorRef = this.sortInactiveColor;
-    activeSorting = "name";
-    sortDirectionBlock;
-    sortDirection;
+    sortButton;
+    sortMenu;
+    sort = DEFAULT_SORT;
+
+    // The window open over the library (the sort menu or the controls
+    // help), as { block, targets }, or null.
+    openWindow = null;
 
     buttonLeft;
     buttonRight;
@@ -85,9 +76,8 @@ export class FileBrowserPanel {
     loadingAnimatedObj;
     loadingAnimatedObjBackground;
 
-    fileBrowserObjectsToTest = [];
     foldersButtons = [];
-    keyboardObjsToTest = [];
+    thumbTargets = [];
     defaultObjsToTest = [];
 
     VIDEOS = [];
@@ -215,17 +205,6 @@ export class FileBrowserPanel {
             borderRadius: 0,
         };
     }
-
-    buttonOptions = {
-        width: 0.15,
-        height: 0.15,
-        backgroundColor: new Color(0x999999),
-        justifyContent: "center",
-        offset: 0.05,
-        margin: 0.02,
-        backgroundOpacity: 1,
-        borderRadius: 0.08,
-    };
 
     // Options for component.setupState().
     // It must contain a 'state' parameter, which you will refer to with component.setState( 'name-of-the-state' ).
@@ -424,376 +403,53 @@ export class FileBrowserPanel {
         this.foldersContainer.rotation.y = 0.5;
 
         //////////////////////////////////////////////////////////////////////
-        // Search
+        // Top row: search on the left; sorting and leaving VR on the right.
 
-        this.searchContainer = new Block({
-            justifyContent: "end",
-            contentDirection: "row",
-            padding: 0.02,
-            borderRadius: 0.08,
-            backgroundOpacity: 1,
-            backgroundColor: new Color(0x292929),
-            width: 2,
-            height: 0.2,
-            hiddenOverflow: true,
+        this.search = new SearchBar({
+            onSearch: (phrase) => {
+                this.searchPhrase = phrase;
+                this.refreshList();
+            },
+            onTargetsChange: () => this.registerTargets(),
         });
+        // ScreenManager finds panels by these property names.
+        this.searchBar = this.search.bar;
+        this.keyboard = this.search.keyboard;
+        this.searchBar.position.set(-1.77, 3.2, this.CENTERPANELZDISTANCE);
+        this.keyboard.position.set(0, 2, this.KEYBOARDZDISTANCE);
+        MAIN.scene.add(this.searchBar, this.keyboard);
 
-        const textContainer = new Block({
-            justifyContent: "start",
-            contentDirection: "row",
-            width: 1.9,
-            height: 0.15,
-            padding: 0.02,
-            backgroundOpacity: 0,
-            alignItems: "start",
-            textAlign: "left",
+        this.sortButton = iconButton({
+            icon: SortIcon,
+            tooltip: "Sort",
+            size: 0.26,
+            onSelect: () => this.openLibraryWindow(this.sortWindow),
         });
+        this.sortButton.position.set(2.5, 3.2, this.CENTERPANELZDISTANCE);
 
-        this.searchText = new Text({
-            fontFamily: FontJSON,
-            fontTexture: FontImage,
-            fontSize: 0.12,
-            content: this.defaultSearchText,
+        this.leaveVRButton = iconButton({
+            icon: PowerIcon,
+            tooltip: "Leave VR",
+            size: 0.26,
+            onSelect: () => MAIN.leaveVR(),
         });
+        this.leaveVRButton.position.set(2.82, 3.2, this.CENTERPANELZDISTANCE);
+        MAIN.scene.add(this.sortButton, this.leaveVRButton);
 
-        textContainer.add(this.searchText);
-
-        this.searchContainer.add(textContainer);
-
-        MAIN.scene.add(this.searchContainer);
-        this.searchContainer.position.set(-2, 3.2, this.CENTERPANELZDISTANCE);
-
-        this.searchContainer.setupState({
-            state: "selected",
-            onSet: () => {
-                if (!this.keyboard.visible) {
-                    if (this.searchText.content === this.defaultSearchText) {
-                        this.searchText.set({ content: "" });
-                    }
-                    this.keyboard.visible = true;
-                    let objectsToTest = this.keyboardObjsToTest.slice();
-                    objectsToTest.push(this.searchContainer);
-                    objectsToTest.push(this.draggingBox);
-                    objectsToTest.push(this.clearSearch);
-                    UI.registerNewObjectsToTest(objectsToTest);
-                } else {
-                    if (this.searchText.content === "") {
-                        this.searchText.set({
-                            content: this.defaultSearchText,
-                        });
-                        this.CURRENT_PAGE = 0;
-                        this.FILES = this.VIDEOS[this.FOLDER].list;
-                        this.sortFiles(
-                            this.activeSorting,
-                            this.sortDirection.sortDirection
-                        );
-                    } else {
-                        this.prepareFilesWithSearchPhrase();
-                    }
-                    this.keyboard.visible = false;
-                    UI.registerNewObjectsToTest(this.fileBrowserObjectsToTest);
-                    this.regenerateFileBrowser();
-                }
+        // The sort menu opens under its button.
+        const sortMenu = buildSortMenu({
+            onChoose: (sortId) => {
+                this.sort = sortId;
+                sortMenu.setCurrent(sortId);
+                this.closeLibraryWindow();
+                this.refreshList();
             },
         });
-
-        this.searchContainer.setupState({
-            state: "hovered",
-            attributes: {
-                backgroundColor: new Color(0xffff00),
-                backgroundOpacity: 1,
-                fontColor: new Color(0x000000),
-            },
-        });
-        this.searchContainer.setupState({
-            state: "idle",
-            attributes: {
-                backgroundColor: new Color(0x5c5c5c),
-                backgroundOpacity: 1,
-                fontColor: new Color(0xffffff),
-            },
-        });
-
-        ///////////////////////////
-
-        this.clearSearch = new Block({
-            justifyContent: "center",
-            contentDirection: "row",
-            padding: 0.02,
-            borderRadius: 0.08,
-            backgroundOpacity: 1,
-            backgroundColor: new Color(0xf88e86),
-            width: 0.7,
-            height: 0.2,
-            hiddenOverflow: true,
-            fontColor: new Color(0x000000),
-        });
-        this.clearSearch.add(
-            new Text({
-                fontFamily: FontJSON,
-                fontTexture: FontImage,
-                fontSize: 0.12,
-                content: Helpers.getWordFromLang("clear"),
-            })
-        );
-
-        this.clearSearch.setupState({
-            state: "selected",
-            onSet: () => {
-                if (
-                    !this.keyboard.visible &&
-                    this.searchText.content !== this.defaultSearchText
-                ) {
-                    this.searchText.set({ content: this.defaultSearchText });
-                    this.CURRENT_PAGE = 0;
-                    this.FILES = this.VIDEOS[this.FOLDER].list;
-                    this.TOTAL_PAGES =
-                        Math.ceil(
-                            this.FILES.length /
-                                (this.FILES_PER_ROW * this.FILES_ROWS)
-                        ) - 1;
-                    this.sortFiles(
-                        this.activeSorting,
-                        this.sortDirection.sortDirection
-                    );
-                    this.regenerateFileBrowser();
-                } else if (this.keyboard.visible) {
-                    this.searchText.set({ content: "" });
-                }
-            },
-        });
-
-        this.clearSearch.setupState({
-            state: "hovered",
-            attributes: {
-                backgroundColor: new Color(0xf44336),
-                backgroundOpacity: 1,
-                fontColor: new Color(0x000000),
-            },
-        });
-        this.clearSearch.setupState({
-            state: "idle",
-            attributes: {
-                backgroundColor: new Color(0xf88e86),
-                backgroundOpacity: 1,
-                fontColor: new Color(0x000000),
-            },
-        });
-
-        this.clearSearch.position.set(-0.5, 3.2, this.CENTERPANELZDISTANCE);
-        MAIN.scene.add(this.clearSearch);
-
-        //////////////////////////////////////////////////////////////////////
-
-        this.sortDirectionBlock = new Block({
-            justifyContent: "center",
-            contentDirection: "row",
-            padding: 0.02,
-            margin: 0.02,
-            borderRadius: 0.08,
-            backgroundOpacity: 1,
-            backgroundColor: new Color(0xc5d564),
-            width: 0.4,
-            height: 0.2,
-            hiddenOverflow: true,
-            fontColor: new Color(0x000000),
-        });
-
-        this.sortDirection = new Text({
-            fontFamily: FontJSON,
-            fontTexture: FontImage,
-            fontSize: 0.12,
-            content: Helpers.getWordFromLang("ascending"),
-            sortDirection: "asc",
-        });
-
-        this.sortDirectionBlock.add(this.sortDirection);
-
-        this.sortDirectionBlock.setupState({
-            state: "selected",
-            onSet: () => {
-                switch (this.sortDirection.sortDirection) {
-                    case "desc":
-                        this.sortDirection.set({
-                            content: Helpers.getWordFromLang("ascending"),
-                        });
-                        this.sortDirection.sortDirection = "asc";
-                        break;
-                    default:
-                    case "asc":
-                        this.sortDirection.set({
-                            content: Helpers.getWordFromLang("descending"),
-                        });
-                        this.sortDirection.sortDirection = "desc";
-                        break;
-                }
-                this.sortFiles(
-                    this.activeSorting,
-                    this.sortDirection.sortDirection
-                );
-                this.regenerateFileBrowser();
-            },
-        });
-
-        this.sortDirectionBlock.setupState({
-            state: "hovered",
-            attributes: {
-                backgroundColor: new Color(0xdcf63f),
-                backgroundOpacity: 1,
-                fontColor: new Color(0x000000),
-            },
-        });
-        this.sortDirectionBlock.setupState({
-            state: "idle",
-            attributes: {
-                backgroundColor: new Color(0xc5d564),
-                backgroundOpacity: 1,
-                fontColor: new Color(0x000000),
-            },
-        });
-
-        this.sortByName = new Block({
-            justifyContent: "center",
-            contentDirection: "row",
-            padding: 0.02,
-            margin: 0.02,
-            borderRadius: 0.08,
-            backgroundOpacity: 1,
-            backgroundColor: new Color(0xc5d564),
-            width: 0.4,
-            height: 0.2,
-            hiddenOverflow: true,
-            fontColor: new Color(0x000000),
-        });
-        this.sortByName.add(
-            new Text({
-                fontFamily: FontJSON,
-                fontTexture: FontImage,
-                fontSize: 0.12,
-                content: Helpers.getWordFromLang("name"),
-            })
-        );
-
-        this.sortByName.setupState({
-            state: "selected",
-            onSet: () => {
-                if (this.activeSorting !== "name") {
-                    this.sortByNameColorRef = this.sortActiveColor;
-                    this.sortByDateColorRef = this.sortInactiveColor;
-                    this.sortSetButtonsIdleState();
-                    this.activeSorting = "name";
-                    this.sortFiles(
-                        this.activeSorting,
-                        this.sortDirection.sortDirection
-                    );
-                    this.regenerateFileBrowser();
-                }
-            },
-        });
-
-        this.sortByName.setupState({
-            state: "hovered",
-            attributes: {
-                backgroundColor: new Color(0xdcf63f),
-                backgroundOpacity: 1,
-                fontColor: new Color(0x000000),
-            },
-        });
-
-        ///////////////
-
-        this.sortByDate = new Block({
-            justifyContent: "center",
-            contentDirection: "row",
-            padding: 0.02,
-            margin: 0.02,
-            borderRadius: 0.08,
-            backgroundOpacity: 1,
-            backgroundColor: new Color(0xc5d564),
-            width: 0.4,
-            height: 0.2,
-            hiddenOverflow: true,
-            fontColor: new Color(0x000000),
-        });
-        this.sortByDate.add(
-            new Text({
-                fontFamily: FontJSON,
-                fontTexture: FontImage,
-                fontSize: 0.12,
-                content: Helpers.getWordFromLang("date"),
-            })
-        );
-
-        this.sortByDate.setupState({
-            state: "selected",
-            onSet: () => {
-                if (this.activeSorting !== "date") {
-                    this.sortByDateColorRef = this.sortActiveColor;
-                    this.sortByNameColorRef = this.sortInactiveColor;
-                    this.sortSetButtonsIdleState();
-                    this.activeSorting = "date";
-                    this.sortFiles(
-                        this.activeSorting,
-                        this.sortDirection.sortDirection
-                    );
-                    this.regenerateFileBrowser();
-                }
-            },
-        });
-
-        this.sortByDate.setupState({
-            state: "hovered",
-            attributes: {
-                backgroundColor: new Color(0xdcf63f),
-                backgroundOpacity: 1,
-                fontColor: new Color(0x000000),
-            },
-        });
-
-        ///////////////
-
-        this.sortSetButtonsIdleState();
-
-        ///////////////
-
-        this.sortContainer = new Block({
-            justifyContent: "center",
-            contentDirection: "row",
-            padding: 0.02,
-            borderRadius: 0.08,
-            backgroundOpacity: 1,
-            width: 2.7,
-            height: 0.3,
-            hiddenOverflow: true,
-            fontColor: new Color(0x000000),
-        });
-        let label = new Block({
-            justifyContent: "center",
-            contentDirection: "row",
-            padding: 0.02,
-            borderRadius: 0.08,
-            backgroundOpacity: 1,
-            width: 0.7,
-            height: 0.2,
-            hiddenOverflow: true,
-            fontColor: new Color(0xffffff),
-        });
-        label.add(
-            new Text({
-                fontFamily: FontJSON,
-                fontTexture: FontImage,
-                fontSize: 0.12,
-                content: Helpers.getWordFromLang("sorting") + ":",
-            })
-        );
-        this.sortContainer.add(label);
-        this.sortContainer.add(this.sortByName);
-        this.sortContainer.add(this.sortByDate);
-        this.sortContainer.add(this.sortDirectionBlock);
-        this.sortContainer.position.set(1.52, 3.2, this.CENTERPANELZDISTANCE);
-        MAIN.scene.add(this.sortContainer);
-
-        //////////////////////////////////////////////////////////////////////
+        sortMenu.setCurrent(this.sort);
+        this.sortMenu = sortMenu.block;
+        this.sortWindow = sortMenu;
+        this.sortMenu.position.set(2.47, 2.52, this.CENTERPANELZDISTANCE + 0.15);
+        MAIN.scene.add(this.sortMenu);
 
         ///////////////////////////
         // Add to main container
@@ -803,8 +459,6 @@ export class FileBrowserPanel {
         this.fileBrowserContainer.add(this.thumbsContainer);
 
         this.fileBrowserContainer.add(this.buttonRight);
-
-        this.defaultObjsToTest.push(this.buttonLeft, this.buttonRight);
 
         this.fileBrowserContainer.position.set(
             0,
@@ -853,216 +507,76 @@ export class FileBrowserPanel {
                 ScreenManager.stopDrag("files");
             },
         });
-        this.defaultObjsToTest.push(this.draggingBox);
 
-        // The controls help, left of the bar; leaving VR, in the top-right corner.
-        this.controlsButton = this.makeTextButton(
-            Helpers.getWordFromLang("controls"),
-            () => this.showControlsHelp()
-        );
+        // The controls help, left of the bar, opens over the library.
+        this.controlsButton = textButton({
+            label: Helpers.getWordFromLang("controls"),
+            tooltip: "What the controller buttons do",
+            width: 0.7,
+            fontSize: 0.08,
+            onSelect: () => this.openLibraryWindow(this.controlsWindow),
+        });
         this.controlsButton.position.set(-1.75, -0.35, this.CENTERPANELZDISTANCE);
         MAIN.scene.add(this.controlsButton);
 
-        this.leaveVRButton = this.makeIconButton(PowerIcon, () => MAIN.leaveVR());
-        this.leaveVRButton.tooltip = "Leave VR";
-        // Top-right corner, beside the sorting.
-        this.leaveVRButton.position.set(3.1, 3.2, this.CENTERPANELZDISTANCE);
-        MAIN.scene.add(this.leaveVRButton);
-
-        this.defaultObjsToTest.push(this.controlsButton, this.leaveVRButton);
-
-        // The controls help, over the library until closed.
-        this.controlsHelpClose = this.makeTextButton(
-            Helpers.getWordFromLang("close"),
-            () => this.hideControlsHelp()
-        );
-        this.controlsHelp = new Block({
-            justifyContent: "space-between",
-            contentDirection: "column",
-            fontFamily: FontJSON,
-            fontTexture: FontImage,
-            fontColor: new Color(0xffffff),
-            padding: 0.08,
-            borderRadius: 0.08,
-            backgroundOpacity: 1,
-            backgroundColor: new Color(0x1e1e1e),
-            width: 3.9,
-            height: 1.6,
-        });
-        this.controlsHelp.add(
-            new Block({
-                width: 3.7,
-                height: 0.14,
-                justifyContent: "center",
-                backgroundOpacity: 0,
-            }).add(
-                new Text({
+        this.controlsHelp = panel(
+            [
+                label(Helpers.getWordFromLang("controls").toUpperCase(), {
+                    width: 3.7,
+                    height: 0.14,
                     fontSize: 0.1,
-                    content: Helpers.getWordFromLang("controls").toUpperCase(),
-                })
-            ),
-            new Block({
-                width: 3.7,
-                height: 0.95,
-                contentDirection: "row",
-                justifyContent: "space-between",
-                backgroundOpacity: 0,
-            }).add(
-                makeControlsColumn("LIBRARY", LIBRARY_CONTROLS, 1.2),
-                makeControlsColumn("PLAYER", PLAYER_CONTROLS, 1.2),
-                makeControlsColumn("HOLD GRIP +", GRIP_PLAYER_CONTROLS, 1.2)
-            ),
-            new Block({
-                width: 3.7,
-                height: 0.22,
-                contentDirection: "row",
-                justifyContent: "space-between",
-                backgroundOpacity: 0,
-            }).add(
-                new Block({
-                    width: 2.6,
-                    height: 0.2,
-                    justifyContent: "center",
-                    textAlign: "left",
-                    backgroundOpacity: 0,
-                    fontColor: new Color(0xaaaaaa),
-                }).add(
-                    new Text({
-                        fontSize: 0.06,
-                        content: "Left controller: X and Y instead of A and B.",
-                    })
+                    align: "center",
+                }),
+                row(
+                    [
+                        makeControlsColumn("LIBRARY", LIBRARY_CONTROLS, 1.2),
+                        makeControlsColumn("PLAYER", PLAYER_CONTROLS, 1.2),
+                        makeControlsColumn("HOLD GRIP +", GRIP_PLAYER_CONTROLS, 1.2),
+                    ],
+                    { width: 3.7, height: 0.95, justify: "space-between" }
                 ),
-                this.controlsHelpClose
-            )
+                label("Left controller: X and Y instead of A and B.", {
+                    width: 3.7,
+                    height: 0.2,
+                    fontSize: 0.06,
+                    color: 0xaaaaaa,
+                }),
+            ],
+            { width: 3.9, height: 1.5, padding: 0.08, justify: "space-between" }
         );
         this.controlsHelp.position.set(0, 1.4, this.CENTERPANELZDISTANCE + 0.3);
         this.controlsHelp.scale.setScalar(1.35);
         this.controlsHelp.visible = false;
         MAIN.scene.add(this.controlsHelp);
+        this.controlsWindow = { block: this.controlsHelp, targets: [] };
 
-        this.defaultObjsToTest.push(this.searchContainer);
-        this.defaultObjsToTest.push(this.clearSearch);
-        this.defaultObjsToTest.push(this.sortByDate);
-        this.defaultObjsToTest.push(this.sortByName);
-        this.defaultObjsToTest.push(this.sortDirectionBlock);
-
-        // Finally add defaultObjsToTest to main array used for testing.
-        this.resetFileBrowserObjectsToTest();
-        //////////////////////////////////////////////////////////////////////
-
-        this.keyboardObjsToTest = this.makeKeyboard(
-            this.searchText,
-            this.searchTextSetContent
+        this.defaultObjsToTest.push(
+            this.buttonLeft,
+            this.buttonRight,
+            this.draggingBox,
+            this.controlsButton,
+            this.sortButton,
+            this.leaveVRButton
         );
 
-        this.keyboard.visible = false;
-        this.keyboard.position.set(0, 2, this.KEYBOARDZDISTANCE);
-        MAIN.scene.add(this.keyboard);
-
         //////////////////////////////////////////////////////////////////////
+        // Everything above moves with the library, and goes back in place
+        // when it resets.
 
-        ScreenManager.registerPanel(
-            this.draggingBox,
-            "fileBrowserPanel",
+        for (const name of [
             "draggingBox",
-            "draggingBox"
-        );
-        ScreenManager.registerPanel(
-            this.searchContainer,
-            "fileBrowserPanel",
-            "searchContainer",
-            "searchContainer"
-        );
-        ScreenManager.registerPanel(
-            this.clearSearch,
-            "fileBrowserPanel",
-            "clearSearch",
-            "clearSearch"
-        );
-        ScreenManager.registerPanel(
-            this.keyboard,
-            "fileBrowserPanel",
+            "searchBar",
             "keyboard",
-            "keyboard"
-        );
-        ScreenManager.registerPanel(
-            this.foldersContainer,
-            "fileBrowserPanel",
             "foldersContainer",
-            "foldersContainer"
-        );
-        ScreenManager.registerPanel(
-            this.fileBrowserContainer,
-            "fileBrowserPanel",
             "fileBrowserContainer",
-            "fileBrowserContainer"
-        );
-        ScreenManager.registerPanel(
-            this.sortContainer,
-            "fileBrowserPanel",
-            "sortContainer",
-            "sortContainer"
-        );
-        ScreenManager.registerPanel(
-            this.loadingAnimatedObj,
-            "fileBrowserPanel",
+            "sortButton",
+            "sortMenu",
             "loadingAnimatedObj",
-            "loadingAnimatedObj"
-        );
-        ScreenManager.registerPanel(
-            this.loadingAnimatedObjBackground,
-            "fileBrowserPanel",
             "loadingAnimatedObjBackground",
-            "loadingAnimatedObjBackground"
-        );
-
-        ScreenManager.registerObjectToDrag(
-            this.draggingBox,
-            "files",
-            "fileBrowserPanel"
-        );
-        ScreenManager.registerObjectToDrag(
-            this.searchContainer,
-            "files",
-            "fileBrowserPanel"
-        );
-        ScreenManager.registerObjectToDrag(
-            this.clearSearch,
-            "files",
-            "fileBrowserPanel"
-        );
-        ScreenManager.registerObjectToDrag(
-            this.keyboard,
-            "files",
-            "fileBrowserPanel"
-        );
-        ScreenManager.registerObjectToDrag(
-            this.foldersContainer,
-            "files",
-            "fileBrowserPanel"
-        );
-        ScreenManager.registerObjectToDrag(
-            this.fileBrowserContainer,
-            "files",
-            "fileBrowserPanel"
-        );
-        ScreenManager.registerObjectToDrag(
-            this.sortContainer,
-            "files",
-            "fileBrowserPanel"
-        );
-        ScreenManager.registerObjectToDrag(
-            this.loadingAnimatedObj,
-            "files",
-            "fileBrowserPanel"
-        );
-        ScreenManager.registerObjectToDrag(
-            this.loadingAnimatedObjBackground,
-            "files",
-            "fileBrowserPanel"
-        );
-
-        for (const name of ["controlsButton", "leaveVRButton", "controlsHelp"]) {
+            "controlsButton",
+            "leaveVRButton",
+            "controlsHelp",
+        ]) {
             ScreenManager.registerPanel(this[name], "fileBrowserPanel", name, name);
             ScreenManager.registerObjectToDrag(this[name], "files", "fileBrowserPanel");
         }
@@ -1070,74 +584,6 @@ export class FileBrowserPanel {
         if (this.FILES.length > 0 && this.defaultVideoThumbnail !== undefined) {
             this.generateView();
         }
-    }
-
-    makeTextButton(label, onSelect) {
-        const idle = {
-            backgroundColor: new Color(0x5c5c5c),
-            backgroundOpacity: 1,
-            fontColor: new Color(0xffffff),
-        };
-        const button = new Block({
-            justifyContent: "center",
-            contentDirection: "row",
-            fontFamily: FontJSON,
-            fontTexture: FontImage,
-            padding: 0.02,
-            borderRadius: 0.08,
-            width: 0.9,
-            height: 0.2,
-            hiddenOverflow: true,
-            ...idle,
-        });
-        button.add(new Text({ fontSize: 0.12, content: label }));
-        button.setupState({ state: "selected", onSet: onSelect });
-        button.setupState({
-            state: "hovered",
-            attributes: {
-                backgroundColor: new Color(0xffff00),
-                backgroundOpacity: 1,
-                fontColor: new Color(0x000000),
-            },
-        });
-        button.setupState({ state: "idle", attributes: idle });
-        return button;
-    }
-
-    makeIconButton(icon, onSelect) {
-        const idle = {
-            backgroundColor: new Color(0x999999),
-            backgroundOpacity: 1,
-        };
-        const button = new Block({
-            justifyContent: "center",
-            contentDirection: "row",
-            padding: 0.02,
-            borderRadius: 0.08,
-            width: 0.24,
-            height: 0.24,
-            ...idle,
-        });
-        this.loader.load(icon, (texture) => {
-            button.add(
-                new InlineBlock({
-                    width: 0.2,
-                    height: 0.2,
-                    backgroundTexture: texture,
-                    borderRadius: 0,
-                })
-            );
-        });
-        button.setupState({ state: "selected", onSet: onSelect });
-        button.setupState({
-            state: "hovered",
-            attributes: {
-                backgroundColor: new Color(0xffff00),
-                backgroundOpacity: 1,
-            },
-        });
-        button.setupState({ state: "idle", attributes: idle });
-        return button;
     }
 
     // The catalogue entry of a source URL, in any folder, or null.
@@ -1155,44 +601,72 @@ export class FileBrowserPanel {
         return adjacentVideo(this.FILES, MAIN.video.getAttribute("src"), offset);
     }
 
-    showControlsHelp() {
-        this.controlsHelp.visible = true;
-        UI.registerNewObjectsToTest([this.controlsHelpClose]);
-    }
-
-    hideControlsHelp() {
-        this.controlsHelp.visible = false;
-        UI.registerNewObjectsToTest(this.fileBrowserObjectsToTest);
-    }
-
-    prepareFilesWithSearchPhrase() {
-        let filesList = [];
-        this.FILES = this.VIDEOS[this.FOLDER].list;
-        this.FILES.forEach((file) => {
-            if (
-                file.name
-                    .replace(
-                        /[^ qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890,\.\/\?;:\'"\[\{\}\]=\+-_!@#\$%\^\&\*\(\)\\\|\`\~]+/,
-                        ""
-                    )
-                    .toLowerCase()
-                    .includes(this.searchText.content.toLowerCase())
-            ) {
-                filesList.push(file);
-            }
+    // The current folder's videos, searched and sorted, from the first page.
+    refreshList() {
+        this.CURRENT_PAGE = 0;
+        this.FILES = listFiles(this.VIDEOS[this.FOLDER].list, {
+            phrase: this.searchPhrase,
+            sort: this.sort,
         });
-        this.FILES = filesList;
         this.TOTAL_PAGES =
-            Math.ceil(
-                this.FILES.length / (this.FILES_PER_ROW * this.FILES_ROWS)
-            ) - 1;
-        this.sortFiles(this.activeSorting, this.sortDirection.sortDirection);
+            Math.ceil(this.FILES.length / (this.FILES_PER_ROW * this.FILES_ROWS)) - 1;
+        this.regenerateFileBrowser();
+    }
+
+    // A window over the library, such as the sort menu: while it is open,
+    // only its buttons count, and a click outside it closes it.
+    openLibraryWindow(window) {
+        this.closeLibraryWindow();
+        if (this.search.isTyping) {
+            this.search.stopTyping();
+        }
+        this.openWindow = window;
+        window.block.visible = true;
+        UI.setOutsideClick(() => this.closeLibraryWindow());
+        this.registerTargets();
+    }
+
+    closeLibraryWindow() {
+        if (!this.openWindow) {
+            return;
+        }
+        this.openWindow.block.visible = false;
+        this.openWindow = null;
+        UI.setOutsideClick(null);
+        this.registerTargets();
+    }
+
+    // Everything clickable in the library when nothing is open over it.
+    libraryTargets() {
+        return [
+            ...this.defaultObjsToTest,
+            ...this.search.targets(),
+            ...this.foldersButtons,
+            ...this.thumbTargets,
+        ];
+    }
+
+    // Registers what can be clicked now: an open window's buttons, the
+    // keyboard while typing, or the whole library.
+    registerTargets() {
+        if (this.openWindow) {
+            UI.registerNewObjectsToTest([
+                ...this.openWindow.targets,
+                this.openWindow.block,
+                MAIN.hiddenSphere,
+            ]);
+        } else if (this.search.isTyping) {
+            UI.registerNewObjectsToTest([...this.search.targets(), this.draggingBox]);
+        } else {
+            UI.registerNewObjectsToTest(this.libraryTargets());
+        }
     }
 
     generateView() {
         let endOfFiles = false;
         this.thumbnailViewGeneration++;
         this.viewGeneratorThumbs = [];
+        this.thumbTargets = [];
         this.listOfVideoThumbnailTextures = [];
         this.viewGeneratorThumbsIterator = 0;
         this.viewGeneratorPending = 0;
@@ -1232,7 +706,7 @@ export class FileBrowserPanel {
                 );
 
                 thumbsContainerButtonsRow.add(thumb);
-                this.fileBrowserObjectsToTest.push(thumb);
+                this.thumbTargets.push(thumb);
                 this.viewGeneratorThumbs.push(thumb);
                 iterate++;
                 addedThumbs++;
@@ -1316,54 +790,6 @@ export class FileBrowserPanel {
         );
     }
 
-    sortFiles(by, order) {
-        switch (by) {
-            case "date":
-                switch (order) {
-                    case "desc":
-                        this.FILES.sort((a, b) => b.epoch - a.epoch);
-                        break;
-
-                    default:
-                    case "asc":
-                        this.FILES.sort((a, b) => a.epoch - b.epoch);
-                        break;
-                }
-                break;
-            default:
-            case "name":
-                switch (order) {
-                    case "desc":
-                        this.FILES.sort((a, b) => {
-                            const nameA = a.name.toUpperCase();
-                            const nameB = b.name.toUpperCase();
-                            if (nameA < nameB) {
-                                return 1;
-                            }
-                            if (nameA > nameB) {
-                                return -1;
-                            }
-                        });
-                        break;
-
-                    default:
-                    case "asc":
-                        this.FILES.sort((a, b) => {
-                            const nameA = a.name.toUpperCase();
-                            const nameB = b.name.toUpperCase();
-                            if (nameA < nameB) {
-                                return -1;
-                            }
-                            if (nameA > nameB) {
-                                return 1;
-                            }
-                        });
-                        break;
-                }
-                break;
-        }
-    }
-
     regenerateFileBrowser() {
         this.thumbnailViewGeneration++;
         this.viewGeneratorFinished = true;
@@ -1372,19 +798,10 @@ export class FileBrowserPanel {
             texture.dispose();
         });
         this.thumbsContainer.set(this.thumbsContainerAttributes);
-        this.resetFileBrowserObjectsToTest();
 
         this.generateView();
 
-        UI.registerNewObjectsToTest(this.fileBrowserObjectsToTest);
-    }
-
-    resetFileBrowserObjectsToTest() {
-        this.fileBrowserObjectsToTest = [];
-        this.fileBrowserObjectsToTest = this.defaultObjsToTest.slice();
-        this.fileBrowserObjectsToTest = this.fileBrowserObjectsToTest.concat(
-            this.foldersButtons.slice()
-        );
+        this.registerTargets();
     }
 
     PreviousPage() {
@@ -1495,28 +912,11 @@ export class FileBrowserPanel {
                         this.ACTIVEFOLDER !== id ||
                         this.currentFolderPageIndex !== this.folderPageIndex
                     ) {
-                        this.CURRENT_PAGE = 0;
                         this.FOLDER = index;
                         this.ACTIVEFOLDER = id;
                         this.currentFolderPageIndex = this.folderPageIndex;
-                        if (
-                            this.searchText.content !== this.defaultSearchText
-                        ) {
-                            this.prepareFilesWithSearchPhrase();
-                        } else {
-                            this.FILES = this.VIDEOS[index].list;
-                            this.TOTAL_PAGES =
-                                Math.ceil(
-                                    this.FILES.length /
-                                        (this.FILES_PER_ROW * this.FILES_ROWS)
-                                ) - 1;
-                            this.sortFiles(
-                                this.activeSorting,
-                                this.sortDirection.sortDirection
-                            );
-                        }
                         this.foldersButtonsIdleState();
-                        this.regenerateFileBrowser();
+                        this.refreshList();
                     }
                 },
             });
@@ -1530,10 +930,7 @@ export class FileBrowserPanel {
         this.foldersContainer.set(this.foldersContainerAttributes);
         this.foldersButtons = [];
         this.generateFoldersButtons();
-
-        this.resetFileBrowserObjectsToTest();
-
-        UI.registerNewObjectsToTest(this.fileBrowserObjectsToTest);
+        this.registerTargets();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1546,31 +943,30 @@ export class FileBrowserPanel {
                 this.fileBrowserContainer,
                 this.foldersContainer,
                 this.draggingBox,
-                this.searchContainer,
-                this.clearSearch,
-                this.sortContainer,
+                this.searchBar,
+                this.sortButton,
                 this.controlsButton,
                 this.leaveVRButton,
             ],
-            this.fileBrowserObjectsToTest,
+            this.libraryTargets(),
             true
         );
         MAIN.playbackChange(false);
     }
 
     hideFileMenuPanel(screen_type = null) {
+        this.closeLibraryWindow();
+        this.search.stopTyping();
         UI.hideMenu(
             [
                 this.fileBrowserContainer,
                 this.foldersContainer,
                 this.draggingBox,
-                this.searchContainer,
-                this.clearSearch,
+                this.searchBar,
                 this.keyboard,
-                this.sortContainer,
+                this.sortButton,
                 this.controlsButton,
                 this.leaveVRButton,
-                this.controlsHelp,
             ],
             [],
             true
@@ -1578,186 +974,15 @@ export class FileBrowserPanel {
         MAIN.playbackChange(true, screen_type);
     }
 
-    searchTextSetContent(target, newContent) {
-        let width = 0;
-        if (target.inlines !== null && target.inlines !== undefined) {
-            target.inlines.forEach((line) => {
-                width += line.width;
-            });
-            if (width >= 1.7) {
-                target.parent.set({ width: width + 0.2 });
-            } else {
-                target.parent.set({ width: 1.9 });
-            }
-        }
-        target.set({ content: newContent });
-    }
-
-    makeKeyboard(target, targetSetContentFoo, language = "eng") {
-        const keyboardColors = {
-            keyboardBack: 0x858585,
-            panelBack: 0x262626,
-            button: 0x363636,
-            hovered: 0x1c1c1c,
-            selected: 0x109c5d,
-        };
-
-        let keyObjsToTest = [];
-
-        this.keyboard = new Keyboard({
-            language: language,
-            fontFamily: FontJSON,
-            fontTexture: FontImage,
-            fontSize: 0.12,
-            width: 4,
-            height: 1.6,
-            backgroundColor: new Color(keyboardColors.keyboardBack),
-            backgroundOpacity: 1,
-            backspaceTexture: Backspace,
-            shiftTexture: Shift,
-            enterTexture: Enter,
-        });
-
-        // this.keyboard.position.set(0, 0, -1);
-        // keyboard.rotation.x = -0.55;
-
-        //
-
-        this.keyboard.keys.forEach((key) => {
-            keyObjsToTest.push(key);
-
-            key.setupState({
-                state: "idle",
-                attributes: {
-                    offset: 0,
-                    backgroundColor: new Color(keyboardColors.button),
-                    backgroundOpacity: 1,
-                },
-            });
-
-            key.setupState({
-                state: "hovered",
-                attributes: {
-                    offset: 0,
-                    backgroundColor: new Color(keyboardColors.hovered),
-                    backgroundOpacity: 1,
-                },
-            });
-
-            key.setupState({
-                state: "selected",
-                attributes: {
-                    offset: -0.009,
-                    backgroundColor: new Color(keyboardColors.selected),
-                    backgroundOpacity: 1,
-                },
-                // triggered when the user clicked on a keyboard's key
-                onSet: () => {
-                    // if the key have a command (eg: 'backspace', 'switch', 'enter'...)
-                    // special actions are taken
-                    if (key.info.command) {
-                        switch (key.info.command) {
-                            // switch between panels
-                            case "switch":
-                                this.keyboard.setNextPanel();
-                                break;
-
-                            // switch between panel charsets (eg: russian/english)
-                            case "switch-set":
-                                this.keyboard.setNextCharset();
-                                break;
-
-                            case "enter":
-                                this.keyboard.visible = false;
-                                this.CURRENT_PAGE = 0;
-                                if (target.content === "") {
-                                    target.set({
-                                        content: this.defaultSearchText,
-                                    });
-                                    this.FILES = this.VIDEOS[this.FOLDER].list;
-                                    this.sortFiles(
-                                        this.activeSorting,
-                                        this.sortDirection.sortDirection
-                                    );
-                                } else {
-                                    this.prepareFilesWithSearchPhrase();
-                                }
-                                UI.registerNewObjectsToTest(
-                                    this.fileBrowserObjectsToTest
-                                );
-                                this.regenerateFileBrowser();
-                                break;
-
-                            case "space":
-                                targetSetContentFoo(
-                                    target,
-                                    target.content + " "
-                                );
-                                break;
-
-                            case "backspace":
-                                if (!target.content.length) break;
-                                targetSetContentFoo(
-                                    target,
-                                    target.content.substring(
-                                        0,
-                                        target.content.length - 1
-                                    ) || ""
-                                );
-                                break;
-
-                            case "shift":
-                                this.keyboard.toggleCase();
-                                break;
-                        }
-
-                        // print a glyph, if any
-                    } else if (key.info.input) {
-                        targetSetContentFoo(
-                            target,
-                            target.content + key.info.input
-                        );
-                    }
-                },
-            });
-        });
-
-        return keyObjsToTest;
-    }
-
     foldersButtonsIdleState() {
         this.foldersButtons.forEach((folder) => {
-            if (folder.folderIndex === this.FOLDER) {
-                folder.setupState(this.folderActiveIdleState);
-                folder.set({ backgroundColor: this.sortActiveColor });
-            } else {
-                folder.setupState(this.idleState);
-                folder.set({ backgroundColor: new Color(0x4f4f4f) });
-            }
+            const state =
+                folder.folderIndex === this.FOLDER
+                    ? this.folderActiveIdleState
+                    : this.idleState;
+            folder.setupState(state);
+            folder.set(state.attributes);
         });
-    }
-
-    sortSetButtonsIdleState() {
-        this.sortByName.setupState({
-            state: "idle",
-            attributes: {
-                backgroundColor: this.sortByNameColorRef,
-                backgroundOpacity: 1,
-                fontColor: new Color(0x000000),
-            },
-        });
-
-        this.sortByDate.setupState({
-            state: "idle",
-            attributes: {
-                backgroundColor: this.sortByDateColorRef,
-                backgroundOpacity: 1,
-                fontColor: new Color(0x000000),
-            },
-        });
-
-        this.sortByName.set({ backgroundColor: this.sortByNameColorRef });
-        this.sortByDate.set({ backgroundColor: this.sortByDateColorRef });
     }
 
     // True until the catalogue has loaded, to show the spinner meanwhile.
@@ -1775,30 +1000,22 @@ export class FileBrowserPanel {
         }
     }
 
+    // A new catalogue: back to its first folder, keeping the search and sort.
     rebuildFiles(files) {
-        if (files.videos) {
-            this.VIDEOS = files.videos;
-            this.FILES = this.VIDEOS[0].list;
-            this.FOLDER = 0;
-            this.ACTIVEFOLDER = 0;
-            this.folderIndex = 1;
-            this.folderPageIndex = 0;
-            this.currentFolderPageIndex = 0;
-            this.CURRENT_PAGE = 0;
-            this.sortByName.setState('selected');
-            this.sortByName.setState('idle');
-            this.sortDirection.set({
-                content: Helpers.getWordFromLang("ascending"),
-            });
-            this.sortDirection.sortDirection = "asc";
-            this.sortFiles(
-                this.activeSorting,
-                this.sortDirection.sortDirection
-            );
-            this.TOTAL_PAGES =
-                Math.ceil(
-                    this.FILES.length / (this.FILES_PER_ROW * this.FILES_ROWS)
-                ) - 1;
+        if (!files.videos) {
+            return;
         }
+        this.VIDEOS = files.videos;
+        this.FOLDER = 0;
+        this.ACTIVEFOLDER = 0;
+        this.folderPageIndex = 0;
+        this.currentFolderPageIndex = 0;
+        this.CURRENT_PAGE = 0;
+        this.FILES = listFiles(this.VIDEOS[0].list, {
+            phrase: this.searchPhrase,
+            sort: this.sort,
+        });
+        this.TOTAL_PAGES =
+            Math.ceil(this.FILES.length / (this.FILES_PER_ROW * this.FILES_ROWS)) - 1;
     }
 }

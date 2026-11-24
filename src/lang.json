@@ -12,13 +12,6 @@
         "not_available": "N/A",
         "loading_video": "Loading video...",
         "video_not_found": "Video file not found.",
-        "search_in_folders": "Search in folder...",
-        "clear": "Clear",
-        "ascending": "ASC",
-        "descending": "DESC",
-        "name": "Name",
-        "date": "Date",
-        "sorting": "Sorting",
         "previous_page": "Previous Page",
         "next_page": "Next Page",
         "refresh": "Refresh",
@@ -28,6 +21,7 @@
         "no_next_video": "This is the last video in this list.",
         "no_previous_video": "This is the first video in this list.",
         "loading_library": "Loading library...",
-        "library_load_failed": "Could not load the library (files.json)."
+        "library_load_failed": "Could not load the library (files.json).",
+        "search": "Search..."
     }
 }

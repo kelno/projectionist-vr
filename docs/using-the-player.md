@@ -15,15 +15,17 @@
 
 ### Search and sorting
 
-Search filters the current folder. The phrase remains active when you switch
-folders until you clear it. Sort by name or date, in ascending or descending
-order.
+The search bar sits above the library. Select it to type on the on-screen
+keyboard, then press Enter, or select the bar again, to search the current
+folder by name. The phrase stays active when you switch folders; the X at the
+end of the bar clears it.
 
-![Search box](https://github.com/michal-repo/web_vr_video_player/blob/main/examples/Screenshot_VR_player_4.png?raw=true)
+The sort button at the top right, beside the power button, opens a menu: name
+A to Z or Z to A, newest or oldest first. Names sort as people read them, so
+"Part 2" comes before "Part 10". The current order is highlighted, and a click
+outside the menu closes it.
 
 ![On-screen keyboard](https://github.com/michal-repo/web_vr_video_player/blob/main/examples/Screenshot_VR_player_4_1.png?raw=true)
-
-![Sorting](https://github.com/michal-repo/web_vr_video_player/blob/main/examples/Screenshot_VR_player_5.png?raw=true)
 
 ### Reposition views
 
@@ -42,7 +44,7 @@ to their default position when you exit the current video.
 ## Controls
 
 The Controls button under the library opens a panel listing the controls
-below. While you hold the grip, a popup above the controller lists what the
+below; a click outside it closes it. While you hold the grip, a popup above the controller lists what the
 grip combinations do there.
 Resting the pointer on a button shows what it does.
 

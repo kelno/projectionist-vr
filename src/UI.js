@@ -56,6 +56,15 @@ export function showMenu(
     ].point.visible = true;
 }
 
+// What a click outside the open window does, usually closing it. The window
+// sets it when it opens and clears it when it closes; the hidden sphere behind
+// everything calls it. Add MAIN.hiddenSphere to the targets for it to work.
+let closeOpenWindow = null;
+
+export function setOutsideClick(close) {
+    closeOpenWindow = close;
+}
+
 export function registerNewObjectsToTest(passedObjsToTest) {
     objsToTest = [];
     objsToTest = passedObjsToTest.slice();
@@ -109,9 +118,11 @@ export class HiddenSphere {
         this.hiddenSphere.setupState({
             state: "selected",
             onSet: () => {
-                // A click outside the settings closes only the settings.
-                if (MAIN.playMenuPanel.settingsWindow.isOpen) {
-                    MAIN.playMenuPanel.hideSettingsMenuContainer();
+                // A click outside an open window closes only that window.
+                if (closeOpenWindow) {
+                    const close = closeOpenWindow;
+                    closeOpenWindow = null;
+                    close();
                 } else if (
                     Helpers.videoSrcExists() &&
                     !this.hiddenSphere.buttonsVisible

@@ -17,6 +17,7 @@ import SourcesSelectorPanel from "./sourceSelector.js";
 import FontJSON from "../assets/fonts/Roboto-Regular-msdf.json";
 import FontImage from "../assets/fonts/Roboto-Regular.png";
 import { JsonLoader } from "./jsonLoader.js";
+import { watchVideoTexture } from "./videoTextureWatchdog.mjs";
 
 export let scene,
   camera,
@@ -152,6 +153,7 @@ function init() {
   video.addEventListener("loadedmetadata", startPendingVideoPlayback);
 
   videoTexture = new THREE.VideoTexture(video);
+  checkVideoTexture = watchVideoTexture(video, videoTexture);
   const material = new THREE.MeshBasicMaterial({ map: videoTexture });
 
   // screen mode
@@ -871,7 +873,11 @@ function gamepadButtonsCheck(buttons) {
   }
 }
 
+let checkVideoTexture = () => {};
+
 function loop() {
+  checkVideoTexture(performance.now());
+
   renderer.render(scene, camera);
 
   ThreeMeshUI.update();

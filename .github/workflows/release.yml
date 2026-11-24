@@ -4,6 +4,7 @@
 #   dist/      the built static site, to serve as is (it works at any site path)
 #   scripts/   the catalogue and thumbnail generators (standard library Python 3, plus ffmpeg for thumbnails)
 #   LICENSE
+#   config.ini.example, nginx.conf.example   to start the configuration from
 #
 # Run by hand (workflow_dispatch), it builds and tests without publishing; the tarball is then kept as a workflow artifact.
 name: Release
@@ -72,8 +73,8 @@ jobs:
           mkdir --parents "$staging/scripts"
           cp --recursive dist "$staging/dist"
           cp scripts/*.py "$staging/scripts/"
-          cp LICENSE "$staging/"
-          tar --create --gzip --file "${{ steps.version.outputs.asset }}" --directory "$staging" --owner=0 --group=0 --numeric-owner dist scripts LICENSE
+          cp LICENSE config.ini.example docs/nginx.conf.example "$staging/"
+          tar --create --gzip --file "${{ steps.version.outputs.asset }}" --directory "$staging" --owner=0 --group=0 --numeric-owner dist scripts LICENSE config.ini.example nginx.conf.example
 
       - name: Keep the build (manual runs)
         if: github.ref_type != 'tag'

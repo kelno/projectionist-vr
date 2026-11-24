@@ -16,6 +16,7 @@ The release holds `web_vr_video_player-<tag>.tar.gz`, which contains:
 - `dist/`: the built site, without `files.json`.
 - `scripts/`: the catalogue and thumbnail generators, which need only Python 3 and FFmpeg (for thumbnails, and for the media info the catalogue records). The other media preparation scripts come along.
 - `LICENSE`.
+- `config.ini.example` and `nginx.conf.example`, to start the configuration from.
 
 Running the workflow by hand from the Actions tab builds and tests the branch without publishing; the tarball is kept as a workflow artifact.
 

@@ -250,7 +250,7 @@ export function resetDrag(view: DragView): void {
         resetZoomPosition();
         const readyList: PanelGroup[] = [];
         objectsToDrag[view].forEach((obj) => {
-            if (!(obj.panelName in readyList)) {
+            if (!readyList.includes(obj.panelName)) {
                 resetPosition(obj.panelName);
                 readyList.push(obj.panelName);
             }

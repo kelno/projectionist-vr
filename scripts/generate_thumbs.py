@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
-"""Generate a JPEG thumbnail for every library video that does not have one yet."""
+"""Generate a JPEG thumbnail for every library video that does not have one yet.
+
+Thumbnails are named by the video's fingerprint, in the store described in
+library_store.py, so a moved or renamed video keeps its thumbnail.
+"""
 
 from __future__ import annotations
 
 import argparse
 import configparser
-import os
 from pathlib import Path
 import subprocess
 import sys
 
-from common import is_video_file
+from library_store import LibraryStore, iter_videos
 
 
 # Seconds into the video of the thumbnail frame, past most intros and fades.
@@ -103,28 +106,38 @@ def generate_thumbnail(video_file: Path, thumb_file: Path) -> bool:
 
 
 def generate_thumbnails(videos_path: Path, thumbnails_path: Path) -> list[Path]:
-    """Generate the missing thumbnails, mirroring the video tree, and return the videos that failed."""
+    """Generate the missing thumbnails into the store, and return the videos that failed.
+
+    Videos with the same content share one thumbnail. The fingerprint cache is
+    saved even when the run is interrupted, so that the next run doesn't read
+    again the files already fingerprinted.
+    """
     if not videos_path.is_dir():
         raise FileNotFoundError(f"Videos directory not found: {videos_path}")
 
+    store = LibraryStore(thumbnails_path)
     failed: list[Path] = []
     created = 0
-    for dirpath, _, filenames in os.walk(videos_path):
-        thumb_dir = thumbnails_path / Path(dirpath).relative_to(videos_path)
-        for filename in filenames:
-            if not is_video_file(filename):
+    try:
+        for relative_path in iter_videos(videos_path):
+            video_file = videos_path / relative_path
+            try:
+                thumb_file = store.thumbnail_path(store.fingerprint(video_file, relative_path))
+            except OSError as error:
+                print(f"ERROR: cannot read {video_file}: {error}", file=sys.stderr)
+                failed.append(video_file)
                 continue
-            video_file = Path(dirpath) / filename
-            thumb_file = (thumb_dir / filename).with_suffix(".jpg")
             if thumb_file.exists():
                 continue
-            thumb_dir.mkdir(parents=True, exist_ok=True)
+            thumbnails_path.mkdir(parents=True, exist_ok=True)
             print(f"Generating thumbnail for: {video_file}")
             if generate_thumbnail(video_file, thumb_file):
                 created += 1
             else:
                 print(f"ERROR: no thumbnail generated for: {video_file}", file=sys.stderr)
                 failed.append(video_file)
+    finally:
+        store.save()
     print(f"Created {created} thumbnails, {len(failed)} failed")
     return failed
 

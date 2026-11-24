@@ -8,6 +8,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from generate_thumbs import THUMBNAIL_SEEK_SECONDS, generate_thumbnails, thumbnail_seek_seconds
+from library_store import LibraryStore
 
 
 def fake_ffmpeg(writes_output, duration="60.0"):
@@ -36,14 +37,23 @@ class GenerateThumbnailsTests(unittest.TestCase):
         (videos / "notes.txt").write_bytes(b"")
         return videos, root / "thumbnails"
 
-    def test_mirrors_the_video_tree_and_skips_existing_thumbnails(self):
+    def test_names_thumbnails_by_fingerprint_and_skips_existing_ones(self):
         with tempfile.TemporaryDirectory() as directory:
             videos, thumbnails = self.make_library(Path(directory))
             with mock.patch("generate_thumbs.subprocess.run", side_effect=fake_ffmpeg(True)) as run:
                 self.assertEqual(generate_thumbnails(videos, thumbnails), [])
                 self.assertEqual(generate_thumbnails(videos, thumbnails), [])
             self.assertEqual(len(ffmpeg_calls(run)), 1)
-            self.assertEqual(sorted(p.name for p in thumbnails.rglob("*") if p.is_file()), ["clip.jpg"])
+            fingerprint = LibraryStore(thumbnails).fingerprints["Music/clip.mp4"]["fingerprint"]
+            self.assertEqual([p.name for p in thumbnails.rglob("*.jpg")], [f"{fingerprint}.jpg"])
+
+    def test_videos_with_the_same_content_share_one_thumbnail(self):
+        with tempfile.TemporaryDirectory() as directory:
+            videos, thumbnails = self.make_library(Path(directory))
+            (videos / "copy.mp4").write_bytes(b"")
+            with mock.patch("generate_thumbs.subprocess.run", side_effect=fake_ffmpeg(True)) as run:
+                self.assertEqual(generate_thumbnails(videos, thumbnails), [])
+            self.assertEqual(len(ffmpeg_calls(run)), 1)
 
     def test_reports_a_video_for_which_ffmpeg_wrote_nothing(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -51,7 +61,7 @@ class GenerateThumbnailsTests(unittest.TestCase):
             with mock.patch("generate_thumbs.subprocess.run", side_effect=fake_ffmpeg(False)):
                 failed = generate_thumbnails(videos, thumbnails)
             self.assertEqual(failed, [videos / "Music" / "clip.mp4"])
-            self.assertEqual([p for p in thumbnails.rglob("*") if p.is_file()], [])
+            self.assertEqual(list(thumbnails.rglob("*.jpg")), [])
 
 
     def test_takes_the_frame_halfway_through_a_short_video(self):

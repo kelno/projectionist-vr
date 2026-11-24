@@ -10,7 +10,7 @@ Configure `config.ini`, then run:
 
 `ffmpeg` and `ffprobe` must be available on `PATH`.
 
-It only creates missing thumbnails, from the frame 20 seconds in, or halfway through a video shorter than that (its duration read with `ffprobe`), through a temporary file so that an interrupted run leaves none half-written. A video it cannot make a thumbnail for, such as an unreadable file, is reported, and the script exits with an error after the others; the next run tries it again.
+Each thumbnail is named by the video's fingerprint, in the thumbnails directory, so a moved or renamed video keeps its own and copies of one video share one; [Catalogue](catalogue.md#thumbnails-and-media-info-follow-the-videos-content) describes this store. It only creates missing thumbnails, from the frame 20 seconds in, or halfway through a video shorter than that (its duration read with `ffprobe`), through a temporary file so that an interrupted run leaves none half-written. A video it cannot make a thumbnail for, such as an unreadable file, is reported, and the script exits with an error after the others; the next run tries it again.
 
 ## Make MP4s stream efficiently
 

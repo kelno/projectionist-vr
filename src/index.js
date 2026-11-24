@@ -995,8 +995,10 @@ function loop() {
   try {
     renderFrame();
   } catch (error) {
-    console.error(error);
-    reportError("frame", error);
+    // Logged and reported the first time only: it may repeat every frame.
+    if (reportError("frame", error)) {
+      console.error(error);
+    }
   }
 }
 

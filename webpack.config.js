@@ -77,7 +77,10 @@ module.exports = (env) => {
       index: "./src/index.js",
     },
     mode: isDevelopment ? "development" : "production",
-    devtool: isDevelopment ? "source-map" : false,
+    // Production writes index.js.map without linking it from the bundle: it
+    // turns the positions in reported errors (src/errorReport.mjs) back into
+    // source lines, and browsers never load it.
+    devtool: isDevelopment ? "source-map" : "hidden-source-map",
     output: {
       filename: "[name].js",
       path: DIST_DIRECTORY,

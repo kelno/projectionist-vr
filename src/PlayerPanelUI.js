@@ -632,17 +632,17 @@ export class PlayerPanel {
                     video.duration * this.progressBarContainer.uv.x;
             },
         });
+        // Hovering lightens the bar. Changing its height instead would
+        // reflow the whole controls panel around it.
         this.progressBarContainer.setupState({
             state: "hovered",
-            attributes: {
-                height: this.PROGRESSPANELHEIGHT * 1.5,
-            },
-            onSet: () => {},
+            attributes: { backgroundColor: new Color(0x8a8a8a) },
         });
         this.progressBarContainer.setupState({
             state: "idle",
             attributes: {
-                height: this.PROGRESSPANELHEIGHT,
+                backgroundColor:
+                    this.progressBarContainerAttributes.backgroundColor,
             },
         });
 

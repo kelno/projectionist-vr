@@ -104,9 +104,15 @@ export class HiddenSphere {
             state: "hovered",
         });
         this.hiddenSphere.setupState({
+            state: "idle",
+        });
+        this.hiddenSphere.setupState({
             state: "selected",
             onSet: () => {
-                if (
+                // A click outside the settings closes only the settings.
+                if (MAIN.playMenuPanel.settingsMenuContainer.settingsVisible) {
+                    MAIN.playMenuPanel.hideSettingsMenuContainer();
+                } else if (
                     Helpers.videoSrcExists() &&
                     !this.hiddenSphere.buttonsVisible
                 ) {

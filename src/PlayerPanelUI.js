@@ -38,6 +38,8 @@ import VRIcon from "../assets/icons/vr-glasses.png";
 import WideScreenIcon from "../assets/icons/wide.png";
 import ResetIcon from "../assets/icons/reset.png";
 import FullScreenIcon from "../assets/icons/fullscreen.png";
+import PreviousVideoIcon from "../assets/icons/left-arrow.png";
+import NextVideoIcon from "../assets/icons/right-arrow.png";
 
 export class PlayerPanel {
     playMenuContainer;
@@ -89,9 +91,9 @@ export class PlayerPanel {
         width: this.PLAYERPANELMAXWIDTH,
     };
 
-    // Holds Play/Pause;FF;REW;Settings buttons
+    // Holds Previous;REW;Play/Pause;FF;Next;Settings buttons
     centerContainerAttributes = {
-        width: this.BUTTONSPANELMAXWIDTH / 3,
+        width: this.BUTTONSPANELMAXWIDTH / 2,
         height: 0.15,
         justifyContent: "center",
         contentDirection: "row",
@@ -121,7 +123,7 @@ export class PlayerPanel {
     };
 
     moveButtonContainerAttributes = {
-        width: this.BUTTONSPANELMAXWIDTH / 3,
+        width: this.BUTTONSPANELMAXWIDTH / 6,
         height: 0.15,
         justifyContent: "end",
         contentDirection: "row",
@@ -311,7 +313,15 @@ export class PlayerPanel {
         this.playMenuContainer.position.set(0, 0.6, -3);
         this.playMenuContainer.add(playMenuContainerButtons);
 
-        this.playMenuContainer.setupState({ state: "selected" });
+        // A click on the controls' background closes the settings, if open.
+        this.playMenuContainer.setupState({
+            state: "selected",
+            onSet: () => {
+                if (this.settingsMenuContainer.settingsVisible) {
+                    this.hideSettingsMenuContainer();
+                }
+            },
+        });
         this.playMenuContainer.setupState({ state: "hovered" });
         this.playMenuContainer.setupState({ state: "idle" });
 
@@ -344,6 +354,8 @@ export class PlayerPanel {
         const buttonStop = new Block(this.buttonOptions);
         const buttonFF = new Block(this.buttonOptions);
         const buttonRew = new Block(this.buttonOptions);
+        const buttonPreviousVideo = new Block(this.buttonOptions);
+        const buttonNextVideo = new Block(this.buttonOptions);
         const buttonMute = new Block(this.buttonOptions);
         const dummyButtonMute = new Block(this.buttonOptions);
         dummyButtonMute.visible = false;
@@ -360,9 +372,11 @@ export class PlayerPanel {
             this.centerContainerAttributes
         ).add(
             buttonPause,
+            buttonPreviousVideo,
             buttonRew,
             this.buttonPlay,
             buttonFF,
+            buttonNextVideo,
             settingsButton
         );
 
@@ -402,6 +416,18 @@ export class PlayerPanel {
 
         this.loader.load(RewIcon, (texture) => {
             buttonRew.add(new InlineBlock(this.textureAttributes(texture)));
+        });
+
+        this.loader.load(PreviousVideoIcon, (texture) => {
+            buttonPreviousVideo.add(
+                new InlineBlock(this.textureAttributes(texture))
+            );
+        });
+
+        this.loader.load(NextVideoIcon, (texture) => {
+            buttonNextVideo.add(
+                new InlineBlock(this.textureAttributes(texture))
+            );
         });
 
         this.loader.load(ExitIcon, (texture) => {
@@ -480,6 +506,28 @@ export class PlayerPanel {
         });
         buttonRew.setupState(this.hoveredState);
         buttonRew.setupState(this.idleState);
+
+        //
+
+        buttonPreviousVideo.setupState({
+            state: "selected",
+            attributes: this.selectedAttributes,
+            onSet: () => {
+                this.playAdjacentVideo(-1);
+            },
+        });
+        buttonPreviousVideo.setupState(this.hoveredState);
+        buttonPreviousVideo.setupState(this.idleState);
+
+        buttonNextVideo.setupState({
+            state: "selected",
+            attributes: this.selectedAttributes,
+            onSet: () => {
+                this.playAdjacentVideo(1);
+            },
+        });
+        buttonNextVideo.setupState(this.hoveredState);
+        buttonNextVideo.setupState(this.idleState);
 
         //
 
@@ -642,9 +690,11 @@ export class PlayerPanel {
             moveResetButton,
             moveButton,
             buttonExitToMain,
+            buttonPreviousVideo,
             buttonRew,
             this.buttonPlay,
             buttonFF,
+            buttonNextVideo,
             buttonMute,
             settingsButton,
             this.progressBarContainer,
@@ -1070,6 +1120,24 @@ export class PlayerPanel {
     hideSettingsMenuContainer() {
         UI.hideMenu(this.settingsMenuContainer, this.playMenuObjsToTest);
         this.settingsMenuContainer.settingsVisible = false;
+    }
+
+    // Play the next (offset 1) or previous (offset -1) video of the list the
+    // library shows. The screen stays where the user put it.
+    playAdjacentVideo(offset) {
+        const file = MAIN.fileBrowserPanel.adjacentFile(offset);
+        if (file === null) {
+            MAIN.showPopupMessage(
+                Helpers.getWordFromLang(
+                    offset > 0 ? "no_next_video" : "no_previous_video"
+                )
+            );
+            return;
+        }
+        this.hidePlayMenuPanel();
+        ScreenManager.force2DMode(false);
+        this.VR2DModeButtonText.set({ content: "3D" });
+        MAIN.playCatalogueVideo(file);
     }
 
     ExitToMain() {

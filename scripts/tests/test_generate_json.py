@@ -1,5 +1,6 @@
 import configparser
 import json
+import struct
 from pathlib import Path
 import subprocess
 import sys
@@ -78,7 +79,7 @@ class GenerateCatalogueTests(unittest.TestCase):
 
 
 class StoreTests(unittest.TestCase):
-    """The thumbnail and catalogue scripts together, as the Pi runs them: thumbnails first, then the catalogue."""
+    """The thumbnail and catalogue scripts together, as a server runs them: thumbnails first, then the catalogue."""
 
     MEDIA = {"size": 5, "video_codec": "hevc"}
 
@@ -151,6 +152,58 @@ class StoreTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 store.prune()
             self.assertEqual(len(list(thumbnails.glob("*.jpg"))), 2)
+
+
+def box(box_type: bytes, payload: bytes = b"") -> bytes:
+    return struct.pack(">I4s", len(payload) + 8, box_type) + payload
+
+
+class FaststartTests(unittest.TestCase):
+    """MP4s that keep their index after the video data are flagged in the media info and listed."""
+
+    def make_library(self, root: Path) -> tuple[Path, Path]:
+        videos = root / "videos"
+        (videos / "Clips").mkdir(parents=True)
+        (videos / "Clips" / "ready.mp4").write_bytes(box(b"ftyp") + box(b"moov") + box(b"mdat", b"ready"))
+        (videos / "Clips" / "late.mp4").write_bytes(box(b"ftyp") + box(b"mdat", b"late") + box(b"moov"))
+        (videos / "Clips" / "film.mkv").write_bytes(b"matroska")
+        return videos, root / "thumbnails"
+
+    def run_generator(self, videos: Path, thumbnails: Path, probe_media: bool = True):
+        store = LibraryStore(thumbnails)
+        slow: list[Path] = []
+        with mock.patch("generate_json.read_media_info", side_effect=lambda path: {"size": path.stat().st_size}):
+            categories = generate_category_entries(make_config(videos, thumbnails), store, probe_media, slow)
+        store.save()
+        media = {Path(entry["src"]).name: entry.get("media") for entry in categories["Clips"]}
+        return media, slow
+
+    def test_flags_and_lists_the_videos_that_start_slowly(self):
+        with tempfile.TemporaryDirectory() as directory:
+            videos, thumbnails = self.make_library(Path(directory))
+            media, slow = self.run_generator(videos, thumbnails)
+            self.assertTrue(media["ready.mp4"]["faststart"])
+            self.assertFalse(media["late.mp4"]["faststart"])
+            self.assertNotIn("faststart", media["film.mkv"])
+            self.assertEqual(slow, [videos / "Clips" / "late.mp4"])
+
+    def test_the_answer_is_stored_with_the_media_info(self):
+        with tempfile.TemporaryDirectory() as directory:
+            videos, thumbnails = self.make_library(Path(directory))
+            self.run_generator(videos, thumbnails)
+            with mock.patch("generate_json.needs_faststart") as check:
+                media, slow = self.run_generator(videos, thumbnails)
+            check.assert_not_called()
+            self.assertFalse(media["late.mp4"]["faststart"])
+            self.assertEqual(len(slow), 1)
+
+    def test_without_probing_the_check_still_runs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            videos, thumbnails = self.make_library(Path(directory))
+            media, slow = self.run_generator(videos, thumbnails, probe_media=False)
+            self.assertEqual(media["late.mp4"], {"faststart": False})
+            self.assertIsNone(media["film.mkv"])
+            self.assertEqual(len(slow), 1)
 
 
 class MediaInfoTests(unittest.TestCase):

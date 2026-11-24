@@ -47,7 +47,16 @@ export function formatDuration(seconds) {
         : `${minutes}:${secs}`;
 }
 
-// `entry` is the catalogue entry (or null), `video` the playing element.
+// Whether the video keeps its index before the video data, as the catalogue
+// generator recorded: without it, the video starts slowly.
+function faststartLine(media) {
+    if (media.faststart === true) return ["Fast start", "Yes"];
+    if (media.faststart === false) return ["Fast start", "No, slow to start: remux it", true];
+    return ["Fast start", UNKNOWN];
+}
+
+// `entry` is the catalogue entry (or null), `video` the playing element. Each
+// line is [name, text], with `true` after them for a problem to show as such.
 export function mediaInfoLines(entry, video) {
     const media = entry?.media ?? {};
     const width = media.width ?? video?.videoWidth;
@@ -75,5 +84,6 @@ export function mediaInfoLines(entry, video) {
         ["Duration", Number.isFinite(duration) && duration > 0 ? formatDuration(duration) : UNKNOWN],
         ["Size", media.size ? formatSize(media.size) : UNKNOWN],
         ["Bitrate", media.bit_rate ? `${(media.bit_rate / 1e6).toFixed(1)} Mb/s` : UNKNOWN],
+        faststartLine(media),
     ];
 }

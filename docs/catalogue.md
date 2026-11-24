@@ -36,7 +36,8 @@ provide a catalogue from another source.
             "audio_codec": "aac",
             "audio_channels": 2,
             "duration": 3723.0,
-            "bit_rate": 38000000
+            "bit_rate": 38000000,
+            "faststart": true
           }
         }
       ]
@@ -54,6 +55,14 @@ FFprobe, from each video's header; a field FFprobe can't tell is left out, and
 an entry without `media` still plays, its page showing what the browser knows.
 Pass `--no-media-info` to run no FFprobe: entries then only get the `media`
 already in the store (below).
+
+`faststart` says whether an MP4 or MOV keeps its index before the video data.
+When it doesn't (`false`), the browser must fetch the end of the file before
+showing anything, so the video starts slowly; the Media info page flags it, and
+the generator ends its run by listing these videos with the command that fixes
+them ([Prepare media](media-preparation.md#make-mp4s-stream-efficiently)). The
+check reads only the headers of the file's boxes, a few bytes each, needs no
+FFprobe, and is kept in the store with the rest of the media info.
 
 ## Thumbnails and media info follow the video's content
 

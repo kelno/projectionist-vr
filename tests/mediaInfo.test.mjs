@@ -33,7 +33,14 @@ test("shows the catalogue's media info", () => {
         ["Duration", "1:02:03"],
         ["Size", "4.2 GB"],
         ["Bitrate", "38.0 Mb/s"],
+        ["Fast start", "Unknown"],
     ]);
+});
+
+test("flags a video that starts slowly", () => {
+    const line = (media) => mediaInfoLines({ name: "Clip", media }, null).find(([name]) => name === "Fast start");
+    assert.deepEqual(line({ faststart: true }), ["Fast start", "Yes"]);
+    assert.deepEqual(line({ faststart: false }), ["Fast start", "No, slow to start: remux it", true]);
 });
 
 test("falls back on the video element without catalogue info", () => {

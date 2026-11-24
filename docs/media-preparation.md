@@ -15,7 +15,8 @@ Each thumbnail is named by the video's fingerprint, in the thumbnails directory,
 ## Make MP4s stream efficiently
 
 Large MP4 files load promptly only when their `moov` metadata atom precedes
-the media data. Check a directory without modifying files:
+the media data. The catalogue generator lists the videos without it at the end
+of each run. Check a directory without modifying files:
 
 ```powershell
 python scripts/remux_faststart.py D:\download\my_library --recursive

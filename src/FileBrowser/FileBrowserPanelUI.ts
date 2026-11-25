@@ -255,7 +255,10 @@ export class FileBrowserPanel {
                 this.refreshList();
             },
             onTargetsChange: () => this.registerTargets(),
-            systemKeyboard: createSystemKeyboard(() => MAIN.renderer.xr.getSession()),
+            systemKeyboard: createSystemKeyboard(
+                () => MAIN.renderer.xr.getSession(),
+                (message) => MAIN.reportError("keyboard", message),
+            ),
         });
         // ScreenManager finds panels by these property names.
         this.searchBar = this.search.bar;

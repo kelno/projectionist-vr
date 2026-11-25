@@ -5,7 +5,10 @@
 // "visible-blurred". See
 // https://developers.meta.com/horizon/documentation/web/webxr-keyboard/
 //
-// `getSession()` gives the current XR session, if any.
+// `getSession()` gives the current XR session, if any. `report(message)`
+// sends the server's log what happened, each message once: whether the
+// browser offers the keyboard and whether it showed, which can't be watched
+// from outside the headset.
 // open({ onInput, onClose, onFail }): `onInput(text)` as the user types,
 // `onClose(text)` when they close the keyboard, `onFail()` instead of both if
 // the keyboard didn't show within FAIL_MS, so the caller can use its own.
@@ -16,10 +19,19 @@ export interface SystemKeyboard {
     open(handlers: { onInput: (text: string) => void; onClose: (text: string) => void; onFail: () => void }): void;
 }
 
-export function createSystemKeyboard(getSession: () => XRSession | null): SystemKeyboard {
+export function createSystemKeyboard(
+    getSession: () => XRSession | null,
+    report: (message: string) => void = () => {},
+): SystemKeyboard {
     let field: HTMLInputElement | undefined;
 
-    const isAvailable = () => Boolean(getSession()?.isSystemKeyboardSupported);
+    const isAvailable = () => {
+        const session = getSession();
+        if (session && !session.isSystemKeyboardSupported) {
+            report(`not offered: isSystemKeyboardSupported=${String(session.isSystemKeyboardSupported)}; ${browser()}`);
+        }
+        return Boolean(session?.isSystemKeyboardSupported);
+    };
 
     // The field must be in the page for the keyboard to show. Fixed at the
     // top left, and transparent, it never shows and the page doesn't scroll
@@ -52,10 +64,15 @@ export function createSystemKeyboard(getSession: () => XRSession | null): System
         const onVisibilityChange = () => {
             if (session.visibilityState === "visible-blurred") {
                 shown = true;
+                report(`shown; ${browser()}`);
             }
         };
         const failTimer = setTimeout(() => {
             if (!shown) {
+                report(
+                    `offered but not shown within ${FAIL_MS} ms: visibility=${session.visibilityState}, ` +
+                        `field focused=${document.activeElement === input}; ${browser()}`,
+                );
                 stop();
                 input.blur();
                 onFail();
@@ -78,4 +95,9 @@ export function createSystemKeyboard(getSession: () => XRSession | null): System
     }
 
     return { isAvailable, open };
+}
+
+// The browser and its version, from its user agent.
+function browser(): string {
+    return navigator.userAgent.match(/OculusBrowser\/\S+|Chrome\/\S+/)?.[0] ?? navigator.userAgent.slice(0, 120);
 }

@@ -440,7 +440,7 @@ let updateBufferingIndicator: ReturnType<typeof createBufferingIndicator> = () =
 
 // Errors go to the server's access log, where they can be read without the
 // headset (see errorReport.mjs).
-const reportError = createErrorReporter({
+export const reportError = createErrorReporter({
     send: (query) => {
         // A report that can't be sent is dropped.
         fetch(`diag?${query}`, { cache: "no-store" }).catch(() => {});

@@ -72,6 +72,14 @@ def grab_frame(video_file: Path, seconds: float, video_filter: str, frame_file: 
     as is (-fps_mode passthrough): without that, ffmpeg would decode every
     frame from the keyframe up to `seconds` and keep the last. One thread
     keeps the decoder's memory low on a small server.
+
+    Known limit, accepted to keep this cheap: a short animation looped for the
+    whole video can show the same frame in every thumbnail. When the loop's
+    length divides the keyframe interval, every keyframe falls on the same
+    point of the loop, whatever times are asked for. Seen on a video with a
+    keyframe every 5 s and a loop of 5 s or a fraction of it. Showing other
+    points of the loop would mean decoding past the keyframes, the cost this
+    avoids.
     """
     result = subprocess.run(
         [

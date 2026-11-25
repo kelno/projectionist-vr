@@ -4,7 +4,6 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 import WebGL from "three/addons/capabilities/WebGL.js";
 
-import ThreeMeshUI from "./ui/meshUi.ts";
 import VRControl from "./vr/VRControl.ts";
 
 import { PlayerPanel } from "./PlayerPanelUI.ts";
@@ -388,7 +387,7 @@ function gamepadControlsUpdate(): void {
         return;
     }
     const controller = vrControl.controllers[vrControlCurrentlyUsedController];
-    const inputSource: XRInputSource | null | undefined = controller.userData.inputSource;
+    const inputSource = controller.userData.inputSource as XRInputSource | null | undefined;
     const gamepad = inputSource?.gamepad;
     if (gamepad?.mapping !== "xr-standard") {
         showGripPopup(false);
@@ -477,8 +476,6 @@ function renderFrame(): void {
 
     renderer.render(scene, camera);
 
-    ThreeMeshUI.update();
-
     orbitControls.update();
 
     gamepadControlsUpdate();
@@ -514,7 +511,7 @@ async function loadCatalogue(): Promise<Catalogue | null> {
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
-        return await response.json();
+        return (await response.json()) as Catalogue;
     } catch (error) {
         console.error("The catalogue could not be loaded:", error);
         return null;

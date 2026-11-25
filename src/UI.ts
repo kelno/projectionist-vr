@@ -1,19 +1,16 @@
 import * as THREE from "three";
 import type { Object3D } from "three";
 
-import type { Component } from "@pmndrs/uikit";
-
 import * as MAIN from "./index.ts";
-import type { Block } from "./ui/meshUi.ts";
 
 import * as ScreenManager from "./ScreenManager/ScreenManager.ts";
 
 import * as Helpers from "./Helpers.ts";
 
-// The sphere behind everything (HiddenSphere below), which the pointer
-// treats as a three-mesh-ui block: it has the states and the uv a block has.
+// The sphere behind everything (HiddenSphere below), which catches the
+// clicks outside the panels. The pointer sets its state: "hovered" under the
+// pointer, "selected" once per press, "idle" otherwise.
 export interface HiddenSphereMesh extends THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial> {
-    isUI: boolean;
     currentState: string | undefined;
     states: Record<string, { onSet?: () => void }>;
     // Whether the player's buttons show, so a click toggles them.
@@ -24,9 +21,8 @@ export interface HiddenSphereMesh extends THREE.Mesh<THREE.SphereGeometry, THREE
     setState(state: string): void;
 }
 
-// What the pointer can click: three-mesh-ui blocks, uikit panels and the
-// hidden sphere.
-export type PointerTarget = Block | Component | HiddenSphereMesh;
+// What the pointer can click: uikit panels, and the hidden sphere.
+export type PointerTarget = Object3D;
 
 export let objsToTest: PointerTarget[] = [];
 
@@ -109,7 +105,6 @@ export class HiddenSphere {
         // The lines below add what makes it a HiddenSphereMesh.
         this.hiddenSphere = new THREE.Mesh(hiddenGeometry, hiddenMaterial) as HiddenSphereMesh;
         this.hiddenSphere.name = "hiddenSphere";
-        this.hiddenSphere.isUI = true;
         this.hiddenSphere.currentState = undefined;
         this.hiddenSphere.states = {};
         this.hiddenSphere.buttonsVisible = false;

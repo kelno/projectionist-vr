@@ -26,8 +26,7 @@
     "@pmndrs/uikit": "^1.0.78",
     "@preact/signals-core": "^1.14.5",
     "@types/three": "^0.185.4",
-    "three": "^0.185.1",
-    "three-mesh-ui": "file:vendor/three-mesh-ui-6.5.31.tgz"
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

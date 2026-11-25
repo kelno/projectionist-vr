@@ -2,12 +2,9 @@ import FontJSON from "../assets/fonts/Roboto-Regular-msdf.json";
 
 const supportedCharacters = new Set(FontJSON.info.charset);
 
-/**
- * ThreeMeshUI does not gracefully handle a character missing from its MSDF
- * font: it logs a warning, then throws while looking up that glyph. Library
- * labels come from user-controlled filenames, so replace only unsupported
- * display characters and leave the original file paths untouched.
- */
+// The text with each character the player's font lacks replaced by "?",
+// which uikit would otherwise draw as nothing. Library labels come from file
+// names, so only what's shown changes, never the paths.
 export function sanitizeFontText(value: unknown): string {
     return Array.from(String(value))
         .map((character) => {

@@ -1,6 +1,6 @@
 import { CircleGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial, RingGeometry } from "three";
 
-import { materialColour } from "./theme.ts";
+import { colour } from "./theme.ts";
 
 export type Spinner = Group & { spin(): void };
 
@@ -9,11 +9,11 @@ export type Spinner = Group & { spin(): void };
 export function createSpinner(radius: number): Spinner {
     const background = new Mesh(
         new CircleGeometry(radius * 1.35, 32),
-        new MeshBasicMaterial({ color: materialColour("surface"), transparent: true, opacity: 0.85 }),
+        new MeshBasicMaterial({ color: colour("surface"), transparent: true, opacity: 0.85 }),
     );
     const ring = new Mesh(
         new RingGeometry(radius * 0.7, radius, 32, 1, 0, Math.PI * 1.5),
-        new MeshBasicMaterial({ color: materialColour("accent"), side: DoubleSide }),
+        new MeshBasicMaterial({ color: colour("accent"), side: DoubleSide }),
     );
     ring.position.z = 0.001;
     // A Spinner once spin() is set, just below.

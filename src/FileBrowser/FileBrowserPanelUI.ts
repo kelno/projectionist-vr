@@ -1,6 +1,5 @@
 import { Container as UiContainer } from "@pmndrs/uikit";
 import type { Container, ContainerProperties } from "@pmndrs/uikit";
-import type { Keyboard } from "../ui/meshUi.ts";
 import { TextureLoader } from "three";
 import type { Object3D, Texture } from "three";
 
@@ -38,7 +37,7 @@ import * as ScreenManager from "../ScreenManager/ScreenManager.ts";
 import { sanitizeFontText, shortenText } from "../font.ts";
 import { adjacentVideo } from "../adjacentVideo.ts";
 import { playerVersion } from "../playerConfig.ts";
-import { RADIUS, materialColour, space } from "../ui/theme.ts";
+import { RADIUS, colour, space } from "../ui/theme.ts";
 
 import LeftIcon from "../../assets/icons/left.png";
 import RightIcon from "../../assets/icons/right.png";
@@ -137,7 +136,7 @@ export class FileBrowserPanel {
     foldersContainer!: Container;
     search!: SearchBar;
     searchBar!: Container;
-    keyboard!: Keyboard;
+    keyboard!: Container;
     sortButton!: Container;
     leaveVRButton!: Container;
     sortWindow!: SortMenu;
@@ -316,9 +315,9 @@ export class FileBrowserPanel {
         const handleHeight = this.ROW_HEIGHT * 0.8;
         this.draggingBox = uikitPanel(this.GRID_WIDTH / 2, handleHeight, {
             borderRadius: Math.min(RADIUS.button, handleHeight / 2) * MM,
-            backgroundColor: materialColour("raised"),
-            hover: { backgroundColor: materialColour("hovered") },
-            active: { backgroundColor: materialColour("accent") },
+            backgroundColor: colour("raised"),
+            hover: { backgroundColor: colour("hovered") },
+            active: { backgroundColor: colour("accent") },
             onPointerDown: () => ScreenManager.startDrag("files"),
             onPointerUp: () => ScreenManager.stopDrag("files"),
         });
@@ -621,7 +620,7 @@ export class FileBrowserPanel {
     }
 
     // Everything clickable in the library when nothing is open over it: its
-    // panels, each tested as a whole, and the search keyboard's keys.
+    // panels, each tested as a whole, and the search keyboard while typing.
     libraryTargets(): Object3D[] {
         return [
             this.fileBrowserContainer,

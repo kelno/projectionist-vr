@@ -1,20 +1,16 @@
 import type { Container, Text } from "@pmndrs/uikit";
 import { Container as UiContainer } from "@pmndrs/uikit";
 import type { Object3D } from "three";
-import { Keyboard } from "../ui/meshUi.ts";
 
-import { FONT, SURFACE } from "../ui/kit.ts";
-import { RADIUS, colour, materialColour, space, textOn } from "../ui/theme.ts";
-import type { ColourName } from "../ui/theme.ts";
+import { createKeyboard } from "../ui/keyboard.ts";
+import type { OnScreenKeyboard } from "../ui/keyboard.ts";
+import { RADIUS, colour } from "../ui/theme.ts";
 import { MM, uiIconButton, uiLabel, uikitPanel } from "../ui/uikit.ts";
 import type { UiIconButton } from "../ui/uikit.ts";
 import { sanitizeFontText } from "../font.ts";
 import * as Helpers from "../Helpers.ts";
 import type { createSystemKeyboard } from "../input/systemKeyboard.ts";
 
-import Backspace from "../../assets/icons/backspace.png";
-import Enter from "../../assets/icons/enter.png";
-import Shift from "../../assets/icons/shift.png";
 import ClearIcon from "../../assets/icons/close.png";
 
 // The library's search box, drawn with uikit: a bar showing the phrase, or a muted "Search..."
@@ -22,8 +18,8 @@ import ClearIcon from "../../assets/icons/close.png";
 // one. Selecting the bar opens the headset's own keyboard where the browser
 // offers it (`systemKeyboard`, input/systemKeyboard.js), which searches when
 // closed. Elsewhere, or if it doesn't show, it opens this app's on-screen
-// keyboard, where Enter, or selecting the bar again, searches. That keyboard
-// is still three-mesh-ui's.
+// keyboard (ui/keyboard.ts), where Enter, or selecting the bar again,
+// searches.
 //
 // `onSearch(phrase)` is called with the phrase to search for, "" for none.
 // `onTargetsChange()` is called when the clickable parts change (the X shows
@@ -36,13 +32,6 @@ const MAX_SHOWN = 34;
 
 type SystemKeyboard = ReturnType<typeof createSystemKeyboard>;
 
-// What three-mesh-ui's keyboard gives each key: the command of a special
-// key, or the character a key types.
-interface KeyInfo {
-    command?: string;
-    input?: string;
-}
-
 export class SearchBar {
     phrase = "";
     searchedPhrase = "";
@@ -53,9 +42,10 @@ export class SearchBar {
     text: Text;
     clearButton: UiIconButton;
     bar: Container;
-    keyboard: Keyboard;
-    // Set by makeKeyboard().
-    keys!: Object3D[];
+    onScreen: OnScreenKeyboard;
+    // The on-screen keyboard's panel.
+    keyboard: Container;
+    isTyping = false;
 
     constructor({
         onSearch,
@@ -85,8 +75,8 @@ export class SearchBar {
             paddingX: 0.06 * MM,
             paddingY: 0.02 * MM,
             borderRadius: RADIUS.button * MM,
-            backgroundColor: materialColour("raised"),
-            hover: { backgroundColor: materialColour("hovered") },
+            backgroundColor: colour("raised"),
+            hover: { backgroundColor: colour("hovered") },
             onClick: () => {
                 if (this.isTyping) {
                     this.submit();
@@ -99,27 +89,30 @@ export class SearchBar {
         });
         this.bar.add(this.text, new UiContainer({ width: 0.15 * MM, flexShrink: 0 }), this.clearButton);
 
-        this.keyboard = this.makeKeyboard();
+        this.onScreen = createKeyboard({
+            onType: (character) => this.setPhrase(this.phrase + character),
+            onBackspace: () => this.setPhrase(this.phrase.slice(0, -1)),
+            onEnter: () => this.submit(),
+        });
+        this.keyboard = this.onScreen.root;
         this.keyboard.visible = false;
         this.render();
     }
 
-    get isTyping(): boolean {
-        return this.keyboard.visible;
-    }
-
-    // The bar, with its X inside, and the keys of the keyboard's current
-    // page while typing. The other pages' keys must stay out: three.js still
-    // raycasts objects detached from the scene, so a hidden letter key would
-    // take a click meant for the symbol key in its place.
+    // The bar, with its X inside, and the keyboard while typing.
     targets(): Object3D[] {
-        const keys = this.isTyping ? this.keys.filter((key) => this.keyboard.getObjectById(key.id)) : [];
-        return [...keys, this.bar];
+        return this.isTyping ? [this.keyboard, this.bar] : [this.bar];
     }
 
-    // Opens this app's on-screen keyboard.
+    // Opens this app's on-screen keyboard, on its letters.
     startTyping() {
-        this.keyboard.visible = true;
+        this.onScreen.reset();
+        this.setTyping(true);
+    }
+
+    setTyping(typing: boolean): void {
+        this.isTyping = typing;
+        this.keyboard.visible = typing;
         this.onTargetsChange();
     }
 
@@ -138,12 +131,12 @@ export class SearchBar {
 
     // Closes the keyboard without searching, back to the last search.
     stopTyping() {
-        this.keyboard.visible = false;
+        this.setTyping(false);
         this.setPhrase(this.searchedPhrase);
     }
 
     submit() {
-        this.keyboard.visible = false;
+        this.setTyping(false);
         this.search(this.phrase);
     }
 
@@ -172,76 +165,8 @@ export class SearchBar {
         const shown = this.phrase.length > MAX_SHOWN ? "..." + this.phrase.slice(-(MAX_SHOWN - 3)) : this.phrase;
         this.text.setProperties({
             text: empty ? Helpers.getWordFromLang("search") : sanitizeFontText(shown),
-            color: materialColour(empty ? "mutedText" : "text"),
+            color: colour(empty ? "mutedText" : "text"),
         });
         this.clearButton.setProperties({ visibility: empty ? "hidden" : "visible" });
-    }
-
-    makeKeyboard(): Keyboard {
-        const keyLook = (background: ColourName) => ({
-            backgroundColor: colour(background),
-            backgroundOpacity: 1,
-            fontColor: textOn(background),
-        });
-        const keyboard = new Keyboard({
-            language: "eng",
-            ...FONT,
-            fontSize: 0.12,
-            width: 4,
-            height: 1.6,
-            padding: space(2),
-            // No border: the keyboard's keys would each take it (meshUi.js).
-            ...SURFACE,
-            borderWidth: 0,
-            backspaceTexture: Backspace,
-            shiftTexture: Shift,
-            enterTexture: Enter,
-        });
-
-        this.keys = keyboard.keys;
-        for (const key of keyboard.keys) {
-            key.setupState({
-                state: "idle",
-                attributes: { offset: 0, ...keyLook("raised") },
-            });
-            key.setupState({
-                state: "hovered",
-                attributes: { offset: 0, ...keyLook("hovered") },
-            });
-            key.setupState({
-                state: "selected",
-                attributes: { offset: -0.009, ...keyLook("accent") },
-                onSet: () => this.pressKey(keyboard, key.info),
-            });
-        }
-        return keyboard;
-    }
-
-    pressKey(keyboard: Keyboard, info: KeyInfo): void {
-        switch (info.command) {
-            case "switch":
-                keyboard.setNextPanel();
-                this.onTargetsChange();
-                break;
-            case "switch-set":
-                keyboard.setNextCharset();
-                break;
-            case "shift":
-                keyboard.toggleCase();
-                break;
-            case "enter":
-                this.submit();
-                break;
-            case "space":
-                this.setPhrase(this.phrase + " ");
-                break;
-            case "backspace":
-                this.setPhrase(this.phrase.slice(0, -1));
-                break;
-            default:
-                if (info.input) {
-                    this.setPhrase(this.phrase + info.input);
-                }
-        }
     }
 }

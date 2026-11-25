@@ -1,6 +1,5 @@
 /*
-	Based on Three-Mesh-UI's example VRControl helper from the vendored
-	three-mesh-ui 6.5.31 package (MIT).
+	Based on the VRControl helper in three-mesh-ui's examples (MIT).
 
 	Job: creating the VR controllers and their pointers
 */

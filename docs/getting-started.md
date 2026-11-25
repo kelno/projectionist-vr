@@ -76,11 +76,9 @@ The player is written in TypeScript. webpack only strips the types when it
 builds; the compiler checks them. Imports name the `.ts` file, and only
 syntax that can simply be stripped is allowed (no `enum`, no `namespace`), so
 Node can run the tests and `scripts/make_icons.ts` without a build step.
-The panels are moving from three-mesh-ui, which is unmaintained, to
-@pmndrs/uikit (`src/ui/uikit.ts`), one panel at a time; the pointer sends
-uikit's components their events itself (`src/input/uikitEvents.ts`).
-three-mesh-ui still draws the tooltips, popups, help panels and the app's own
-keyboard, and is typed loosely on purpose (`src/types/three-mesh-ui.d.ts`).
+The panels are drawn by @pmndrs/uikit (`src/ui/uikit.ts`), which replaced
+three-mesh-ui, unmaintained; the pointer sends uikit's components their
+events itself (`src/input/uikitEvents.ts`).
 
 Dependabot (`.github/dependabot.yml`) opens a pull request each week when the npm
 packages, the Python dev tools or the GitHub Actions have new versions; the

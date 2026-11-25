@@ -48,7 +48,6 @@ To update, extract the new release over the old one; your `config.toml` and cata
 - [Deploy with Nginx](deployment.md): releases and serving it in more detail.
 - [Build from source](getting-started.md): requirements, configuration and local development.
 - [Troubleshooting](troubleshooting.md)
-- [Vendored dependencies](vendored-dependencies.md)
 
 ## Licences and credits
 

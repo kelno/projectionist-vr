@@ -1,4 +1,4 @@
-import { Color, LinearSRGBColorSpace } from "three";
+import { Color } from "three";
 
 // The player's look, in one place: every panel takes its colours, spacing and
 // corner radii from here. Warm charcoal, with one amber accent for what is
@@ -15,10 +15,14 @@ const HEX = {
     hovered: 0x463f39,
     // A button while pressed, and what is current or active.
     accent: 0xe8963a,
+    // What is current or active, while the pointer is on it.
+    accentHovered: 0xf0b067,
     // Text on the accent colour, too light a background for light text.
     onAccent: 0x1f1c1a,
     // The power button while hovered, and the mute button while muted.
     danger: 0xe5534b,
+    // The mute button while muted and the pointer is on it.
+    dangerHovered: 0xec7a73,
     text: 0xefe9e3,
     // Secondary text: placeholders, names of values, the version.
     mutedText: 0xa89f96,
@@ -28,30 +32,13 @@ const HEX = {
     track: 0x3d3732,
     // The edge of a window or panel, so it stands out from what's behind.
     border: 0x564e47,
-    // Under an image, which three-mesh-ui tints with the background colour:
-    // white shows it in its own colours.
-    white: 0xffffff,
 };
 
 // A theme colour's name, such as "accent".
 export type ColourName = keyof typeof HEX;
 
-// Each colour as a three.js Color for three-mesh-ui components. three.js
-// takes a hex colour as sRGB and converts it to linear values, which its own
-// materials convert back on output; three-mesh-ui's don't, so a colour given
-// the usual way shows much darker than written (#4d8dff showed as #1344ff).
-// Read as already linear, it reaches the screen as written. three-mesh-ui
-// keeps the Color object it's given, so each call returns a new one.
-export const colour = (name: ColourName): Color => new Color().setHex(HEX[name], LinearSRGBColorSpace);
-
-// The text colour that reads on a background of the named colour.
-export const textOn = (background: ColourName): Color => colour(background === "accent" ? "onAccent" : "text");
-
-// The same colour for a plain three.js material, which converts it properly.
-export const materialColour = (name: ColourName): Color => new Color(HEX[name]);
-
-// Panels are solid: see-through, the video tinted them.
-export const SURFACE_OPACITY = 1;
+// A theme colour as a three.js Color, a new one each time.
+export const colour = (name: ColourName): Color => new Color(HEX[name]);
 
 // The width of a panel's edge, in metres.
 export const BORDER_WIDTH = 0.008;

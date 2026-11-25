@@ -6,7 +6,7 @@ import DownIcon from "../../assets/icons/down.png";
 import LeftIcon from "../../assets/icons/left.png";
 import RightIcon from "../../assets/icons/right.png";
 
-import { BORDER_WIDTH, materialColour } from "./theme.ts";
+import { BORDER_WIDTH, colour } from "./theme.ts";
 import { MM, UI_SURFACE, uiLabel, uikitPanel } from "./uikit.ts";
 
 // What the controls do, shown by the help panel and, for the grip, by the
@@ -55,7 +55,7 @@ function makeBadge(control: Control): Container {
         alignItems: "center",
         justifyContent: "center",
         borderRadius: 0.06 * MM,
-        backgroundColor: materialColour("raised"),
+        backgroundColor: colour("raised"),
     });
     if (control.key) {
         badge.add(uiLabel(control.key, { fontSize: FONT_SIZE }));

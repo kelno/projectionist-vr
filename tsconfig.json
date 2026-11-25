@@ -17,9 +17,7 @@
     "strict": true,
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
-    "skipLibCheck": true,
-    // three-mesh-ui ships a stub; src/types/three-mesh-ui.d.ts says what it does.
-    "paths": { "three-mesh-ui": ["./src/types/three-mesh-ui.d.ts"] }
+    "skipLibCheck": true
   },
   "include": ["src", "tests", "scripts/make_icons.ts"]
 }

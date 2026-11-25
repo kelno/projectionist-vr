@@ -27,8 +27,7 @@ import type { Object3D } from "three";
 import type { ScreenType } from "./types/catalogue.ts";
 import { PagedWindow } from "./ui/PagedWindow.ts";
 import type { Page } from "./ui/PagedWindow.ts";
-import { BUTTON_SIZE } from "./ui/kit.ts";
-import { RADIUS, materialColour, space } from "./ui/theme.ts";
+import { RADIUS, colour, space } from "./ui/theme.ts";
 import { browserDecoding } from "./decoding.ts";
 import type { Decoding } from "./decoding.ts";
 import { mediaInfoLines } from "./mediaInfo.ts";
@@ -38,6 +37,7 @@ import { clockTime } from "./seekBar.ts";
 import { createSeekPreview } from "./ui/seekPreview.ts";
 import { Container as UiContainer, Text as UiText } from "@pmndrs/uikit";
 import {
+    BUTTON_SIZE,
     MM,
     UI_SURFACE,
     uiDivider,
@@ -49,6 +49,7 @@ import {
     uikitPanel,
 } from "./ui/uikit.ts";
 import type { UiButton, UiIconButton } from "./ui/uikit.ts";
+import { asPointerEvent } from "./input/uikitEvents.ts";
 import type { Component } from "@pmndrs/uikit";
 
 // What the layout button shows for each video layout, in the order it steps
@@ -247,14 +248,14 @@ export class PlayerPanel {
             width: this.PROGRESS_MIN_WIDTH * MM,
             height,
             flexShrink: 0,
-            backgroundColor: materialColour("accent"),
+            backgroundColor: colour("accent"),
             pointerEvents: "none",
         });
         const mark = new UiContainer({
             width: this.PROGRESS_MIN_WIDTH * 2 * MM,
             height,
             flexShrink: 0,
-            backgroundColor: materialColour("text"),
+            backgroundColor: colour("text"),
             pointerEvents: "none",
         });
         this.seekBar = new UiContainer({
@@ -262,15 +263,16 @@ export class PlayerPanel {
             height,
             flexShrink: 0,
             flexDirection: "row",
-            backgroundColor: materialColour("track"),
+            backgroundColor: colour("track"),
             // Hovering lightens the bar. Changing its height instead would
             // reflow the whole controls panel around it.
-            hover: { backgroundColor: materialColour("hovered") },
+            hover: { backgroundColor: colour("hovered") },
             onClick: (event) => {
-                event.stopPropagation?.();
+                const { uv, stopPropagation } = asPointerEvent(event);
+                stopPropagation();
                 const video = this.videoElement;
-                if (event.uv && Number.isFinite(video.duration)) {
-                    video.currentTime = video.duration * event.uv.x;
+                if (uv && Number.isFinite(video.duration)) {
+                    video.currentTime = video.duration * uv.x;
                 }
             },
         });
@@ -294,9 +296,9 @@ export class PlayerPanel {
         const height = 0.1;
         this.draggingBox = uikitPanel(this.WIDTH / 2, height, {
             borderRadius: Math.min(RADIUS.button, height / 2) * MM,
-            backgroundColor: materialColour("raised"),
-            hover: { backgroundColor: materialColour("hovered") },
-            active: { backgroundColor: materialColour("accent") },
+            backgroundColor: colour("raised"),
+            hover: { backgroundColor: colour("hovered") },
+            active: { backgroundColor: colour("accent") },
             onPointerDown: () => ScreenManager.startDrag("player"),
             onPointerUp: () => ScreenManager.stopDrag("player"),
         });
@@ -455,7 +457,7 @@ export class PlayerPanel {
             const value = new UiText({ text: "-", flexGrow: 1 });
             values.push(value);
             const line = new UiContainer({ flexDirection: "row", alignItems: "center", height: 90, flexShrink: 0 });
-            line.add(new UiText({ text: name, width: 450, flexShrink: 0, color: materialColour("mutedText") }), value);
+            line.add(new UiText({ text: name, width: 450, flexShrink: 0, color: colour("mutedText") }), value);
             block.add(line);
         }
         // Counts the page's showings, so a late answer from the browser about
@@ -470,7 +472,7 @@ export class PlayerPanel {
                     mediaInfoLines(entry, this.videoElement, decoding).forEach(([, text, problem], index) => {
                         values[index].setProperties({
                             text: shortenText(text, 40),
-                            color: materialColour(problem ? "danger" : "text"),
+                            color: colour(problem ? "danger" : "text"),
                         });
                     });
                 };

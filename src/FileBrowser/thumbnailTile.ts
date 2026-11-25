@@ -2,7 +2,7 @@ import { Container, Image as UiImage, Text } from "@pmndrs/uikit";
 import { SRGBColorSpace } from "three";
 import type { Texture } from "three";
 
-import { RADIUS, materialColour } from "../ui/theme.ts";
+import { RADIUS, colour } from "../ui/theme.ts";
 import { MM } from "../ui/uikit.ts";
 import { sanitizeFontText } from "../font.ts";
 
@@ -41,10 +41,10 @@ export function thumbnailTile(
         flexDirection: "column",
         alignItems: "center",
         borderRadius: RADIUS.tile * MM,
-        backgroundColor: materialColour("raised"),
-        color: materialColour("text"),
-        hover: { backgroundColor: materialColour("hovered") },
-        active: { backgroundColor: materialColour("accent"), color: materialColour("onAccent") },
+        backgroundColor: colour("raised"),
+        color: colour("text"),
+        hover: { backgroundColor: colour("hovered") },
+        active: { backgroundColor: colour("accent"), color: colour("onAccent") },
         onClick: () => MAIN.playCatalogueVideo(file),
     }) as ThumbnailTile;
 
@@ -57,7 +57,7 @@ export function thumbnailTile(
         objectFit: "cover",
         keepAspectRatio: false,
         borderRadius: RADIUS.tile * 0.6 * MM,
-        backgroundColor: materialColour("surface"),
+        backgroundColor: colour("surface"),
         pointerEvents: "none",
     });
     // The name, on up to two lines, cut by the caption's edges past that.

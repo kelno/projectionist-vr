@@ -42,7 +42,6 @@ const ICONS = {
     down: ["keyboard_arrow_down"],
     backspace: ["backspace-fill"],
     enter: ["keyboard_return"],
-    shift: ["shift-fill"],
     loop: ["repeat"],
     video: ["movie-fill", "#6b7280"],
 };

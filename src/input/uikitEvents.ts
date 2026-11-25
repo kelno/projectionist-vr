@@ -18,6 +18,14 @@ type Component = UikitComponent<any>;
 
 const POINTER_ID = 1;
 
+// What a component's handler gets: the hit, and a way to stop the event
+// reaching the components holding it. three.js types events loosely.
+export type UikitPointerEvent = Intersection & { stopPropagation: () => void };
+
+export function asPointerEvent(event: unknown): UikitPointerEvent {
+    return event as UikitPointerEvent;
+}
+
 type EventType = "pointerenter" | "pointerleave" | "pointerdown" | "pointerup" | "click";
 
 // The closest component in the uikit panel `root` the ray hits. A component's

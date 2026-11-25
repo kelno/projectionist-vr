@@ -2,18 +2,15 @@ import { Component } from "@pmndrs/uikit";
 import { Raycaster, Vector2 } from "three";
 import type { Camera, Intersection, Object3D, WebGLRenderer } from "three";
 
-import ThreeMeshUI from "../ui/meshUi.ts";
 import * as UI from "../UI.ts";
 import type { VRControls } from "../vr/VRControl.ts";
 import { createUikitEvents, uikitHit } from "./uikitEvents.ts";
 
 // The pointer: the mouse or a touch outside VR, the controller in use in VR.
-// Each frame, update() finds what it points at among the components that
-// can be clicked now (UI.objsToTest), and sets their states: "hovered" under
-// the pointer, "selected" once per press, "idle" for the rest. It returns
-// the component pointed at, if any. A uikit panel among them gets its
-// events through uikitEvents.ts instead, and update() returns the innermost
-// of its components with a tooltip.
+// Each frame, update() finds what it points at among the panels that can be
+// clicked now (UI.objsToTest), sends their components its events
+// (uikitEvents.ts), and returns the innermost component pointed at with a
+// tooltip, if any. The hidden sphere gets states instead (UI.ts).
 //
 // `hiddenSphere` surrounds everything to catch clicks outside the panels;
 // `controller()` gives the number of the controller in use.
@@ -23,8 +20,9 @@ export interface Pointer {
     release(): void;
 }
 
-// What the pointer rests on: a three-mesh-ui component, or a uikit one.
-export type Pointed = UI.PointerTarget | (Component & { tooltip?: string });
+// What the pointer rests on: a uikit component.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Pointed = Component<any> & { tooltip?: string };
 
 // What the ray hit: the raycast target it belongs to, and the hit itself,
 // whose object is the target or, in a uikit panel, one of its components.
@@ -103,9 +101,9 @@ export function createPointer({
 
     // The innermost uikit component from `object` out with a tooltip, or
     // `object` itself.
-    function withTooltip(object: Object3D): Pointed {
+    function withTooltip(object: Pointed): Pointed {
         for (let current: Object3D | null = object; current instanceof Component; current = current.parent) {
-            if ((current as Component & { tooltip?: string }).tooltip) return current;
+            if ((current as Pointed).tooltip) return current;
         }
         return object;
     }
@@ -127,8 +125,7 @@ export function createPointer({
 
         const uikit = hit?.target instanceof Component ? hit.intersection : undefined;
         if (uikit?.uv) {
-            // Where along it the pointer is, as for a three-mesh-ui block: the
-            // seek bar reads it.
+            // Where along it the pointer is: the seek bar reads it.
             (uikit.object as { uv?: { x: number; y: number } }).uv = { x: uikit.uv.x, y: uikit.uv.y };
         }
         uikitEvents.hover(uikit);
@@ -137,31 +134,20 @@ export function createPointer({
             uikitEvents.press();
         }
 
-        const target = hit && !(hit.target instanceof Component) && hit.target.isUI ? hit.target : null;
-        if (target) {
-            // A target means a hit, and every mesh here has uvs.
-            target.uv = { x: hit!.intersection.uv!.x, y: hit!.intersection.uv!.y };
+        // The hidden sphere goes idle when not under the pointer, or its
+        // next click would be ignored as a repeat.
+        if (hit?.target === hiddenSphere) {
             if (!pressed) {
-                target.setState("hovered");
+                hiddenSphere.setState("hovered");
             } else if (pressedOn === undefined) {
-                pressedOn = target.uuid;
-                target.setState("selected");
+                pressedOn = hiddenSphere.uuid;
+                hiddenSphere.setState("selected");
             }
+        } else {
+            hiddenSphere.setState("idle");
         }
 
-        // Everything else goes idle. The hidden sphere isn't a Block but
-        // must go idle too, or its next click is ignored as a repeat.
-        for (const object of UI.objsToTest) {
-            if (object === target) {
-                continue;
-            }
-            if (object === hiddenSphere || (object instanceof ThreeMeshUI.Block && object.isUI)) {
-                object.setState("idle");
-            }
-        }
-
-        if (uikit) return withTooltip(uikit.object);
-        return target === hiddenSphere ? null : target;
+        return uikit ? withTooltip(uikit.object as Pointed) : null;
     }
 
     return { update, press, release };

@@ -92,8 +92,8 @@ export function createPointer({
     function raycast(): Hit | null {
         let closest: Hit | null = null;
         for (const target of UI.objsToTest) {
-            const hits = raycaster.intersectObject(target, true);
-            const intersection = target instanceof Component ? uikitHit(hits) : hits[0];
+            const intersection =
+                target instanceof Component ? uikitHit(raycaster, target) : raycaster.intersectObject(target, true)[0];
             if (intersection && (!closest || intersection.distance < closest.intersection.distance)) {
                 closest = { target, intersection };
             }

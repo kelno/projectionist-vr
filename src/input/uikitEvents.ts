@@ -1,5 +1,5 @@
 import { Component as UikitComponent } from "@pmndrs/uikit";
-import type { Intersection, Object3D } from "three";
+import type { Intersection, Object3D, Raycaster } from "three";
 
 // Any uikit component, whatever its properties.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -20,10 +20,21 @@ const POINTER_ID = 1;
 
 type EventType = "pointerenter" | "pointerleave" | "pointerdown" | "pointerup" | "click";
 
-// The closest of `hits` that a uikit component takes events for. uikit's own
-// meshes, which draw the panels and glyphs, take none, nor do hidden components.
-export function uikitHit(hits: Intersection[]): Intersection | undefined {
-    return hits.find((hit) => hit.object instanceof UikitComponent && hit.object.pointerEvents !== "none");
+// The closest component in the uikit panel `root` the ray hits. A component's
+// raycast tells three.js to skip its children, which @pmndrs/pointer-events
+// casts against one by one, as this does. uikit's own meshes, which draw the
+// panels and glyphs, take no events, nor do hidden components.
+export function uikitHit(raycaster: Raycaster, root: Component): Intersection | undefined {
+    const hits: Intersection[] = [];
+    root.traverse((object) => {
+        if (object instanceof UikitComponent && object.pointerEvents !== "none") {
+            object.raycast(raycaster, hits);
+        }
+    });
+    // uikit brings each hit forward by the component's depth in the panel,
+    // so the innermost component comes first.
+    hits.sort((a, b) => a.distance - b.distance);
+    return hits[0];
 }
 
 // The component hit and the uikit components holding it, innermost first.

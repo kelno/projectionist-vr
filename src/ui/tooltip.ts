@@ -1,17 +1,13 @@
+import { Component } from "@pmndrs/uikit";
 import { Box3, Quaternion, Vector3 } from "three";
 import type { Camera, Object3D } from "three";
-import { Block, Text } from "./meshUi.ts";
 
-import FontJSON from "../../assets/fonts/Roboto-Regular-msdf.json";
-import FontImage from "../../assets/fonts/Roboto-Regular.png";
-
-import { colour } from "./theme.ts";
+import { MM, UI_SURFACE, uiLabel, uikitPanel } from "./uikit.ts";
 
 // One tooltip for the whole scene: when the pointer rests on a component with
 // a `tooltip` string, it shows that text just above the component, facing the
 // same way, and sized for its distance so it reads the same near or far.
 const FONT_SIZE = 0.05;
-const CHAR_WIDTH = 0.028;
 const REFERENCE_DISTANCE = 2;
 
 const box = new Box3();
@@ -19,25 +15,27 @@ const center = new Vector3();
 const cameraPosition = new Vector3();
 const quaternion = new Quaternion();
 
-// A component the pointer can rest on; a button from kit.ts has a tooltip.
+// A component the pointer can rest on; a button from ui/uikit.ts has a
+// tooltip.
 export type TooltipTarget = Object3D & { tooltip?: string };
 
+// Whether the target shows. uikit draws its components with meshes of its
+// own and keeps the components themselves hidden, so it says on its own.
+function shows(target: TooltipTarget): boolean {
+    return target instanceof Component ? target.isVisible.value : target.visible;
+}
+
 export function createTooltip(scene: Object3D): (target: TooltipTarget | null, camera: Camera) => void {
-    const text = new Text({ fontSize: FONT_SIZE, content: " " });
-    const tooltip = new Block({
-        width: 0.3,
-        height: 0.09,
-        justifyContent: "center",
-        borderRadius: 0.03,
-        backgroundColor: colour("surface"),
-        backgroundOpacity: 0.95,
-        borderWidth: 0.004,
-        borderColor: colour("border"),
-        borderOpacity: 1,
-        fontFamily: FontJSON,
-        fontTexture: FontImage,
-        fontColor: colour("text"),
-    }).add(text);
+    const text = uiLabel(" ", { fontSize: FONT_SIZE });
+    // As wide as its text.
+    const tooltip = uikitPanel(undefined, 0.09, {
+        alignItems: "center",
+        paddingX: 0.04 * MM,
+        ...UI_SURFACE,
+        borderRadius: 0.03 * MM,
+        borderWidth: 0.004 * MM,
+    });
+    tooltip.add(text);
     tooltip.visible = false;
     scene.add(tooltip);
 
@@ -45,15 +43,14 @@ export function createTooltip(scene: Object3D): (target: TooltipTarget | null, c
 
     // Call once per frame with the hovered component, or null.
     return function update(target: TooltipTarget | null, camera: Camera): void {
-        if (!target || !target.tooltip || !target.visible) {
+        if (!target || !target.tooltip || !shows(target)) {
             tooltip.visible = false;
             shownFor = null;
             return;
         }
         if (shownFor !== target) {
             shownFor = target;
-            text.set({ content: target.tooltip });
-            tooltip.set({ width: target.tooltip.length * CHAR_WIDTH + 0.08 });
+            text.setProperties({ text: target.tooltip });
         }
         box.setFromObject(target);
         box.getCenter(center);

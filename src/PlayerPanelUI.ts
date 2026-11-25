@@ -21,6 +21,7 @@ import ResetIcon from "../assets/icons/reset.png";
 import MoveIcon from "../assets/icons/move.png";
 import PreviousIcon from "../assets/icons/previous.png";
 import NextIcon from "../assets/icons/next.png";
+import LoopIcon from "../assets/icons/loop.png";
 
 import type { Object3D } from "three";
 import type { ScreenType } from "./types/catalogue.ts";
@@ -71,6 +72,10 @@ export class PlayerPanel {
     // The seek bar and time span from the first button's left edge to the
     // last one's right edge: the buttons keep a margin inside the row.
     BAR_WIDTH = this.INNER_WIDTH - 2 * space(1);
+    // The loop button sits at the seek bar's right end, which is that much
+    // shorter.
+    LOOP_SIZE = 0.1;
+    SEEK_WIDTH = this.BAR_WIDTH - this.LOOP_SIZE - space(1);
     PROGRESS_HEIGHT = 0.06;
     PROGRESS_MIN_WIDTH = 0.01;
     SETTINGS_WIDTH = this.WIDTH / 1.5;
@@ -85,6 +90,7 @@ export class PlayerPanel {
     buttonPlay!: UiIconButton;
     settingsButton!: UiIconButton;
     muteButton!: UiIconButton;
+    loopButton!: UiIconButton;
     timeLabel!: UiText;
     playMenuContainer!: UiContainer;
     progressBar!: UiContainer;
@@ -212,7 +218,16 @@ export class PlayerPanel {
                 }
             },
         });
-        this.playMenuContainer.add(this.buildSeekBar(), time, buttons);
+        // Looping stays on for the next videos, until turned off.
+        this.loopButton = uiIconButton({
+            icon: LoopIcon,
+            tooltip: "Loop",
+            size: this.LOOP_SIZE,
+            onSelect: () => this.toggleLoop(),
+        });
+        this.loopButton.setProperties({ margin: 0, marginLeft: space(1) * MM });
+        const seekRow = uiRow([this.buildSeekBar(), this.loopButton], { height: this.LOOP_SIZE });
+        this.playMenuContainer.add(seekRow, time, buttons);
         this.playMenuContainer.visible = false;
         this.playMenuContainer.position.set(0, 0.6, -3);
         MAIN.scene.add(this.playMenuContainer);
@@ -243,7 +258,7 @@ export class PlayerPanel {
             pointerEvents: "none",
         });
         this.seekBar = new UiContainer({
-            width: this.BAR_WIDTH * MM,
+            width: this.SEEK_WIDTH * MM,
             height,
             flexShrink: 0,
             flexDirection: "row",
@@ -264,7 +279,7 @@ export class PlayerPanel {
             scene: MAIN.scene,
             seekBar: this.seekBar,
             panel: () => this.playMenuContainer,
-            barWidth: this.BAR_WIDTH,
+            barWidth: this.SEEK_WIDTH,
             // Clear of the panel's top edge.
             lift: this.PROGRESS_HEIGHT / 2 + this.PADDING + space(1),
             video: this.videoElement,
@@ -517,6 +532,24 @@ export class PlayerPanel {
         }
     }
 
+    // The browser plays a looping video again from the start when it ends.
+    toggleLoop() {
+        const video = this.videoElement;
+        video.loop = !video.loop;
+        uiMarkActive(this.loopButton, video.loop);
+    }
+
+    // Ends a video that can't end by itself: back to the start if it loops,
+    // else paused at its end.
+    finishVideo(video: HTMLVideoElement) {
+        if (video.loop) {
+            video.currentTime = 0;
+        } else {
+            video.pause();
+            video.currentTime = video.duration;
+        }
+    }
+
     // The play button shows what a press does: play while paused or ended,
     // pause while playing.
     refreshPlayButton() {
@@ -556,7 +589,7 @@ export class PlayerPanel {
             let time = Helpers.getWordFromLang("not_available");
             if (durationKnown) {
                 const share = video.currentTime / duration;
-                played = Math.max((this.BAR_WIDTH - this.PROGRESS_MIN_WIDTH * 2) * share, this.PROGRESS_MIN_WIDTH);
+                played = Math.max((this.SEEK_WIDTH - this.PROGRESS_MIN_WIDTH * 2) * share, this.PROGRESS_MIN_WIDTH);
                 time = `${clockTime(video.currentTime)} / ${clockTime(duration)}`;
             }
             // Whole millimetres, so the panel is laid out again only when
@@ -574,11 +607,10 @@ export class PlayerPanel {
 
         // Some videos stop a hair before their duration (51.98569 of
         // 51.985691) and never end, flipping between their last frames. Two
-        // frames in a row there: pause and jump past the end.
+        // frames in a row there: the video is over.
         if (!video.ended && durationKnown && video.currentTime / duration > 0.999999) {
             if (this.videoCantEndBug) {
-                video.pause();
-                video.currentTime += 10;
+                this.finishVideo(video);
                 this.videoCantEndBug = false;
             } else {
                 this.videoCantEndBug = true;
@@ -587,8 +619,7 @@ export class PlayerPanel {
             this.videoCantEndBug = false;
         }
         if (this.stalledAtEnd(video, performance.now())) {
-            video.pause();
-            video.currentTime = video.duration;
+            this.finishVideo(video);
         }
     }
 }

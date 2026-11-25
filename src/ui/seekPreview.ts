@@ -10,9 +10,9 @@ import {
 } from "three";
 import type { Object3D, Texture } from "three";
 
-import { Block, Text } from "./meshUi.ts";
-import { FONT, SURFACE } from "./kit.ts";
-import { RADIUS, colour, space } from "./theme.ts";
+import { Container } from "@pmndrs/uikit";
+import { RADIUS, space } from "./theme.ts";
+import { MM, UI_SURFACE, uiLabel, uikitPanel } from "./uikit.ts";
 import { clockTime, seekTile } from "../seekBar.ts";
 import type { SeekThumbnails } from "../types/catalogue.ts";
 
@@ -52,21 +52,18 @@ export function createSeekPreview({
     group.visible = false;
     scene.add(group);
 
-    const timeText = new Text({ content: " ", fontSize: 0.05 });
-    const card = new Block({
-        width: TIME_WIDTH,
-        height: TIME_HEIGHT,
-        contentDirection: "column",
-        justifyContent: "end",
-        ...SURFACE,
-        borderRadius: RADIUS.button,
-        ...FONT,
-        fontColor: colour("text"),
-    }).add(
-        new Block({ width: TIME_WIDTH, height: TIME_HEIGHT, justifyContent: "center", backgroundOpacity: 0 }).add(
-            timeText,
-        ),
-    );
+    const timeText = uiLabel(" ", { fontSize: 0.05 });
+    // The time at the card's bottom; the frame, when there is one, above it.
+    const card = uikitPanel(TIME_WIDTH, TIME_HEIGHT, {
+        flexDirection: "column",
+        justifyContent: "flex-end",
+        alignItems: "center",
+        ...UI_SURFACE,
+        borderRadius: RADIUS.button * MM,
+    });
+    const timeRow = new Container({ height: TIME_HEIGHT * MM, flexShrink: 0, alignItems: "center" });
+    timeRow.add(timeText);
+    card.add(timeRow);
     group.add(card);
 
     // The frame is a plain three.js mesh showing one tile of the image.
@@ -87,7 +84,7 @@ export function createSeekPreview({
     function layout(imageHeight: number | null): void {
         cardWidth = imageHeight === null ? TIME_WIDTH : IMAGE_WIDTH + 2 * FRAME;
         const cardHeight = imageHeight === null ? TIME_HEIGHT : imageHeight + 2 * FRAME + TIME_HEIGHT;
-        card.set({ width: cardWidth, height: cardHeight });
+        card.setProperties({ width: cardWidth * MM, height: cardHeight * MM });
         card.position.set(0, lift + cardHeight / 2, 0);
         image.visible = imageHeight !== null;
         if (imageHeight !== null) {
@@ -146,7 +143,7 @@ export function createSeekPreview({
         const time = clockTime(seconds);
         if (time !== shownTime) {
             shownTime = time;
-            timeText.set({ content: time });
+            timeText.setProperties({ text: time });
         }
         if (texture && seek) {
             // Half a pixel in from the tile's edges, so the neighbouring

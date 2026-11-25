@@ -1,8 +1,8 @@
 import type { Object3D } from "three";
-import { Block, Text } from "./meshUi.ts";
 
-import { FONT, SURFACE } from "./kit.ts";
-import { colour, space } from "./theme.ts";
+import { sanitizeFontText } from "../font.ts";
+import { space } from "./theme.ts";
+import { MM, UI_SURFACE, uiLabel, uikitPanel } from "./uikit.ts";
 
 // One line of text in front of the viewer, such as "Loading video...":
 // show(message) shows it for `duration` ms, or until hidden with 0.
@@ -12,21 +12,16 @@ export interface PopupMessage {
 }
 
 export function createPopupMessage(scene: Object3D): PopupMessage {
-    const text = new Text({
-        content: "",
-        fontSize: 0.07,
-        offset: 0.035,
-        fontColor: colour("text"),
-    });
-    const popup = new Block({
-        width: 2,
-        height: 0.2,
+    const text = uiLabel("", { fontSize: 0.07 });
+    // As wide as its text, at least 2 m.
+    const popup = uikitPanel(undefined, 0.2, {
+        minWidth: 2 * MM,
+        alignItems: "center",
         justifyContent: "center",
-        contentDirection: "row",
-        padding: space(1),
-        ...SURFACE,
-        ...FONT,
-    }).add(text);
+        paddingX: space(3) * MM,
+        ...UI_SURFACE,
+    });
+    popup.add(text);
     popup.position.set(0, 1, -2);
     popup.visible = false;
     scene.add(popup);
@@ -37,7 +32,7 @@ export function createPopupMessage(scene: Object3D): PopupMessage {
         popup.visible = false;
     };
     const show = (message: unknown, duration = 4000) => {
-        text.set({ content: String(message) });
+        text.setProperties({ text: sanitizeFontText(message) });
         popup.visible = true;
         clearTimeout(timeout);
         if (duration > 0) {

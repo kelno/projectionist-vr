@@ -15,7 +15,6 @@ import { folderPage } from "./folderPages.ts";
 import type { FolderRow } from "./folderPages.ts";
 import type { Catalogue, CatalogueEntry, CatalogueFolder, ScreenType } from "../types/catalogue.ts";
 
-import { label, panel, row } from "../ui/kit.ts";
 import { createSpinner } from "../ui/spinner.ts";
 import type { Spinner } from "../ui/spinner.ts";
 import { createSystemKeyboard } from "../input/systemKeyboard.ts";
@@ -346,33 +345,30 @@ export class FileBrowserPanel {
         MAIN.scene.add(this.draggingBox, this.controlsButton, this.versionLabel);
     }
 
-    // The controls help, over the library until a click outside it. It is
-    // still drawn by three-mesh-ui, as the grip help is (ui/controlHints.ts).
+    // The controls help, over the library until a click outside it.
     buildControlsHelp(): void {
-        const help = panel(
-            [
-                label(Helpers.getWordFromLang("controls").toUpperCase(), {
-                    width: 3.7,
-                    height: 0.14,
-                    fontSize: 0.1,
-                    align: "center",
-                }),
-                row(
-                    [
-                        makeControlsColumn("LIBRARY", LIBRARY_CONTROLS, 1.2),
-                        makeControlsColumn("PLAYER", PLAYER_CONTROLS, 1.2),
-                        makeControlsColumn("HOLD GRIP +", GRIP_PLAYER_CONTROLS, 1.2),
-                    ],
-                    { width: 3.7, height: 0.95, justify: "space-between" },
-                ),
-                label("Left controller: X and Y instead of A and B.", {
-                    width: 3.7,
-                    height: 0.2,
-                    fontSize: 0.06,
-                    color: "mutedText",
-                }),
-            ],
-            { width: 3.9, height: 1.5, padding: 0.08, justify: "space-between" },
+        const help = uikitPanel(3.9, undefined, {
+            flexDirection: "column",
+            alignItems: "center",
+            gapRow: 0.04 * MM,
+            padding: 0.08 * MM,
+            ...UI_SURFACE,
+        });
+        const columns = new UiContainer({ flexDirection: "row", justifyContent: "space-between", width: 3.7 * MM });
+        columns.add(
+            makeControlsColumn("LIBRARY", LIBRARY_CONTROLS, 1.2),
+            makeControlsColumn("PLAYER", PLAYER_CONTROLS, 1.2),
+            makeControlsColumn("HOLD GRIP +", GRIP_PLAYER_CONTROLS, 1.2),
+        );
+        const footnote = uiLabel("Left controller: X and Y instead of A and B.", {
+            width: 3.7,
+            fontSize: 0.06,
+            color: "mutedText",
+        });
+        help.add(
+            uiLabel(Helpers.getWordFromLang("controls").toUpperCase(), { fontSize: 0.1, align: "center" }),
+            columns,
+            footnote,
         );
         help.position.set(0, this.LIBRARY_Y, this.CENTER_Z + 0.3);
         help.scale.setScalar(1.35);

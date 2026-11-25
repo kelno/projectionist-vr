@@ -1,6 +1,6 @@
 {
   "name": "projectionist-vr",
-  "version": "1.15.0-uikit.4",
+  "version": "1.15.0-uikit.5",
   "description": "Self-hosted WebXR player: stream your own VR videos from your server to your headset's browser",
   "repository": {
     "type": "git",

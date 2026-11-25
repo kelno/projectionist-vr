@@ -97,7 +97,9 @@ export function createSystemKeyboard(
     return { isAvailable, open };
 }
 
-// The browser and its version, from its user agent.
+// The browser and its version, from its user agent, and the languages it
+// says the user reads, which choose the app keyboard's first layout.
 function browser(): string {
-    return navigator.userAgent.match(/OculusBrowser\/\S+|Chrome\/\S+/)?.[0] ?? navigator.userAgent.slice(0, 120);
+    const name = navigator.userAgent.match(/OculusBrowser\/\S+|Chrome\/\S+/)?.[0] ?? navigator.userAgent.slice(0, 120);
+    return `${name}; languages=${(navigator.languages ?? [navigator.language]).join(",")}`;
 }

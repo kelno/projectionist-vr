@@ -83,21 +83,23 @@ export function resetPosition(group: PanelGroup): void {
     }
 }
 
-// Zoom and tilt keep each screen's centre on the line from the viewer that
-// runs through it: tilt turns the screen around a point level with its
-// centre, straight above or below the viewer, and zoom moves the screen
-// along that line. Turned around its own centre, 120 m away, a tilted screen
-// swung sideways off that line, and zooming in then drifted the picture back
-// towards where it was before the tilt.
+// Tilt brings another part of the video in front of the viewer, and zoom
+// enlarges what is in front of them. Tilt turns the screens around the
+// viewer: around a point level with each screen's centre, straight above or
+// below them. Zoom moves the screens towards the viewer along the line
+// straight ahead, which their centre was on before any tilt, so what is
+// straight ahead stays there. Zooming along the tilted screen's own axis
+// instead enlarged around the video's centre, and the part the tilt had
+// brought in front slid away as if tilting back.
 const X_AXIS = new Vector3(1, 0, 0);
 
 function pivotOf(screen: { position: Vector3 }): Vector3 {
     return new Vector3(0, screen.position.y, 0);
 }
 
-// The screen's way from the viewer to its centre, as it now points.
-function viewAxisOf(screen: { position: Vector3; reference: Object3D }): Vector3 {
-    return screen.position.clone().sub(pivotOf(screen)).normalize().applyQuaternion(screen.reference.quaternion);
+// The way from the viewer straight ahead, to the screen's untilted centre.
+function aheadOf(screen: { position: Vector3 }): Vector3 {
+    return screen.position.clone().sub(pivotOf(screen)).normalize();
 }
 
 export function zoom(in_or_out: "in" | "out" | "reset", step = 10): void {
@@ -123,7 +125,7 @@ function setZoom(targetZoom: number, persistPreference: boolean): void {
     currentZoom = clampZoom(targetZoom) ?? 0;
     if (oldZoom !== currentZoom) {
         for (const screen of panels.meshes.panels) {
-            screen.reference.position.addScaledVector(viewAxisOf(screen), oldZoom - currentZoom);
+            screen.reference.position.addScaledVector(aheadOf(screen), oldZoom - currentZoom);
         }
     }
     if (persistPreference) {
@@ -159,8 +161,11 @@ export function tilt(up_or_down: "up" | "down" | "reset", value = 0.005): void {
     const angle = { up: -value, down: value, reset: -currentTilt }[up_or_down];
     const turn = new Quaternion().setFromAxisAngle(X_AXIS, angle);
     for (const screen of panels.meshes.panels) {
+        // The zoom is taken out while turning, and put back after, so it
+        // stays along the line straight ahead.
         const pivot = pivotOf(screen);
-        screen.reference.position.sub(pivot).applyQuaternion(turn).add(pivot);
+        const zoomed = aheadOf(screen).multiplyScalar(-currentZoom);
+        screen.reference.position.sub(zoomed).sub(pivot).applyQuaternion(turn).add(pivot).add(zoomed);
         screen.reference.quaternion.premultiply(turn);
     }
     currentTilt += angle;

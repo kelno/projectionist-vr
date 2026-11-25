@@ -313,13 +313,9 @@ export class PlayerPanel {
     showSettingsMenuContainer() {
         this.settingsWindow.open("settings");
         UI.setOutsideClick(() => this.hideSettingsMenuContainer());
-        // While open, only the window, the gear and outside clicks count.
-        UI.registerNewObjectsToTest([
-            this.settingsMenuContainer,
-            this.settingsButton,
-            this.playMenuContainer,
-            MAIN.hiddenSphere,
-        ]);
+        // While open: the window, the controls (a click on their background
+        // closes it) and clicks outside, which close it too.
+        UI.registerNewObjectsToTest([this.settingsMenuContainer, this.playMenuContainer, MAIN.hiddenSphere]);
     }
 
     hideSettingsMenuContainer() {

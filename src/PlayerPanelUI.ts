@@ -48,6 +48,7 @@ import { browserDecoding } from "./decoding.ts";
 import type { Decoding } from "./decoding.ts";
 import { mediaInfoLines } from "./mediaInfo.ts";
 import { shortenText } from "./font.ts";
+import { createEndStallTracker } from "./bufferingState.ts";
 import { clockTime } from "./seekBar.ts";
 import { createSeekPreview } from "./ui/seekPreview.ts";
 
@@ -594,6 +595,8 @@ export class PlayerPanel {
     // a fix for videos that never end.
 
     videoCantEndBug = false;
+    // Whether the video has stalled at its end (bufferingState.ts).
+    stalledAtEnd = createEndStallTracker();
 
     progressBarAndDuration() {
         if (!Helpers.videoSrcExists()) {
@@ -629,6 +632,10 @@ export class PlayerPanel {
             }
         } else {
             this.videoCantEndBug = false;
+        }
+        if (this.stalledAtEnd(video, performance.now())) {
+            video.pause();
+            video.currentTime = video.duration;
         }
     }
 }

@@ -1,5 +1,3 @@
-import { Block, Text } from "./ui/meshUi.ts";
-
 import * as MAIN from "./index.ts";
 import * as ScreenManager from "./ScreenManager/ScreenManager.ts";
 import * as UI from "./UI.ts";
@@ -28,10 +26,8 @@ import type { Object3D } from "three";
 import type { ScreenType } from "./types/catalogue.ts";
 import { PagedWindow } from "./ui/PagedWindow.ts";
 import type { Page } from "./ui/PagedWindow.ts";
-import { BUTTON_SIZE, FONT, SURFACE, dragHandle, iconButton, markActive, row } from "./ui/kit.ts";
-import type { IconButton } from "./ui/kit.ts";
-import { colour, materialColour, space } from "./ui/theme.ts";
-import type { ColourName } from "./ui/theme.ts";
+import { BUTTON_SIZE } from "./ui/kit.ts";
+import { RADIUS, materialColour, space } from "./ui/theme.ts";
 import { browserDecoding } from "./decoding.ts";
 import type { Decoding } from "./decoding.ts";
 import { mediaInfoLines } from "./mediaInfo.ts";
@@ -39,7 +35,19 @@ import { shortenText } from "./font.ts";
 import { clockTime } from "./seekBar.ts";
 import { createSeekPreview } from "./ui/seekPreview.ts";
 import { Container as UiContainer, Text as UiText } from "@pmndrs/uikit";
-import { uiDivider, uiIconButton, uiLabel, uiRow, uiTextButton } from "./ui/uikit.ts";
+import {
+    MM,
+    UI_SURFACE,
+    uiDivider,
+    uiIconButton,
+    uiLabel,
+    uiMarkActive,
+    uiRow,
+    uiTextButton,
+    uikitPanel,
+} from "./ui/uikit.ts";
+import type { UiButton, UiIconButton } from "./ui/uikit.ts";
+import type { Component } from "@pmndrs/uikit";
 
 // What the layout button shows for each video layout, in the order it steps
 // through them.
@@ -73,14 +81,14 @@ export class PlayerPanel {
 
     videoElement: HTMLVideoElement;
     // Set by the build methods, which the constructor calls.
-    buttonPlay!: IconButton;
-    settingsButton!: IconButton;
-    muteButton!: IconButton;
-    timeLabel!: Text;
-    playMenuContainer!: Block;
-    progressBar!: Block;
-    seekBar!: Block;
-    draggingBox!: Block;
+    buttonPlay!: UiIconButton;
+    settingsButton!: UiIconButton;
+    muteButton!: UiIconButton;
+    timeLabel!: UiText;
+    playMenuContainer!: UiContainer;
+    progressBar!: UiContainer;
+    seekBar!: UiContainer;
+    draggingBox!: UiContainer;
     settingsWindow!: PagedWindow;
     settingsMenuContainer!: UiContainer;
     stereoLabel!: UiText;
@@ -111,54 +119,54 @@ export class PlayerPanel {
     }
 
     buildControls() {
-        this.buttonPlay = iconButton({
+        this.buttonPlay = uiIconButton({
             icon: PlayIcon,
             size: BUTTON_SIZE * 1.25,
             tooltip: "Play / pause",
             onSelect: () => this.playPause(),
         });
-        const previous = iconButton({
+        const previous = uiIconButton({
             icon: PreviousIcon,
             tooltip: "Previous video",
             onSelect: () => this.playAdjacentVideo(-1),
         });
-        const rewind = iconButton({
+        const rewind = uiIconButton({
             icon: BackIcon,
             tooltip: "Back 10 s",
             onSelect: () => this.videoPlaybackFFRew("Rew"),
         });
-        const forward = iconButton({
+        const forward = uiIconButton({
             icon: ForwardIcon,
             tooltip: "Forward 10 s",
             onSelect: () => this.videoPlaybackFFRew("FF"),
         });
-        const next = iconButton({
+        const next = uiIconButton({
             icon: NextIcon,
             tooltip: "Next video",
             onSelect: () => this.playAdjacentVideo(1),
         });
-        this.settingsButton = iconButton({
+        this.settingsButton = uiIconButton({
             icon: SettingsIcon,
             tooltip: "Settings",
             onSelect: () =>
                 this.settingsWindow.isOpen ? this.hideSettingsMenuContainer() : this.showSettingsMenuContainer(),
         });
-        this.muteButton = iconButton({
+        this.muteButton = uiIconButton({
             icon: VolumeIcon,
             tooltip: "Mute / unmute",
             onSelect: () => this.toggleMute(),
         });
-        const exit = iconButton({
+        const exit = uiIconButton({
             icon: LibraryIcon,
             tooltip: "Back to library",
             onSelect: () => this.ExitToMain(),
         });
-        const reset = iconButton({
+        const reset = uiIconButton({
             icon: ResetIcon,
             tooltip: "Reset position and zoom",
             onSelect: () => ScreenManager.resetDrag("player"),
         });
-        const move = iconButton({
+        const move = uiIconButton({
             icon: MoveIcon,
             tooltip: "Move the controls",
             onSelect: () => ScreenManager.startDrag("playerControls"),
@@ -167,127 +175,94 @@ export class PlayerPanel {
 
         // Three groups: the library and sound on the left, playback in the
         // middle, the screen's settings and placement on the right.
+        const group = (children: Component[], justifyContent: "flex-start" | "center" | "flex-end", width: number) => {
+            const holder = new UiContainer({
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent,
+                width: width * MM,
+            });
+            holder.add(...children);
+            return holder;
+        };
         const side = this.INNER_WIDTH / 4;
-        const buttons = row(
-            [
-                row([exit, this.muteButton], { width: side, justify: "start" }),
-                row([previous, rewind, this.buttonPlay, forward, next], {
-                    width: this.INNER_WIDTH - 2 * side,
-                    justify: "center",
-                }),
-                row([this.settingsButton, reset, move], { width: side, justify: "end" }),
-            ],
-            { width: this.INNER_WIDTH, justify: "center" },
-        );
+        const buttons = uiRow([
+            group([exit, this.muteButton], "flex-start", side),
+            group([previous, rewind, this.buttonPlay, forward, next], "center", this.INNER_WIDTH - 2 * side),
+            group([this.settingsButton, reset, move], "flex-end", side),
+        ]);
         // The play button stands out: a size larger, in the accent colour.
-        markActive(this.buttonPlay, true);
+        uiMarkActive(this.buttonPlay, true);
 
-        this.timeLabel = new Text({ content: "0:00", fontSize: 0.06 });
-        const time = new Block({
-            width: this.BAR_WIDTH,
-            height: 0.09,
-            justifyContent: "center",
-            textAlign: "right",
-            backgroundOpacity: 0,
-            fontColor: colour("mutedText"),
-        }).add(this.timeLabel);
+        this.timeLabel = uiLabel("0:00", { width: this.BAR_WIDTH, align: "right", color: "mutedText" });
+        const time = new UiContainer({ height: 0.09 * MM, alignItems: "center", flexShrink: 0 });
+        time.add(this.timeLabel);
 
-        this.playMenuContainer = new Block({
-            width: this.WIDTH,
-            contentDirection: "column",
-            justifyContent: "center",
-            padding: this.PADDING,
-            ...SURFACE,
-            ...FONT,
-        }).add(this.buildSeekBar(), time, buttons);
-        this.playMenuContainer.visible = false;
-        this.playMenuContainer.position.set(0, 0.6, -3);
-        MAIN.scene.add(this.playMenuContainer);
-        ScreenManager.registerPanel(this.playMenuContainer, "playMenuPanel");
-
-        // A click on the controls' background closes the settings, if open.
-        this.playMenuContainer.setupState({
-            state: "selected",
-            onSet: () => {
+        // A click on the controls' background closes the settings, if open;
+        // buttons and the seek bar keep their clicks to themselves.
+        this.playMenuContainer = uikitPanel(this.WIDTH, undefined, {
+            flexDirection: "column",
+            alignItems: "center",
+            padding: this.PADDING * MM,
+            ...UI_SURFACE,
+            onClick: () => {
                 if (this.settingsWindow.isOpen) {
                     this.hideSettingsMenuContainer();
                 }
             },
         });
-        this.playMenuContainer.setupState({ state: "hovered" });
-        this.playMenuContainer.setupState({ state: "idle" });
+        this.playMenuContainer.add(this.buildSeekBar(), time, buttons);
+        this.playMenuContainer.visible = false;
+        this.playMenuContainer.position.set(0, 0.6, -3);
+        MAIN.scene.add(this.playMenuContainer);
+        ScreenManager.registerPanel(this.playMenuContainer, "playMenuPanel");
 
-        this.playMenuObjsToTest.push(
-            reset,
-            move,
-            exit,
-            previous,
-            rewind,
-            this.buttonPlay,
-            forward,
-            next,
-            this.muteButton,
-            this.settingsButton,
-            this.seekBar,
-            this.playMenuContainer,
-            MAIN.hiddenSphere,
-        );
+        this.playMenuObjsToTest.push(this.playMenuContainer, MAIN.hiddenSphere);
     }
 
     // The seek bar: the part played in the accent colour, a light mark at the
     // current time; a click seeks to where it lands, and hovering shows the
     // time and frame there (ui/seekPreview.ts).
-    buildSeekBar(): Block {
-        const part = (width: number, color: ColourName) =>
-            new Block({
-                width,
-                height: this.PROGRESS_HEIGHT,
-                margin: 0,
-                borderRadius: 0,
-                backgroundColor: colour(color),
-                offset: 0.005,
-            });
-        this.progressBar = part(this.PROGRESS_MIN_WIDTH, "accent");
-        const mark = part(this.PROGRESS_MIN_WIDTH * 2, "text");
-        // Drawn on the layers the screen's eyes see, above the video.
-        for (const block of [this.progressBar, mark]) {
-            block.onAfterUpdate = () => {
-                block.frame.layers.set(1);
-                block.frame.layers.enable(2);
-            };
-        }
-
-        this.seekBar = new Block({
-            width: this.BAR_WIDTH,
-            height: this.PROGRESS_HEIGHT,
-            margin: 0,
-            offset: 0.045,
-            borderRadius: 0,
-            justifyContent: "start",
-            contentDirection: "row",
-            backgroundColor: colour("track"),
-            backgroundOpacity: 1,
-        }).add(this.progressBar, mark);
-        this.seekBar.setupState({
-            state: "selected",
-            onSet: () => {
+    buildSeekBar(): UiContainer {
+        const height = this.PROGRESS_HEIGHT * MM;
+        // The parts take no events, so the pointer lands on the bar itself
+        // and its position along the bar is the time.
+        this.progressBar = new UiContainer({
+            width: this.PROGRESS_MIN_WIDTH * MM,
+            height,
+            flexShrink: 0,
+            backgroundColor: materialColour("accent"),
+            pointerEvents: "none",
+        });
+        const mark = new UiContainer({
+            width: this.PROGRESS_MIN_WIDTH * 2 * MM,
+            height,
+            flexShrink: 0,
+            backgroundColor: materialColour("text"),
+            pointerEvents: "none",
+        });
+        this.seekBar = new UiContainer({
+            width: this.BAR_WIDTH * MM,
+            height,
+            flexShrink: 0,
+            flexDirection: "row",
+            backgroundColor: materialColour("track"),
+            // Hovering lightens the bar. Changing its height instead would
+            // reflow the whole controls panel around it.
+            hover: { backgroundColor: materialColour("hovered") },
+            onClick: (event) => {
+                event.stopPropagation?.();
                 const video = this.videoElement;
-                video.currentTime = video.duration * this.seekBar.uv.x;
+                if (event.uv && Number.isFinite(video.duration)) {
+                    video.currentTime = video.duration * event.uv.x;
+                }
             },
         });
-        // Hovering lightens the bar. Changing its height instead would
-        // reflow the whole controls panel around it.
-        this.seekBar.setupState({
-            state: "hovered",
-            attributes: { backgroundColor: colour("hovered") },
-        });
-        this.seekBar.setupState({
-            state: "idle",
-            attributes: { backgroundColor: colour("track") },
-        });
+        this.seekBar.add(this.progressBar, mark);
         this.updateSeekPreview = createSeekPreview({
             scene: MAIN.scene,
             seekBar: this.seekBar,
+            panel: () => this.playMenuContainer,
             barWidth: this.BAR_WIDTH,
             // Clear of the panel's top edge.
             lift: this.PROGRESS_HEIGHT / 2 + this.PADDING + space(1),
@@ -300,13 +275,16 @@ export class PlayerPanel {
 
     // The bar under the controls, to move the screen and controls together.
     buildDraggingBox() {
-        this.draggingBox = dragHandle({
-            width: this.WIDTH / 2,
-            height: 0.1,
-            tooltip: "Move the screen and controls",
-            onStart: () => ScreenManager.startDrag("player"),
-            onStop: () => ScreenManager.stopDrag("player"),
+        const height = 0.1;
+        this.draggingBox = uikitPanel(this.WIDTH / 2, height, {
+            borderRadius: Math.min(RADIUS.button, height / 2) * MM,
+            backgroundColor: materialColour("raised"),
+            hover: { backgroundColor: materialColour("hovered") },
+            active: { backgroundColor: materialColour("accent") },
+            onPointerDown: () => ScreenManager.startDrag("player"),
+            onPointerUp: () => ScreenManager.stopDrag("player"),
         });
+        (this.draggingBox as UiButton).tooltip = "Move the screen and controls";
         this.draggingBox.visible = false;
         this.draggingBox.position.set(0, 0.25, -3);
         MAIN.scene.add(this.draggingBox);
@@ -552,7 +530,7 @@ export class PlayerPanel {
     refreshMuteButton() {
         const muted = this.videoElement.muted;
         this.muteButton.setIcon(muted ? MuteIcon : VolumeIcon);
-        markActive(this.muteButton, muted, { color: "danger" });
+        uiMarkActive(this.muteButton, muted, { color: "danger" });
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -560,6 +538,9 @@ export class PlayerPanel {
     // a fix for videos that never end.
 
     videoCantEndBug = false;
+    // What the seek bar and time last showed.
+    shownProgress = 0;
+    shownTime = "";
 
     progressBarAndDuration() {
         if (!Helpers.videoSrcExists()) {
@@ -571,14 +552,24 @@ export class PlayerPanel {
 
         if (MAIN.hiddenSphere.buttonsVisible) {
             // A source can be selected before the browser has loaded its
-            // metadata: ThreeMeshUI mustn't get a NaN width in that gap.
-            if (!durationKnown) {
-                this.progressBar.set({ width: this.PROGRESS_MIN_WIDTH });
-                this.timeLabel.set({ content: Helpers.getWordFromLang("not_available") });
-            } else {
-                const played = (this.BAR_WIDTH - this.PROGRESS_MIN_WIDTH * 2) * (video.currentTime / duration);
-                this.progressBar.set({ width: Math.max(played, this.PROGRESS_MIN_WIDTH) });
-                this.timeLabel.set({ content: `${clockTime(video.currentTime)} / ${clockTime(duration)}` });
+            // metadata: the bar mustn't get a NaN width in that gap.
+            let played = this.PROGRESS_MIN_WIDTH;
+            let time = Helpers.getWordFromLang("not_available");
+            if (durationKnown) {
+                const share = video.currentTime / duration;
+                played = Math.max((this.BAR_WIDTH - this.PROGRESS_MIN_WIDTH * 2) * share, this.PROGRESS_MIN_WIDTH);
+                time = `${clockTime(video.currentTime)} / ${clockTime(duration)}`;
+            }
+            // Whole millimetres, so the panel is laid out again only when
+            // the bar has visibly moved.
+            const width = Math.round(played * MM);
+            if (width !== this.shownProgress) {
+                this.shownProgress = width;
+                this.progressBar.setProperties({ width });
+            }
+            if (time !== this.shownTime) {
+                this.shownTime = time;
+                this.timeLabel.setProperties({ text: time });
             }
         }
 

@@ -55,11 +55,12 @@ export function setupUikit(renderer: WebGLRenderer): void {
 }
 
 // A panel of `width` by `height` metres, centred on its position, in the
-// player's font; it gets its update every frame.
-export function uikitPanel(width: number, height: number, properties: ContainerProperties = {}): Container {
+// player's font; it gets its update every frame. Without a height, it is as
+// high as its content.
+export function uikitPanel(width: number, height: number | undefined, properties: ContainerProperties = {}): Container {
     const root = new Container({
-        sizeX: width,
-        sizeY: height,
+        width: width * MM,
+        ...(height === undefined ? {} : { height: height * MM }),
         pixelSize: 1 / MM,
         fontFamilies: { roboto },
         fontFamily: "roboto",
@@ -81,6 +82,15 @@ export function updateUikit(delta: number): void {
 // kit.ts has them for three-mesh-ui: buttons, labels, rows. The pointer sends
 // them its events (input/uikitEvents.ts); a component with a `tooltip` shows
 // it while pointed at (ui/tooltip.ts).
+
+// The look of a window or panel's background.
+export const UI_SURFACE: ContainerProperties = {
+    borderRadius: RADIUS.panel * MM,
+    borderWidth: BORDER_WIDTH * MM,
+    borderColor: materialColour("border"),
+    backgroundColor: materialColour("surface"),
+    color: materialColour("text"),
+};
 
 // A button: `tooltip` is shown while it's pointed at.
 export type UiButton = Container & { tooltip: string | undefined };
@@ -109,16 +119,31 @@ function buttonLook(size: number, round: boolean): ContainerProperties {
     };
 }
 
+// What a button does: `onSelect` when pressed, `onRelease` when the press
+// ends, wherever the pointer is then, as a drag handle needs. A button keeps
+// its clicks: the panel holding it doesn't get them.
+function buttonHandlers(onSelect?: () => void, onRelease?: () => void): ContainerProperties {
+    return {
+        onClick: (event) => {
+            event.stopPropagation?.();
+            onSelect?.();
+        },
+        ...(onRelease ? { onPointerUp: () => onRelease() } : {}),
+    };
+}
+
 export function uiIconButton({
     icon,
     tooltip,
     onSelect,
+    onRelease,
     size = BUTTON_SIZE,
     round = false,
 }: {
     icon: string;
     tooltip?: string;
     onSelect?: () => void;
+    onRelease?: () => void;
     size?: number;
     round?: boolean;
 }): UiIconButton {
@@ -127,7 +152,7 @@ export function uiIconButton({
         width: size * MM,
         height: size * MM,
         flexShrink: 0,
-        onClick: onSelect,
+        ...buttonHandlers(onSelect, onRelease),
         ...buttonLook(size, round),
     }) as UiIconButton;
     button.add(image);
@@ -158,7 +183,7 @@ export function uiTextButton({
         height: height * MM,
         flexShrink: 0,
         overflow: "hidden",
-        onClick: onSelect,
+        ...buttonHandlers(onSelect),
         ...buttonLook(height, false),
     }) as UiTextButton;
     button.add(text);

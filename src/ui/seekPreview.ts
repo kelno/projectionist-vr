@@ -26,17 +26,21 @@ const TIME_HEIGHT = 0.09;
 const FRAME = space(1);
 
 const point = new Vector3();
+const centre = new Vector3();
 
 export function createSeekPreview({
     scene,
     seekBar,
+    panel,
     barWidth,
     lift,
     video,
     thumbnails,
 }: {
     scene: Object3D;
-    seekBar: Block;
+    seekBar: Object3D & { uv?: { x: number; y: number } };
+    // The panel holding the bar, whose scale the card takes.
+    panel: () => Object3D;
     barWidth: number;
     // From the bar's middle to the card's bottom edge.
     lift: number;
@@ -137,7 +141,7 @@ export function createSeekPreview({
         const seek = thumbnails();
         load(seek);
 
-        const along = Math.min(Math.max(seekBar.uv.x, 0), 1);
+        const along = Math.min(Math.max(seekBar.uv?.x ?? 0, 0), 1);
         const seconds = duration * along;
         const time = clockTime(seconds);
         if (time !== shownTime) {
@@ -156,10 +160,15 @@ export function createSeekPreview({
         // Over the pointer, kept within the bar's length.
         const room = Math.max(barWidth / 2 - cardWidth / 2, 0);
         const x = Math.min(Math.max((along - 0.5) * barWidth, -room), room);
+        // The bar's world matrix also scales a unit square to its size, so
+        // the scale comes from the panel: its own, times its parent's.
         seekBar.updateWorldMatrix(true, false);
-        group.position.copy(seekBar.localToWorld(point.set(x, 0, 0.03)));
+        seekBar.getWorldPosition(centre);
         seekBar.getWorldQuaternion(group.quaternion);
-        seekBar.getWorldScale(group.scale);
+        const holder = panel();
+        holder.parent?.getWorldScale(group.scale);
+        group.scale.multiply(holder.scale);
+        group.position.copy(point.set(x, 0, 0.03).multiply(group.scale).applyQuaternion(group.quaternion).add(centre));
         group.visible = true;
     };
 }

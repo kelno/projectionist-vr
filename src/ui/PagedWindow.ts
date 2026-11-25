@@ -1,8 +1,8 @@
 import type { Container } from "@pmndrs/uikit";
 import { Container as UiContainer } from "@pmndrs/uikit";
 
-import { BORDER_WIDTH, RADIUS, materialColour, space } from "./theme.ts";
-import { MM, uiIconButton, uiLabel, uikitPanel } from "./uikit.ts";
+import { space } from "./theme.ts";
+import { MM, UI_SURFACE, uiIconButton, uiLabel, uikitPanel } from "./uikit.ts";
 import type { UiIconButton } from "./uikit.ts";
 import type { Text } from "@pmndrs/uikit";
 
@@ -45,11 +45,7 @@ export class PagedWindow {
         this.container = uikitPanel(width, bodyHeight + HEADER_HEIGHT + 2 * PADDING, {
             flexDirection: "column",
             padding: PADDING * MM,
-            borderRadius: RADIUS.panel * MM,
-            borderWidth: BORDER_WIDTH * MM,
-            borderColor: materialColour("border"),
-            backgroundColor: materialColour("surface"),
-            color: materialColour("text"),
+            ...UI_SURFACE,
         });
         this.backButton = uiIconButton({
             icon: BackIcon,

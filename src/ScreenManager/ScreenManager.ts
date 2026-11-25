@@ -1,3 +1,4 @@
+import { Matrix4 } from "three";
 import type { Object3D } from "three";
 
 import * as MAIN from "../index.ts";
@@ -227,20 +228,50 @@ export function force2DMode(bool: boolean): void {
 
 export let dragging = false;
 
+// While dragging: the controller holding the objects, and each object's pose
+// relative to it when the drag started. followDrag() keeps them there each
+// frame. The objects stay where they are in the scene: a uikit panel taken
+// out of it and put back loses its backgrounds.
+let holder: Object3D | null = null;
+let held: { ref: Object3D; offset: Matrix4 }[] = [];
+const pose = new Matrix4();
+
 export function startDrag(view: DragView): void {
     if (MAIN.renderer.xr.isPresenting && !dragging && view in objectsToDrag) {
-        objectsToDrag[view].forEach((obj) => {
-            MAIN.vrControl.controllers[MAIN.vrControlCurrentlyUsedController].attach(obj.ref);
+        holder = MAIN.vrControl.controllers[MAIN.vrControlCurrentlyUsedController];
+        holder.updateWorldMatrix(true, false);
+        const toHolder = holder.matrixWorld.clone().invert();
+        held = objectsToDrag[view].map(({ ref }) => {
+            // The object's own pose in the world, from its position,
+            // rotation and scale: a uikit panel's world matrix also scales
+            // a unit square to its size.
+            ref.parent?.updateWorldMatrix(true, false);
+            const world = new Matrix4().compose(ref.position, ref.quaternion, ref.scale);
+            if (ref.parent) world.premultiply(ref.parent.matrixWorld);
+            return { ref, offset: toHolder.clone().multiply(world) };
         });
         dragging = true;
     }
 }
 
+// Called every frame: the dragged objects follow the controller.
+export function followDrag(): void {
+    if (!dragging || !holder) {
+        return;
+    }
+    holder.updateWorldMatrix(true, false);
+    for (const { ref, offset } of held) {
+        pose.multiplyMatrices(holder.matrixWorld, offset);
+        if (ref.parent) pose.premultiply(ref.parent.matrixWorld.clone().invert());
+        pose.decompose(ref.position, ref.quaternion, ref.scale);
+    }
+}
+
 export function stopDrag(view: DragView): void {
     if (MAIN.renderer.xr.isPresenting && dragging && view in objectsToDrag) {
-        objectsToDrag[view].forEach((obj) => {
-            MAIN.scene.attach(obj.ref);
-        });
+        followDrag();
+        holder = null;
+        held = [];
         dragging = false;
     }
 }

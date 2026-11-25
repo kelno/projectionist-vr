@@ -471,6 +471,7 @@ function renderFrame(): void {
     checkVideoTexture(now);
     updateBufferingIndicator(video, renderer.xr.isPresenting ? renderer.xr.getCamera() : camera, now);
 
+    ScreenManager.followDrag();
     updateUikit(lastFrame === null ? 0 : now - lastFrame);
     lastFrame = now;
 

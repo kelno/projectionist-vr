@@ -1,12 +1,13 @@
-import type { Block } from "../ui/meshUi.ts";
-import { label, markActive, panel, textButton } from "../ui/kit.ts";
+import type { Container } from "@pmndrs/uikit";
+
+import { space } from "../ui/theme.ts";
+import { MM, UI_SURFACE, uiLabel, uiMarkActive, uiTextButton, uikitPanel } from "../ui/uikit.ts";
 
 import { SORT_OPTIONS } from "./libraryList.ts";
 import type { SortId } from "./libraryList.ts";
 
 export interface SortMenu {
-    block: Block;
-    targets: Block[];
+    block: Container;
     setCurrent(sortId: SortId): void;
 }
 
@@ -17,7 +18,7 @@ export function buildSortMenu({ onChoose }: { onChoose: (sortId: SortId) => void
     const buttons = new Map(
         SORT_OPTIONS.map((option) => [
             option.id,
-            textButton({
+            uiTextButton({
                 label: option.label,
                 width: width - 0.08,
                 fontSize: 0.065,
@@ -25,27 +26,20 @@ export function buildSortMenu({ onChoose }: { onChoose: (sortId: SortId) => void
             }),
         ]),
     );
-    const block = panel(
-        [
-            label("Sort by", {
-                width: width - 0.08,
-                height: 0.12,
-                fontSize: 0.065,
-                align: "center",
-                color: "mutedText",
-            }),
-            ...buttons.values(),
-        ],
-        { width, height: 0.2 + SORT_OPTIONS.length * 0.19 },
-    );
+    const block = uikitPanel(width, undefined, {
+        flexDirection: "column",
+        alignItems: "center",
+        padding: space(2) * MM,
+        ...UI_SURFACE,
+    });
+    block.add(uiLabel("Sort by", { fontSize: 0.065, align: "center", color: "mutedText" }), ...buttons.values());
     block.visible = false;
 
     return {
         block,
-        targets: [...buttons.values()],
         setCurrent(sortId) {
             for (const [id, button] of buttons) {
-                markActive(button, id === sortId);
+                uiMarkActive(button, id === sortId);
             }
         },
     };

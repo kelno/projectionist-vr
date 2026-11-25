@@ -60,7 +60,7 @@ export class PagedWindow {
             margin: space(1) * MM,
             flexShrink: 0,
         });
-        this.title = uiLabel("-", { fontSize: 0.075, align: "center" });
+        this.title = uiLabel("-", { grow: true, fontSize: 0.075, align: "center" });
         const header = new UiContainer({
             flexDirection: "row",
             alignItems: "center",

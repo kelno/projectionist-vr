@@ -1,8 +1,14 @@
-import { Container, Image as UiImage, Text, reversePainterSortStable } from "@pmndrs/uikit";
+import {
+    Component as UikitComponent,
+    Container,
+    Image as UiImage,
+    Text,
+    reversePainterSortStable,
+} from "@pmndrs/uikit";
 import type { Component, ContainerProperties } from "@pmndrs/uikit";
 import { signal } from "@preact/signals-core";
 import type { Signal } from "@preact/signals-core";
-import type { Color, WebGLRenderer } from "three";
+import type { Color, Object3D, WebGLRenderer } from "three";
 
 import { BUTTON_SIZE } from "./kit.ts";
 import { BORDER_WIDTH, RADIUS, materialColour, space } from "./theme.ts";
@@ -56,12 +62,16 @@ export function setupUikit(renderer: WebGLRenderer): void {
     renderer.setTransparentSort(reversePainterSortStable);
 }
 
-// A panel of `width` by `height` metres, centred on its position, in the
-// player's font; it gets its update every frame. Without a height, it is as
-// high as its content.
-export function uikitPanel(width: number, height: number | undefined, properties: ContainerProperties = {}): Container {
+// A panel of `width` by `height` metres, centred on its position (or on
+// the edge its `anchorX` and `anchorY` name), in the player's font; it gets
+// its update every frame. Without a width or height, it fits its content.
+export function uikitPanel(
+    width: number | undefined,
+    height: number | undefined,
+    properties: ContainerProperties = {},
+): Container {
     const root = new Container({
-        width: width * MM,
+        ...(width === undefined ? {} : { width: width * MM }),
         ...(height === undefined ? {} : { height: height * MM }),
         pixelSize: 1 / MM,
         fontFamilies: { roboto },
@@ -76,6 +86,17 @@ export function uikitPanel(width: number, height: number | undefined, properties
 export function updateUikit(delta: number): void {
     for (const root of roots) {
         root.update(delta);
+    }
+}
+
+// Takes `component` out of its panel and frees it and everything in it.
+export function disposeUi(component: Object3D): void {
+    const components: { dispose(): void }[] = [];
+    component.traverse((object) => {
+        if (object instanceof UikitComponent) components.push(object);
+    });
+    for (const each of components.reverse()) {
+        each.dispose();
     }
 }
 
@@ -110,9 +131,15 @@ export type UiIconButton = UiButton & { setIcon(url: string): void };
 // A text button; `text` is its label, for buttons whose label changes.
 export type UiTextButton = UiButton & { text: Text };
 
-// A button's look: raised, lighter under the pointer, the accent colour while
-// pressed, when it also sinks a little towards the panel.
-function buttonLook(size: number, round: boolean, idle: ButtonColours): ContainerProperties {
+// A button's look: raised, lighter under the pointer (or `hovered`, such as
+// "danger" for the power button), the accent colour while pressed, when it
+// also sinks a little towards the panel.
+function buttonLook(
+    size: number,
+    round: boolean,
+    idle: ButtonColours,
+    hovered: ColourName = "hovered",
+): ContainerProperties {
     return {
         borderRadius: (round ? size / 2 : RADIUS.button) * MM,
         margin: space(1) * MM,
@@ -121,7 +148,7 @@ function buttonLook(size: number, round: boolean, idle: ButtonColours): Containe
         backgroundColor: idle.background,
         color: idle.text,
         transformTranslateZ: 0.035 * MM,
-        hover: { backgroundColor: materialColour("hovered") },
+        hover: { backgroundColor: materialColour(hovered) },
         active: {
             backgroundColor: materialColour("accent"),
             color: materialColour("onAccent"),
@@ -150,6 +177,7 @@ export function uiIconButton({
     onRelease,
     size = BUTTON_SIZE,
     round = false,
+    hovered,
 }: {
     icon: string;
     tooltip?: string;
@@ -157,6 +185,7 @@ export function uiIconButton({
     onRelease?: () => void;
     size?: number;
     round?: boolean;
+    hovered?: ColourName;
 }): UiIconButton {
     const image = new UiImage({ src: icon, width: size * 0.7 * MM, height: size * 0.7 * MM, pointerEvents: "none" });
     const idle = idleColours();
@@ -165,7 +194,7 @@ export function uiIconButton({
         height: size * MM,
         flexShrink: 0,
         ...buttonHandlers(onSelect, onRelease),
-        ...buttonLook(size, round, idle),
+        ...buttonLook(size, round, idle, hovered),
     }) as UiIconButton;
     button.add(image);
     button.tooltip = tooltip;
@@ -207,15 +236,23 @@ export function uiTextButton({
     return button;
 }
 
-// Text with no background, `color` a theme colour's name.
+// Text with no background, `color` a theme colour's name. Without a width,
+// it takes the room left in its row (`grow`) or only what its text needs.
 export function uiLabel(
     content: string,
     {
         width,
+        grow = false,
         fontSize = 0.06,
         align = "left",
         color = "text",
-    }: { width?: number; fontSize?: number; align?: "left" | "center" | "right"; color?: ColourName },
+    }: {
+        width?: number;
+        grow?: boolean;
+        fontSize?: number;
+        align?: "left" | "center" | "right";
+        color?: ColourName;
+    },
 ): Text {
     return new Text({
         text: content,
@@ -223,7 +260,7 @@ export function uiLabel(
         textAlign: align,
         color: materialColour(color),
         flexShrink: 0,
-        ...(width === undefined ? { flexGrow: 1 } : { width: width * MM }),
+        ...(width !== undefined ? { width: width * MM } : grow ? { flexGrow: 1 } : {}),
     });
 }
 

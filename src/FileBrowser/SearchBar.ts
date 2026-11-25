@@ -1,10 +1,13 @@
+import type { Container, Text } from "@pmndrs/uikit";
+import { Container as UiContainer } from "@pmndrs/uikit";
 import type { Object3D } from "three";
-import { Block, Text, Keyboard } from "../ui/meshUi.ts";
+import { Keyboard } from "../ui/meshUi.ts";
 
-import { FONT, SURFACE, iconButton } from "../ui/kit.ts";
-import type { IconButton } from "../ui/kit.ts";
-import { RADIUS, colour, space, textOn } from "../ui/theme.ts";
+import { FONT, SURFACE } from "../ui/kit.ts";
+import { RADIUS, colour, materialColour, space, textOn } from "../ui/theme.ts";
 import type { ColourName } from "../ui/theme.ts";
+import { MM, uiIconButton, uiLabel, uikitPanel } from "../ui/uikit.ts";
+import type { UiIconButton } from "../ui/uikit.ts";
 import { sanitizeFontText } from "../font.ts";
 import * as Helpers from "../Helpers.ts";
 import type { createSystemKeyboard } from "../input/systemKeyboard.ts";
@@ -14,12 +17,13 @@ import Enter from "../../assets/icons/enter.png";
 import Shift from "../../assets/icons/shift.png";
 import ClearIcon from "../../assets/icons/close.png";
 
-// The library's search box: a bar showing the phrase, or a muted "Search..."
+// The library's search box, drawn with uikit: a bar showing the phrase, or a muted "Search..."
 // when there is none, with an X inside it to clear the phrase once there is
 // one. Selecting the bar opens the headset's own keyboard where the browser
 // offers it (`systemKeyboard`, input/systemKeyboard.js), which searches when
 // closed. Elsewhere, or if it doesn't show, it opens this app's on-screen
-// keyboard, where Enter, or selecting the bar again, searches.
+// keyboard, where Enter, or selecting the bar again, searches. That keyboard
+// is still three-mesh-ui's.
 //
 // `onSearch(phrase)` is called with the phrase to search for, "" for none.
 // `onTargetsChange()` is called when the clickable parts change (the X shows
@@ -29,9 +33,6 @@ const HEIGHT = 0.22;
 const FONT_SIZE = 0.11;
 // Past this many characters, only the end of the phrase shows.
 const MAX_SHOWN = 34;
-
-// The bar's background under the pointer and not.
-const BACKGROUND = { idle: "raised", hovered: "hovered" } as const;
 
 type SystemKeyboard = ReturnType<typeof createSystemKeyboard>;
 
@@ -45,14 +46,13 @@ interface KeyInfo {
 export class SearchBar {
     phrase = "";
     searchedPhrase = "";
-    hovered = false;
 
     onSearch: (phrase: string) => void;
     onTargetsChange: () => void;
     systemKeyboard: SystemKeyboard;
     text: Text;
-    clearButton: IconButton;
-    bar: Block;
+    clearButton: UiIconButton;
+    bar: Container;
     keyboard: Keyboard;
     // Set by makeKeyboard().
     keys!: Object3D[];
@@ -70,42 +70,24 @@ export class SearchBar {
         this.onTargetsChange = onTargetsChange;
         this.systemKeyboard = systemKeyboard;
 
-        this.text = new Text({ content: "", fontSize: FONT_SIZE });
-        // Keeps the text off the bar's left end.
-        const indent = new Block({ width: 0.04, height: HEIGHT - 0.04, backgroundOpacity: 0 });
-        const textBox = new Block({
-            width: WIDTH - 0.3,
-            height: HEIGHT - 0.04,
-            justifyContent: "center",
-            textAlign: "left",
-            padding: 0.04,
-            backgroundOpacity: 0,
-            ...FONT,
-        }).add(this.text);
-
-        this.clearButton = iconButton({
+        this.text = uiLabel("", { grow: true, fontSize: FONT_SIZE });
+        this.clearButton = uiIconButton({
             icon: ClearIcon,
             tooltip: "Clear the search",
             size: 0.15,
             onSelect: () => this.clear(),
         });
 
-        this.bar = new Block({
-            width: WIDTH,
-            height: HEIGHT,
-            contentDirection: "row",
-            justifyContent: "space-between",
+        // The whole bar is one panel; the X keeps its clicks to itself.
+        this.bar = uikitPanel(WIDTH, HEIGHT, {
+            flexDirection: "row",
             alignItems: "center",
-            padding: 0.02,
-            borderRadius: RADIUS.button,
-            backgroundColor: colour(BACKGROUND.idle),
-            backgroundOpacity: 1,
-            hiddenOverflow: true,
-            ...FONT,
-        }).add(indent, textBox, this.clearButton);
-        this.bar.setupState({
-            state: "selected",
-            onSet: () => {
+            paddingX: 0.06 * MM,
+            paddingY: 0.02 * MM,
+            borderRadius: RADIUS.button * MM,
+            backgroundColor: materialColour("raised"),
+            hover: { backgroundColor: materialColour("hovered") },
+            onClick: () => {
                 if (this.isTyping) {
                     this.submit();
                 } else if (this.systemKeyboard.isAvailable()) {
@@ -115,16 +97,7 @@ export class SearchBar {
                 }
             },
         });
-        for (const state of ["hovered", "idle"] as const) {
-            this.bar.setupState({
-                state,
-                attributes: { backgroundColor: colour(BACKGROUND[state]) },
-                onSet: () => {
-                    this.hovered = state === "hovered";
-                    this.render();
-                },
-            });
-        }
+        this.bar.add(this.text, new UiContainer({ width: 0.15 * MM, flexShrink: 0 }), this.clearButton);
 
         this.keyboard = this.makeKeyboard();
         this.keyboard.visible = false;
@@ -135,15 +108,13 @@ export class SearchBar {
         return this.keyboard.visible;
     }
 
-    // The bar, the X when it shows, and the keys of the keyboard's current
+    // The bar, with its X inside, and the keys of the keyboard's current
     // page while typing. The other pages' keys must stay out: three.js still
     // raycasts objects detached from the scene, so a hidden letter key would
-    // take a click meant for the symbol key in its place. The X comes before
-    // the bar: the bar's hit includes its children, so both are hit at the
-    // same distance, and the first one listed wins.
+    // take a click meant for the symbol key in its place.
     targets(): Object3D[] {
         const keys = this.isTyping ? this.keys.filter((key) => this.keyboard.getObjectById(key.id)) : [];
-        return [...keys, ...(this.phrase !== "" ? [this.clearButton] : []), this.bar];
+        return [...keys, this.bar];
     }
 
     // Opens this app's on-screen keyboard.
@@ -199,11 +170,11 @@ export class SearchBar {
     render() {
         const empty = this.phrase === "";
         const shown = this.phrase.length > MAX_SHOWN ? "..." + this.phrase.slice(-(MAX_SHOWN - 3)) : this.phrase;
-        this.text.set({
-            content: empty ? Helpers.getWordFromLang("search") : sanitizeFontText(shown),
-            fontColor: colour(empty ? "mutedText" : "text"),
+        this.text.setProperties({
+            text: empty ? Helpers.getWordFromLang("search") : sanitizeFontText(shown),
+            color: materialColour(empty ? "mutedText" : "text"),
         });
-        this.clearButton.visible = !empty;
+        this.clearButton.setProperties({ visibility: empty ? "hidden" : "visible" });
     }
 
     makeKeyboard(): Keyboard {

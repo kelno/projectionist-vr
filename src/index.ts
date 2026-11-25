@@ -106,6 +106,9 @@ function init() {
     video.addEventListener("loadedmetadata", startPendingVideoPlayback);
 
     videoTexture = new THREE.VideoTexture(video);
+    // A video's colours are sRGB, as an image's are. Without this, three.js
+    // took them as linear light and brightened every video on output.
+    videoTexture.colorSpace = THREE.SRGBColorSpace;
     checkVideoTexture = watchVideoTexture(video, videoTexture);
     screens = createScreenMeshes(scene, new THREE.MeshBasicMaterial({ map: videoTexture }), CAMERAPOSITIONY);
 
@@ -404,7 +407,7 @@ function runControllerAction(action: ControllerAction): void {
             ScreenManager.zoom(action.direction, 0.5);
             break;
         case "tilt":
-            ScreenManager.tilt(action.direction, 0.005);
+            ScreenManager.tilt(action.direction, 0.0025);
             break;
         case "seek":
             playMenuPanel.videoPlaybackFFRew(action.seconds > 0 ? "FF" : "Rew", Math.abs(action.seconds));

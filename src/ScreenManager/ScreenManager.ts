@@ -1,4 +1,4 @@
-import { Matrix4 } from "three";
+import { Matrix4, Quaternion, Vector3 } from "three";
 import type { Object3D } from "three";
 
 import * as MAIN from "../index.ts";
@@ -76,6 +76,28 @@ export function vrsessionend(): void {
 
 export function resetPosition(group: PanelGroup): void {
     panels[group]?.panels.forEach((panel) => panel.reset());
+    if (group === "meshes") {
+        // The screens are back where they started: not zoomed or tilted.
+        currentZoom = 0;
+        currentTilt = 0;
+    }
+}
+
+// Zoom and tilt keep each screen's centre on the line from the viewer that
+// runs through it: tilt turns the screen around a point level with its
+// centre, straight above or below the viewer, and zoom moves the screen
+// along that line. Turned around its own centre, 120 m away, a tilted screen
+// swung sideways off that line, and zooming in then drifted the picture back
+// towards where it was before the tilt.
+const X_AXIS = new Vector3(1, 0, 0);
+
+function pivotOf(screen: { position: Vector3 }): Vector3 {
+    return new Vector3(0, screen.position.y, 0);
+}
+
+// The screen's way from the viewer to its centre, as it now points.
+function viewAxisOf(screen: { position: Vector3; reference: Object3D }): Vector3 {
+    return screen.position.clone().sub(pivotOf(screen)).normalize().applyQuaternion(screen.reference.quaternion);
 }
 
 export function zoom(in_or_out: "in" | "out" | "reset", step = 10): void {
@@ -101,12 +123,7 @@ function setZoom(targetZoom: number, persistPreference: boolean): void {
     currentZoom = clampZoom(targetZoom) ?? 0;
     if (oldZoom !== currentZoom) {
         for (const screen of panels.meshes.panels) {
-            const start = screen.position.clone();
-            if (currentZoom === 0) {
-                screen.reference.position.copy(start.applyEuler(screen.reference.rotation));
-            } else {
-                screen.reference.translateOnAxis(start.normalize(), oldZoom - currentZoom);
-            }
+            screen.reference.position.addScaledVector(viewAxisOf(screen), oldZoom - currentZoom);
         }
     }
     if (persistPreference) {
@@ -134,26 +151,19 @@ export function resetZoomPosition(): void {
     setZoom(0, false);
 }
 
-export function tilt(up_or_down: "up" | "down" | "reset", value = 0.01): void {
-    switch (up_or_down) {
-        case "up":
-            for (const screen of panels.meshes.panels) {
-                screen.reference.rotation.x -= value;
-            }
-            break;
-        case "down":
-            for (const screen of panels.meshes.panels) {
-                screen.reference.rotation.x += value;
-            }
-            break;
-        case "reset":
-            for (const screen of panels.meshes.panels) {
-                screen.reference.rotation.x = screen.rotation.x;
-            }
-            break;
-        default:
-            break;
+// The screens' tilt, in radians, since they were last put back in place.
+let currentTilt = 0;
+
+// `value` is in radians; the picture turns by as much.
+export function tilt(up_or_down: "up" | "down" | "reset", value = 0.005): void {
+    const angle = { up: -value, down: value, reset: -currentTilt }[up_or_down];
+    const turn = new Quaternion().setFromAxisAngle(X_AXIS, angle);
+    for (const screen of panels.meshes.panels) {
+        const pivot = pivotOf(screen);
+        screen.reference.position.sub(pivot).applyQuaternion(turn).add(pivot);
+        screen.reference.quaternion.premultiply(turn);
     }
+    currentTilt += angle;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////

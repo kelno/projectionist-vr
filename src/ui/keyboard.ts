@@ -4,7 +4,7 @@ import { computed, signal } from "@preact/signals-core";
 import { KEYBOARD_PAGES } from "./keyboardLayout.ts";
 import type { Key, PageName } from "./keyboardLayout.ts";
 import { space } from "./theme.ts";
-import { MM, UI_SURFACE, uiIconButton, uiTextButton, uikitPanel } from "./uikit.ts";
+import { MM, UI_SURFACE, uiIconButton, uiTextButton, uikitPanel, DRAW_ORDER } from "./uikit.ts";
 import type { UiButton } from "./uikit.ts";
 
 import Backspace from "../../assets/icons/backspace.png";
@@ -65,6 +65,7 @@ export function createKeyboard({
     }
 
     const root = uikitPanel(WIDTH, HEIGHT, {
+        renderOrder: DRAW_ORDER.window,
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",

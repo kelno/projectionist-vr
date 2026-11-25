@@ -1,7 +1,7 @@
 import type { Container } from "@pmndrs/uikit";
 
 import { space } from "../ui/theme.ts";
-import { MM, UI_SURFACE, uiLabel, uiMarkActive, uiTextButton, uikitPanel } from "../ui/uikit.ts";
+import { MM, UI_SURFACE, uiLabel, uiMarkActive, uiTextButton, uikitPanel, DRAW_ORDER } from "../ui/uikit.ts";
 
 import { SORT_OPTIONS } from "./libraryList.ts";
 import type { SortId } from "./libraryList.ts";
@@ -27,6 +27,7 @@ export function buildSortMenu({ onChoose }: { onChoose: (sortId: SortId) => void
         ]),
     );
     const block = uikitPanel(width, undefined, {
+        renderOrder: DRAW_ORDER.window,
         flexDirection: "column",
         alignItems: "center",
         padding: space(2) * MM,

@@ -2,7 +2,7 @@ import type { Object3D } from "three";
 
 import { sanitizeFontText } from "../font.ts";
 import { space } from "./theme.ts";
-import { MM, UI_SURFACE, uiLabel, uikitPanel } from "./uikit.ts";
+import { MM, UI_SURFACE, uiLabel, uikitPanel, DRAW_ORDER } from "./uikit.ts";
 
 // One line of text in front of the viewer, such as "Loading video...":
 // show(message) shows it for `duration` ms, or until hidden with 0.
@@ -15,6 +15,7 @@ export function createPopupMessage(scene: Object3D): PopupMessage {
     const text = uiLabel("", { fontSize: 0.07 });
     // As wide as its text, at least 2 m.
     const popup = uikitPanel(undefined, 0.2, {
+        renderOrder: DRAW_ORDER.top,
         minWidth: 2 * MM,
         alignItems: "center",
         justifyContent: "center",

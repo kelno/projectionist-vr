@@ -84,6 +84,14 @@ export function uikitPanel(
     return root;
 }
 
+// The order panels that overlap are drawn in, later ones over earlier ones.
+// Without it, uikit draws the panel farther from the eye first, but measures
+// each panel's distance at one of its parts, picked anew each frame: a panel
+// just in front of a bigger one, such as the keyboard over the library, went
+// behind it as the head moved. Windows and menus are drawn over the panels,
+// and what follows the pointer or shows briefly over everything.
+export const DRAW_ORDER = { window: 1, top: 2 };
+
 // Call once per frame with the milliseconds since the last one.
 export function updateUikit(delta: number): void {
     for (const root of roots) {

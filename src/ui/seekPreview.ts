@@ -12,7 +12,7 @@ import type { Object3D, Texture } from "three";
 
 import { Container } from "@pmndrs/uikit";
 import { RADIUS, space } from "./theme.ts";
-import { MM, UI_SURFACE, uiLabel, uikitPanel } from "./uikit.ts";
+import { MM, UI_SURFACE, uiLabel, uikitPanel, DRAW_ORDER } from "./uikit.ts";
 import { clockTime, seekTile } from "../seekBar.ts";
 import type { SeekThumbnails } from "../types/catalogue.ts";
 
@@ -55,6 +55,7 @@ export function createSeekPreview({
     const timeText = uiLabel(" ", { fontSize: 0.05 });
     // The time at the card's bottom; the frame, when there is one, above it.
     const card = uikitPanel(TIME_WIDTH, TIME_HEIGHT, {
+        renderOrder: DRAW_ORDER.top,
         flexDirection: "column",
         justifyContent: "flex-end",
         alignItems: "center",

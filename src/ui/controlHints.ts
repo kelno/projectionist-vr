@@ -7,7 +7,7 @@ import LeftIcon from "../../assets/icons/left.png";
 import RightIcon from "../../assets/icons/right.png";
 
 import { BORDER_WIDTH, colour } from "./theme.ts";
-import { MM, UI_SURFACE, uiLabel, uikitPanel } from "./uikit.ts";
+import { MM, UI_SURFACE, uiLabel, uikitPanel, DRAW_ORDER } from "./uikit.ts";
 
 // What the controls do, shown by the help panel and, for the grip, by the
 // popup above the controller while the grip is held. A row is either a
@@ -104,6 +104,7 @@ export function makeControlsColumn(title: string, controls: Control[], width: nu
 // parent loses its backgrounds.
 export function makeGripPopup(controls: Control[]): Group {
     const popup = uikitPanel(1.3, undefined, {
+        renderOrder: DRAW_ORDER.top,
         flexDirection: "column",
         padding: 0.04 * MM,
         ...UI_SURFACE,

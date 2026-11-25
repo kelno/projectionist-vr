@@ -2,7 +2,7 @@ import type { Container } from "@pmndrs/uikit";
 import { Container as UiContainer } from "@pmndrs/uikit";
 
 import { space } from "./theme.ts";
-import { MM, UI_SURFACE, uiIconButton, uiLabel, uikitPanel } from "./uikit.ts";
+import { MM, UI_SURFACE, uiIconButton, uiLabel, uikitPanel, DRAW_ORDER } from "./uikit.ts";
 import type { UiIconButton } from "./uikit.ts";
 import type { Text } from "@pmndrs/uikit";
 
@@ -43,6 +43,7 @@ export class PagedWindow {
         this.isOpen = false;
 
         this.container = uikitPanel(width, bodyHeight + HEADER_HEIGHT + 2 * PADDING, {
+            renderOrder: DRAW_ORDER.window,
             flexDirection: "column",
             padding: PADDING * MM,
             ...UI_SURFACE,

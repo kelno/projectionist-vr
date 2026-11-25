@@ -140,7 +140,9 @@ export class SearchBar {
         this.search(this.phrase);
     }
 
+    // Empties the phrase and closes the keyboard, if open.
     clear() {
+        if (this.isTyping) this.setTyping(false);
         this.setPhrase("");
         this.search("");
     }

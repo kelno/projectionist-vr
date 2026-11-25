@@ -27,6 +27,7 @@ import {
     uiMarkActive,
     uiTextButton,
     uikitPanel,
+    DRAW_ORDER,
 } from "../ui/uikit.ts";
 import type { UiButton, UiIconButton, UiTextButton } from "../ui/uikit.ts";
 
@@ -347,6 +348,7 @@ export class FileBrowserPanel {
     // The controls help, over the library until a click outside it.
     buildControlsHelp(): void {
         const help = uikitPanel(3.9, undefined, {
+            renderOrder: DRAW_ORDER.window,
             flexDirection: "column",
             alignItems: "center",
             gapRow: 0.04 * MM,
@@ -634,13 +636,16 @@ export class FileBrowserPanel {
     }
 
     // Registers what can be clicked now: an open window's buttons, the
-    // keyboard while typing, or the whole library.
+    // keyboard while typing, or the whole library. A click outside the
+    // keyboard closes it and searches what was typed, as Enter does.
     registerTargets(): void {
         if (this.openWindow) {
             UI.registerNewObjectsToTest([...this.openWindow.targets, this.openWindow.block, MAIN.hiddenSphere]);
         } else if (this.search.isTyping) {
-            UI.registerNewObjectsToTest([...this.search.targets(), this.draggingBox]);
+            UI.setOutsideClick(() => this.search.submit());
+            UI.registerNewObjectsToTest([...this.search.targets(), this.draggingBox, MAIN.hiddenSphere]);
         } else {
+            UI.setOutsideClick(null);
             UI.registerNewObjectsToTest(this.libraryTargets());
         }
     }

@@ -2,7 +2,7 @@ import { Component } from "@pmndrs/uikit";
 import { Box3, Quaternion, Vector3 } from "three";
 import type { Camera, Object3D } from "three";
 
-import { MM, UI_SURFACE, uiLabel, uikitPanel } from "./uikit.ts";
+import { MM, UI_SURFACE, uiLabel, uikitPanel, DRAW_ORDER } from "./uikit.ts";
 
 // One tooltip for the whole scene: when the pointer rests on a component with
 // a `tooltip` string, it shows that text just above the component, facing the
@@ -29,6 +29,7 @@ export function createTooltip(scene: Object3D): (target: TooltipTarget | null, c
     const text = uiLabel(" ", { fontSize: FONT_SIZE });
     // As wide as its text.
     const tooltip = uikitPanel(undefined, 0.09, {
+        renderOrder: DRAW_ORDER.top,
         alignItems: "center",
         paddingX: 0.04 * MM,
         ...UI_SURFACE,

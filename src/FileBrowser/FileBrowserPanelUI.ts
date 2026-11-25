@@ -646,6 +646,7 @@ export class FileBrowserPanel {
             this.sortButton,
             this.controlsButton,
             this.leaveVRButton,
+            this.versionLabel,
         ];
     }
 

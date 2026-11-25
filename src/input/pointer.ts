@@ -24,7 +24,7 @@ export interface Pointer {
 }
 
 // What the pointer rests on: a three-mesh-ui component, or a uikit one.
-export type Pointed = UI.PointerTarget | (Component & { tooltip?: string });
+export type Pointed = UI.PointerTarget | (Component & { tooltip?: string; uv?: { x: number; y: number } });
 
 // What the ray hit: the raycast target it belongs to, and the hit itself,
 // whose object is the target or, in a uikit panel, one of its components.
@@ -126,6 +126,11 @@ export function createPointer({
         }
 
         const uikit = hit?.target instanceof Component ? hit.intersection : undefined;
+        if (uikit?.uv) {
+            // Where along it the pointer is, as for a three-mesh-ui block: the
+            // seek bar reads it.
+            (uikit.object as Pointed).uv = { x: uikit.uv.x, y: uikit.uv.y };
+        }
         uikitEvents.hover(uikit);
         if (uikit && pressed && pressedOn === undefined) {
             pressedOn = uikit.object.uuid;

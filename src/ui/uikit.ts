@@ -1,6 +1,10 @@
-import { Container, reversePainterSortStable } from "@pmndrs/uikit";
-import type { ContainerProperties } from "@pmndrs/uikit";
+import { Container, Image as UiImage, Text, reversePainterSortStable } from "@pmndrs/uikit";
+import type { Component, ContainerProperties } from "@pmndrs/uikit";
 import type { WebGLRenderer } from "three";
+
+import { BUTTON_SIZE } from "./kit.ts";
+import { BORDER_WIDTH, RADIUS, materialColour, space } from "./theme.ts";
+import type { ColourName } from "./theme.ts";
 
 import FontJSON from "../../assets/fonts/Roboto-Regular-msdf.json";
 import FontImage from "../../assets/fonts/Roboto-Regular.png";
@@ -70,4 +74,140 @@ export function updateUikit(delta: number): void {
     for (const root of roots) {
         root.update(delta);
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// The building blocks of the panels drawn with uikit, in the theme's look, as
+// kit.ts has them for three-mesh-ui: buttons, labels, rows. The pointer sends
+// them its events (input/uikitEvents.ts); a component with a `tooltip` shows
+// it while pointed at (ui/tooltip.ts).
+
+// A button: `tooltip` is shown while it's pointed at.
+export type UiButton = Container & { tooltip: string | undefined };
+// A button showing an icon; setIcon(url) changes the icon.
+export type UiIconButton = UiButton & { setIcon(url: string): void };
+// A text button; `text` is its label, for buttons whose label changes.
+export type UiTextButton = UiButton & { text: Text };
+
+// A button's look: raised, lighter under the pointer, the accent colour while
+// pressed, when it also sinks a little towards the panel.
+function buttonLook(size: number, round: boolean): ContainerProperties {
+    return {
+        borderRadius: (round ? size / 2 : RADIUS.button) * MM,
+        margin: space(1) * MM,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: materialColour("raised"),
+        color: materialColour("text"),
+        transformTranslateZ: 0.035 * MM,
+        hover: { backgroundColor: materialColour("hovered") },
+        active: {
+            backgroundColor: materialColour("accent"),
+            color: materialColour("onAccent"),
+            transformTranslateZ: 0.02 * MM,
+        },
+    };
+}
+
+export function uiIconButton({
+    icon,
+    tooltip,
+    onSelect,
+    size = BUTTON_SIZE,
+    round = false,
+}: {
+    icon: string;
+    tooltip?: string;
+    onSelect?: () => void;
+    size?: number;
+    round?: boolean;
+}): UiIconButton {
+    const image = new UiImage({ src: icon, width: size * 0.7 * MM, height: size * 0.7 * MM, pointerEvents: "none" });
+    const button = new Container({
+        width: size * MM,
+        height: size * MM,
+        flexShrink: 0,
+        onClick: onSelect,
+        ...buttonLook(size, round),
+    }) as UiIconButton;
+    button.add(image);
+    button.tooltip = tooltip;
+    button.setIcon = (url: string) => image.setProperties({ src: url });
+    return button;
+}
+
+// A text button; a label too long for the button is cut by its edges.
+export function uiTextButton({
+    label,
+    tooltip,
+    onSelect,
+    width = 0.55,
+    height = BUTTON_SIZE,
+    fontSize = 0.07,
+}: {
+    label: string;
+    tooltip?: string;
+    onSelect?: () => void;
+    width?: number;
+    height?: number;
+    fontSize?: number;
+}): UiTextButton {
+    const text = new Text({ text: label, fontSize: fontSize * MM, pointerEvents: "none" });
+    const button = new Container({
+        width: width * MM,
+        height: height * MM,
+        flexShrink: 0,
+        overflow: "hidden",
+        onClick: onSelect,
+        ...buttonLook(height, false),
+    }) as UiTextButton;
+    button.add(text);
+    button.tooltip = tooltip;
+    button.text = text;
+    return button;
+}
+
+// Text with no background, `color` a theme colour's name.
+export function uiLabel(
+    content: string,
+    {
+        width,
+        fontSize = 0.06,
+        align = "left",
+        color = "text",
+    }: { width?: number; fontSize?: number; align?: "left" | "center" | "right"; color?: ColourName },
+): Text {
+    return new Text({
+        text: content,
+        fontSize: fontSize * MM,
+        textAlign: align,
+        color: materialColour(color),
+        flexShrink: 0,
+        ...(width === undefined ? { flexGrow: 1 } : { width: width * MM }),
+    });
+}
+
+// A row of components, centred across it, `height` metres high.
+export function uiRow(children: Component[], { height = BUTTON_SIZE + 0.04 }: { height?: number } = {}): Container {
+    const row = new Container({ flexDirection: "row", alignItems: "center", height: height * MM, flexShrink: 0 });
+    for (const child of children) row.add(child);
+    return row;
+}
+
+// A thin line across a panel, between sections that aren't the same kind of
+// thing, such as settings and information.
+export function uiDivider(): Container {
+    const space3 = space(3) * MM;
+    const holder = new Container({ height: space3, flexShrink: 0, justifyContent: "center" });
+    holder.add(new Container({ height: BORDER_WIDTH * MM, backgroundColor: materialColour("border") }));
+    return holder;
+}
+
+// Shows a button as on, such as the mute button while muted ("danger"),
+// until it is marked off again.
+export function uiMarkActive(button: UiButton, active: boolean, { color = "accent" }: { color?: ColourName } = {}) {
+    button.setProperties({
+        backgroundColor: materialColour(active ? color : "raised"),
+        color: materialColour(active ? (color === "accent" ? "onAccent" : "text") : "text"),
+    });
 }

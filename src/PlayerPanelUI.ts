@@ -28,19 +28,7 @@ import type { Object3D } from "three";
 import type { ScreenType } from "./types/catalogue.ts";
 import { PagedWindow } from "./ui/PagedWindow.ts";
 import type { Page } from "./ui/PagedWindow.ts";
-import {
-    BUTTON_SIZE,
-    FONT,
-    SURFACE,
-    column,
-    divider,
-    dragHandle,
-    iconButton,
-    label,
-    markActive,
-    row,
-    textButton,
-} from "./ui/kit.ts";
+import { BUTTON_SIZE, FONT, SURFACE, dragHandle, iconButton, markActive, row } from "./ui/kit.ts";
 import type { IconButton } from "./ui/kit.ts";
 import { colour, materialColour, space } from "./ui/theme.ts";
 import type { ColourName } from "./ui/theme.ts";
@@ -51,7 +39,7 @@ import { shortenText } from "./font.ts";
 import { clockTime } from "./seekBar.ts";
 import { createSeekPreview } from "./ui/seekPreview.ts";
 import { Container as UiContainer, Text as UiText } from "@pmndrs/uikit";
-import { uikitPanel } from "./ui/uikit.ts";
+import { uiDivider, uiIconButton, uiLabel, uiRow, uiTextButton } from "./ui/uikit.ts";
 
 // What the layout button shows for each video layout, in the order it steps
 // through them.
@@ -94,9 +82,9 @@ export class PlayerPanel {
     seekBar!: Block;
     draggingBox!: Block;
     settingsWindow!: PagedWindow;
-    settingsMenuContainer!: Block;
-    stereoLabel!: Text;
-    layoutLabel!: Text;
+    settingsMenuContainer!: UiContainer;
+    stereoLabel!: UiText;
+    layoutLabel!: UiText;
     // Call once per frame with the component the pointer is on: shows the
     // time and frame under the pointer while it is on the seek bar.
     updateSeekPreview!: (target: Object3D | null) => void;
@@ -347,6 +335,13 @@ export class PlayerPanel {
     showSettingsMenuContainer() {
         this.settingsWindow.open("settings");
         UI.setOutsideClick(() => this.hideSettingsMenuContainer());
+        // While open, only the window, the gear and outside clicks count.
+        UI.registerNewObjectsToTest([
+            this.settingsMenuContainer,
+            this.settingsButton,
+            this.playMenuContainer,
+            MAIN.hiddenSphere,
+        ]);
     }
 
     hideSettingsMenuContainer() {
@@ -360,20 +355,7 @@ export class PlayerPanel {
 
     buildSettingsWindow() {
         const width = this.SETTINGS_WIDTH;
-        const innerWidth = width - 0.08;
-        this.settingsWindow = new PagedWindow({
-            width,
-            bodyHeight: this.SETTINGS_HEIGHT,
-            onTargetsChange: (targets) => {
-                // While open, only the window, the gear and outside clicks count.
-                UI.registerNewObjectsToTest([
-                    ...targets,
-                    this.settingsButton,
-                    this.playMenuContainer,
-                    MAIN.hiddenSphere,
-                ]);
-            },
-        });
+        this.settingsWindow = new PagedWindow({ width, bodyHeight: this.SETTINGS_HEIGHT });
         // ScreenManager finds panels by this property name to reset them.
         this.settingsMenuContainer = this.settingsWindow.container;
         // Just above the controls, which sit at y 0.6.
@@ -381,24 +363,25 @@ export class PlayerPanel {
         MAIN.scene.add(this.settingsMenuContainer);
         ScreenManager.registerPanel(this.settingsMenuContainer, "playMenuPanel");
 
-        this.settingsWindow.addPage("settings", this.buildSettingsPage(innerWidth));
-        this.settingsWindow.addPage("media", this.buildMediaInfoPage(innerWidth));
+        this.settingsWindow.addPage("settings", this.buildSettingsPage());
+        this.settingsWindow.addPage("media", this.buildMediaInfoPage());
     }
 
-    buildSettingsPage(width: number): Page {
-        const rowLabel = (key: Helpers.LangKey) => label(Helpers.getWordFromLang(key), { width: 0.45, fontSize: 0.05 });
+    buildSettingsPage(): Page {
+        const rowLabel = (key: Helpers.LangKey) =>
+            uiLabel(Helpers.getWordFromLang(key), { width: 0.45, fontSize: 0.05 });
 
-        const screenMode = iconButton({
+        const screenMode = uiIconButton({
             icon: ScreenIcon,
             tooltip: "Flat screen",
             onSelect: () => ScreenManager.switchModeVRScreen("screen"),
         });
-        const vrMode = iconButton({
+        const vrMode = uiIconButton({
             icon: VRIcon,
             tooltip: "VR view",
             onSelect: () => ScreenManager.switchModeVRScreen(ScreenManager.VRMode),
         });
-        const stereo = textButton({
+        const stereo = uiTextButton({
             label: "3D",
             tooltip: "3D / 2D",
             width: BUTTON_SIZE,
@@ -408,71 +391,53 @@ export class PlayerPanel {
             },
         });
         this.stereoLabel = stereo.text;
-        const layout = textButton({
+        const layout = uiTextButton({
             label: Helpers.getWordFromLang("side_by_side"),
             tooltip: "Video layout",
             onSelect: () => this.nextVideoLayout(),
         });
         this.layoutLabel = layout.text;
 
-        const zoomOut = iconButton({
+        const zoomOut = uiIconButton({
             icon: ZoomOutIcon,
             tooltip: "Zoom out",
             onSelect: () => ScreenManager.zoom("out"),
         });
-        const zoomIn = iconButton({ icon: ZoomInIcon, tooltip: "Zoom in", onSelect: () => ScreenManager.zoom("in") });
-        const zoomReset = iconButton({
+        const zoomIn = uiIconButton({ icon: ZoomInIcon, tooltip: "Zoom in", onSelect: () => ScreenManager.zoom("in") });
+        const zoomReset = uiIconButton({
             icon: ResetIcon,
             tooltip: "Default zoom",
             onSelect: () => ScreenManager.resetZoomToConfiguredDefault(),
         });
-        const tiltDown = iconButton({
+        const tiltDown = uiIconButton({
             icon: DownIcon,
             tooltip: "Tilt down",
             onSelect: () => ScreenManager.tilt("down"),
         });
-        const tiltUp = iconButton({ icon: UpIcon, tooltip: "Tilt up", onSelect: () => ScreenManager.tilt("up") });
-        const tiltReset = iconButton({
+        const tiltUp = uiIconButton({ icon: UpIcon, tooltip: "Tilt up", onSelect: () => ScreenManager.tilt("up") });
+        const tiltReset = uiIconButton({
             icon: ResetIcon,
             tooltip: "Reset tilt",
             onSelect: () => ScreenManager.tilt("reset"),
         });
         // Media info isn't a setting: it sits apart, under a line, as wide as
         // three buttons above it.
-        const mediaInfo = textButton({
+        const mediaInfo = uiTextButton({
             label: "Media info",
             tooltip: "Resolution, codecs, bitrate...",
             width: BUTTON_SIZE * 3 + space(1) * 4,
             onSelect: () => this.settingsWindow.show("media"),
         });
 
-        const targets = [
-            screenMode,
-            vrMode,
-            stereo,
-            layout,
-            zoomOut,
-            zoomIn,
-            zoomReset,
-            tiltDown,
-            tiltUp,
-            tiltReset,
-            mediaInfo,
-        ];
-        return {
-            title: "Settings",
-            targets,
-            block: column(
-                [
-                    row([rowLabel("switch_mode"), screenMode, vrMode, stereo, layout], { width }),
-                    row([rowLabel("zoom_video"), zoomOut, zoomIn, zoomReset], { width }),
-                    row([rowLabel("tilt_video"), tiltDown, tiltUp, tiltReset], { width }),
-                    divider(width),
-                    row([rowLabel("this_video"), mediaInfo], { width }),
-                ],
-                { width, height: this.SETTINGS_HEIGHT },
-            ),
-        };
+        const block = new UiContainer({ flexDirection: "column", flexGrow: 1 });
+        block.add(
+            uiRow([rowLabel("switch_mode"), screenMode, vrMode, stereo, layout]),
+            uiRow([rowLabel("zoom_video"), zoomOut, zoomIn, zoomReset]),
+            uiRow([rowLabel("tilt_video"), tiltDown, tiltUp, tiltReset]),
+            uiDivider(),
+            uiRow([rowLabel("this_video"), mediaInfo]),
+        );
+        return { title: "Settings", block };
     }
 
     // Steps through the video layouts: SBS, TB, 360, then the 2D spheres.
@@ -488,39 +453,26 @@ export class PlayerPanel {
 
     // The 3D / 2D and layout buttons show the current mode.
     refreshModeLabels() {
-        this.stereoLabel.set({ content: ScreenManager.force_2d_mode ? "2D" : "3D" });
+        this.stereoLabel.setProperties({ text: ScreenManager.force_2d_mode ? "2D" : "3D" });
         const layout = LAYOUTS.find(([mode]) => mode === ScreenManager.VRMode) ?? LAYOUTS[0];
-        this.layoutLabel.set({ content: layout[1]() });
+        this.layoutLabel.setProperties({ text: layout[1]() });
     }
 
-    // The first panel drawn with uikit (ui/uikit.ts), on the uikit-trial
-    // branch: the rows sit on a uikit panel in front of an empty page of the
-    // three-mesh-ui window.
-    buildMediaInfoPage(width: number): Page {
+    buildMediaInfoPage(): Page {
         const values: UiText[] = [];
-        const panel = uikitPanel(width, this.SETTINGS_HEIGHT, {
-            flexDirection: "column",
-            justifyContent: "center",
-            fontSize: 55,
-            color: materialColour("text"),
-        });
+        const block = new UiContainer({ flexDirection: "column", justifyContent: "center", flexGrow: 1, fontSize: 55 });
         for (const [name] of mediaInfoLines(null, null)) {
             const value = new UiText({ text: "-", flexGrow: 1 });
             values.push(value);
             const line = new UiContainer({ flexDirection: "row", alignItems: "center", height: 90, flexShrink: 0 });
             line.add(new UiText({ text: name, width: 450, flexShrink: 0, color: materialColour("mutedText") }), value);
-            panel.add(line);
+            block.add(line);
         }
-        const block = new Block({ width, height: this.SETTINGS_HEIGHT, backgroundOpacity: 0 });
-        // Slightly in front of the window, so it isn't hidden behind it.
-        panel.position.z = 0.005;
-        block.add(panel);
         // Counts the page's showings, so a late answer from the browser about
         // a video shown before is dropped.
         let showings = 0;
         return {
             title: "Media info",
-            targets: [],
             block,
             onShow: () => {
                 const entry = MAIN.fileBrowserPanel.fileForSource(this.videoElement.getAttribute("src"));

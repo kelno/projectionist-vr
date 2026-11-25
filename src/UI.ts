@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import type { Object3D } from "three";
 
+import type { Component } from "@pmndrs/uikit";
+
 import * as MAIN from "./index.ts";
 import type { Block } from "./ui/meshUi.ts";
 
@@ -22,8 +24,9 @@ export interface HiddenSphereMesh extends THREE.Mesh<THREE.SphereGeometry, THREE
     setState(state: string): void;
 }
 
-// What the pointer can click: three-mesh-ui blocks and the hidden sphere.
-export type PointerTarget = Block | HiddenSphereMesh;
+// What the pointer can click: three-mesh-ui blocks, uikit panels and the
+// hidden sphere.
+export type PointerTarget = Block | Component | HiddenSphereMesh;
 
 export let objsToTest: PointerTarget[] = [];
 

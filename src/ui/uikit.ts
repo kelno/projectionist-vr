@@ -1,6 +1,8 @@
 import { Container, Image as UiImage, Text, reversePainterSortStable } from "@pmndrs/uikit";
 import type { Component, ContainerProperties } from "@pmndrs/uikit";
-import type { WebGLRenderer } from "three";
+import { signal } from "@preact/signals-core";
+import type { Signal } from "@preact/signals-core";
+import type { Color, WebGLRenderer } from "three";
 
 import { BUTTON_SIZE } from "./kit.ts";
 import { BORDER_WIDTH, RADIUS, materialColour, space } from "./theme.ts";
@@ -92,8 +94,17 @@ export const UI_SURFACE: ContainerProperties = {
     color: materialColour("text"),
 };
 
-// A button: `tooltip` is shown while it's pointed at.
-export type UiButton = Container & { tooltip: string | undefined };
+// A button: `tooltip` is shown while it's pointed at; `idle` is its colours
+// while not pointed at, which uiMarkActive() changes.
+export type UiButton = Container & { tooltip: string | undefined; idle: ButtonColours };
+
+// A button's colours while not pointed at, as signals: uikit follows a
+// signal's changes by itself, whereas setProperties() during a press leaves
+// the button in its pressed look.
+interface ButtonColours {
+    background: Signal<Color>;
+    text: Signal<Color>;
+}
 // A button showing an icon; setIcon(url) changes the icon.
 export type UiIconButton = UiButton & { setIcon(url: string): void };
 // A text button; `text` is its label, for buttons whose label changes.
@@ -101,14 +112,14 @@ export type UiTextButton = UiButton & { text: Text };
 
 // A button's look: raised, lighter under the pointer, the accent colour while
 // pressed, when it also sinks a little towards the panel.
-function buttonLook(size: number, round: boolean): ContainerProperties {
+function buttonLook(size: number, round: boolean, idle: ButtonColours): ContainerProperties {
     return {
         borderRadius: (round ? size / 2 : RADIUS.button) * MM,
         margin: space(1) * MM,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: materialColour("raised"),
-        color: materialColour("text"),
+        backgroundColor: idle.background,
+        color: idle.text,
         transformTranslateZ: 0.035 * MM,
         hover: { backgroundColor: materialColour("hovered") },
         active: {
@@ -148,15 +159,17 @@ export function uiIconButton({
     round?: boolean;
 }): UiIconButton {
     const image = new UiImage({ src: icon, width: size * 0.7 * MM, height: size * 0.7 * MM, pointerEvents: "none" });
+    const idle = idleColours();
     const button = new Container({
         width: size * MM,
         height: size * MM,
         flexShrink: 0,
         ...buttonHandlers(onSelect, onRelease),
-        ...buttonLook(size, round),
+        ...buttonLook(size, round, idle),
     }) as UiIconButton;
     button.add(image);
     button.tooltip = tooltip;
+    button.idle = idle;
     button.setIcon = (url: string) => image.setProperties({ src: url });
     return button;
 }
@@ -178,16 +191,18 @@ export function uiTextButton({
     fontSize?: number;
 }): UiTextButton {
     const text = new Text({ text: label, fontSize: fontSize * MM, pointerEvents: "none" });
+    const idle = idleColours();
     const button = new Container({
         width: width * MM,
         height: height * MM,
         flexShrink: 0,
         overflow: "hidden",
         ...buttonHandlers(onSelect),
-        ...buttonLook(height, false),
+        ...buttonLook(height, false, idle),
     }) as UiTextButton;
     button.add(text);
     button.tooltip = tooltip;
+    button.idle = idle;
     button.text = text;
     return button;
 }
@@ -231,8 +246,10 @@ export function uiDivider(): Container {
 // Shows a button as on, such as the mute button while muted ("danger"),
 // until it is marked off again.
 export function uiMarkActive(button: UiButton, active: boolean, { color = "accent" }: { color?: ColourName } = {}) {
-    button.setProperties({
-        backgroundColor: materialColour(active ? color : "raised"),
-        color: materialColour(active ? (color === "accent" ? "onAccent" : "text") : "text"),
-    });
+    button.idle.background.value = materialColour(active ? color : "raised");
+    button.idle.text.value = materialColour(active && color === "accent" ? "onAccent" : "text");
+}
+
+function idleColours(): ButtonColours {
+    return { background: signal(materialColour("raised")), text: signal(materialColour("text")) };
 }

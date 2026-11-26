@@ -100,10 +100,16 @@ The thumbnails directory (`thumbnails_path`) is this store, with no subfolders:
 - `media.json`: the `media` of each fingerprint. FFprobe runs only for a
   fingerprint missing from it.
 - `seek.json`: the `interval`, `columns` and `count` of each fingerprint's seek
-  thumbnails.
+  thumbnails, and the screen type they were cut for (`cut_for`).
+- `thumbnails.json`: the screen type each fingerprint's thumbnail was cut for.
 - `fingerprints.json`: the fingerprint computed for each video path, with the
   file's size and modification time then. A video whose size and modification
   time haven't changed since is not read again.
+
+A thumbnail or seek thumbnails cut for another screen type than the one guessed
+now, as after a rename that adds a layout marker such as `_TB`, are made again.
+A thumbnail made before its screen type was recorded is judged once by its
+shape.
 
 Thumbnails, seek thumbnails and media info of deleted videos stay in the store
 until a run with

@@ -13,7 +13,11 @@ The store is the thumbnails directory, kept flat:
   in a grid;
 - `media.json`: the media info ffprobe gave for each fingerprint;
 - `seek.json`: for each fingerprint with seek thumbnails, the seconds between
-  them, the grid's columns and how many there are;
+  them, the grid's columns, how many there are, and the layout they were cut
+  for (`cut_for`, from video_format.py);
+- `thumbnails.json`: for each fingerprint, the layout its thumbnail was cut
+  for. A thumbnail or seek image cut for another layout than the one guessed
+  now, as after a rename that adds a layout marker, is made again;
 - `fingerprints.json`: for each video path relative to the library, the size,
   modification time and fingerprint computed for it, so that a later run reads
   nothing from a file whose size and modification time haven't changed.
@@ -37,6 +41,7 @@ SEEK_FILE_NAME = "seek.json"
 # A `.partial.jpg` file younger than this may be one another run is writing: pruning leaves it.
 PARTIAL_FILE_GRACE_SECONDS = 24 * 3600
 FINGERPRINTS_FILE_NAME = "fingerprints.json"
+THUMBNAILS_FILE_NAME = "thumbnails.json"
 
 
 def is_video_file(filename: str) -> bool:
@@ -101,8 +106,10 @@ class LibraryStore:
         self.fingerprints: dict[str, dict] = read_json_object(directory / FINGERPRINTS_FILE_NAME)
         # Fingerprint -> the media info that generate_json.parse_media_info returns.
         self.media: dict[str, dict] = read_json_object(directory / MEDIA_FILE_NAME)
-        # Fingerprint -> {"interval", "columns", "count"} of its seek thumbnails.
+        # Fingerprint -> {"interval", "columns", "count", "cut_for"} of its seek thumbnails.
         self.seek: dict[str, dict] = read_json_object(directory / SEEK_FILE_NAME)
+        # Fingerprint -> the layout its thumbnail was cut for.
+        self.thumbnail_layouts: dict[str, str] = read_json_object(directory / THUMBNAILS_FILE_NAME)
         # The videos fingerprinted during this run: relative path -> fingerprint.
         self.seen: dict[str, str] = {}
 
@@ -126,9 +133,10 @@ class LibraryStore:
         return self.directory / f"{fingerprint}.seek.jpg"
 
     def save(self) -> None:
-        """Write the fingerprint cache and the media info."""
+        """Write the fingerprint cache, the media info and the thumbnails' layouts."""
         write_json_atomic(self.directory / FINGERPRINTS_FILE_NAME, dict(sorted(self.fingerprints.items())))
         write_json_atomic(self.directory / MEDIA_FILE_NAME, dict(sorted(self.media.items())))
+        write_json_atomic(self.directory / THUMBNAILS_FILE_NAME, dict(sorted(self.thumbnail_layouts.items())))
 
     # The seek thumbnails are made by a run of hours, which a catalogue run
     # with --prune can overlap: rather than writing back what it read at its
@@ -171,6 +179,8 @@ class LibraryStore:
         for fingerprint in [key for key in self.media if key not in used]:
             del self.media[fingerprint]
             removed["media"] += 1
+        for fingerprint in [key for key in self.thumbnail_layouts if key not in used]:
+            del self.thumbnail_layouts[fingerprint]
         self.remove_seek(used)
         for key in [key for key in self.fingerprints if key not in self.seen]:
             del self.fingerprints[key]

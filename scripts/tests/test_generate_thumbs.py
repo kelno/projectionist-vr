@@ -1,4 +1,5 @@
 import json
+import struct
 import subprocess
 import sys
 import tempfile
@@ -24,6 +25,11 @@ def fake_ffmpeg(writes_output, duration="60.0", size=(5760, 2880)):
         return subprocess.CompletedProcess(command, 0)
 
     return run
+
+
+def jpeg_header(width, height):
+    """Return the start of a JPEG of this size, up to its frame header, which is all jpeg_size reads."""
+    return b"\xff\xd8\xff\xc0" + struct.pack(">HBHH", 17, 8, height, width) + bytes(10)
 
 
 def ffmpeg_calls(run):
@@ -64,6 +70,39 @@ class GenerateThumbnailsTests(unittest.TestCase):
                 failed = generate_thumbnails(videos, thumbnails)
             self.assertEqual(failed, [videos / "Music" / "clip.mp4"])
             self.assertEqual(list(thumbnails.rglob("*.jpg")), [])
+
+    def store_frame_size(self, thumbnails, videos, relative, size):
+        """Record the video's frame size in the media info, as generate_json.py does, and return its fingerprint."""
+        store = LibraryStore(thumbnails)
+        fingerprint = store.fingerprint(videos / relative, Path(relative))
+        store.media[fingerprint] = {"width": size[0], "height": size[1]}
+        store.save()
+        return fingerprint
+
+    def test_a_thumbnail_cut_for_another_layout_than_the_guess_is_made_again(self):
+        with tempfile.TemporaryDirectory() as directory:
+            videos, thumbnails = self.make_library(Path(directory))
+            with mock.patch("generate_thumbs.subprocess.run", side_effect=fake_ffmpeg(True)) as run:
+                generate_thumbnails(videos, thumbnails)
+                fingerprint = self.store_frame_size(thumbnails, videos, "Music/clip.mp4", (5760, 2880))
+                self.assertEqual(LibraryStore(thumbnails).thumbnail_layouts, {fingerprint: "sbs"})
+                # Renamed with a top-bottom marker: same content, another layout.
+                (videos / "Music" / "clip.mp4").rename(videos / "Music" / "clip_TB.mp4")
+                generate_thumbnails(videos, thumbnails)
+                generate_thumbnails(videos, thumbnails)
+            self.assertEqual(len(ffmpeg_calls(run)), 2)
+            self.assertEqual(LibraryStore(thumbnails).thumbnail_layouts, {fingerprint: "tb"})
+
+    def test_a_thumbnail_from_before_layouts_were_recorded_is_judged_by_its_shape(self):
+        for thumb_size, remade in (((512, 512), False), ((256, 512), True)):
+            with self.subTest(thumb_size=thumb_size), tempfile.TemporaryDirectory() as directory:
+                videos, thumbnails = self.make_library(Path(directory))
+                fingerprint = self.store_frame_size(thumbnails, videos, "Music/clip.mp4", (5760, 2880))
+                LibraryStore(thumbnails).thumbnail_path(fingerprint).write_bytes(jpeg_header(*thumb_size))
+                with mock.patch("generate_thumbs.subprocess.run", side_effect=fake_ffmpeg(True)) as run:
+                    generate_thumbnails(videos, thumbnails)
+                self.assertEqual(len(ffmpeg_calls(run)), 1 if remade else 0)
+                self.assertEqual(LibraryStore(thumbnails).thumbnail_layouts, {fingerprint: "sbs"})
 
     def test_takes_the_frame_halfway_through_a_short_video(self):
         with tempfile.TemporaryDirectory() as directory:

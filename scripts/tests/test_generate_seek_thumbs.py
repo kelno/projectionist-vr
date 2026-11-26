@@ -80,9 +80,25 @@ class GenerateTests(unittest.TestCase):
             self.assertEqual(tile[tile.index("-filter:v") + 1], "tile=4x3")
             store = LibraryStore(thumbnails)
             [fingerprint] = store.seek
-            self.assertEqual(store.seek[fingerprint], {"interval": 10, "columns": 4, "count": 10})
+            self.assertEqual(store.seek[fingerprint], {"interval": 10, "columns": 4, "count": 10, "cut_for": "sbs"})
             self.assertTrue(store.seek_path(fingerprint).is_file())
             self.assertEqual(list(thumbnails.glob("*.partial.jpg")), [])
+
+    def test_seek_thumbnails_cut_for_another_layout_than_the_guess_are_made_again(self):
+        with tempfile.TemporaryDirectory() as directory:
+            videos, thumbnails = self.make_library(Path(directory))
+            with mock.patch("generate_seek_thumbs.subprocess.run", side_effect=fake_ffmpeg()) as run:
+                generate_seek_thumbnails(videos, thumbnails)
+                store = LibraryStore(thumbnails)
+                [fingerprint] = store.seek
+                store.media[fingerprint] = {"width": 5760, "height": 2880}
+                store.save()
+                # Renamed with a top-bottom marker: same content, another layout.
+                (videos / "Music" / "clip.mp4").rename(videos / "Music" / "clip_TB.mp4")
+                generate_seek_thumbnails(videos, thumbnails)
+                generate_seek_thumbnails(videos, thumbnails)
+            self.assertEqual(len(tile_commands(run)), 2)
+            self.assertEqual(LibraryStore(thumbnails).seek[fingerprint]["cut_for"], "tb")
 
     def test_an_unreadable_frame_repeats_the_one_before(self):
         with tempfile.TemporaryDirectory() as directory:

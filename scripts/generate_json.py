@@ -195,7 +195,8 @@ def generate_category_entries(
                 entry["thumbnail"] = url_for_file(thumbnails_url_prefix, Path(f"{fingerprint}.jpg"))
             seek = store.seek.get(fingerprint)
             if seek and store.seek_path(fingerprint).exists():
-                entry["seek_thumbnails"] = {"url": url_for_file(thumbnails_url_prefix, Path(f"{fingerprint}.seek.jpg")), **seek}
+                grid = {key: seek[key] for key in ("interval", "columns", "count") if key in seek}
+                entry["seek_thumbnails"] = {"url": url_for_file(thumbnails_url_prefix, Path(f"{fingerprint}.seek.jpg")), **grid}
             media = media_from_store(store, fingerprint, video_path, probe_media)
             faststart = check_faststart(video_path, media)
             if faststart is False and slow_start is not None:

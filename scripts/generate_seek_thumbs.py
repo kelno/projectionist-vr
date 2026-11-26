@@ -110,8 +110,11 @@ def grab_frame(video_file: Path, seconds: float, video_filter: str, frame_file: 
     return result.returncode == 0 and frame_file.is_file()
 
 
-def generate_seek_image(video_file: Path, seek_file: Path) -> dict[str, int] | None:
+def generate_seek_image(video_file: Path, seek_file: Path) -> dict[str, int | str] | None:
     """Write the video's seek thumbnails to seek_file through a temporary file, and return their layout.
+
+    The layout holds the interval, the grid's columns, the count and the
+    layout of the video they were cut for (`cut_for`).
 
     Return None when the video's duration or frame size is unknown, or when
     fewer than half of the frames could be read. A frame that can't be read
@@ -168,7 +171,21 @@ def generate_seek_image(video_file: Path, seek_file: Path) -> dict[str, int] | N
         print(f"ERROR: cannot assemble the seek thumbnails: {video_file}", file=sys.stderr)
         return None
     partial_file.replace(seek_file)
-    return layout
+    return {**layout, "cut_for": screen_type}
+
+
+def seek_outdated(store: LibraryStore, fingerprint: str, name: str) -> bool:
+    """Return whether the video's seek thumbnails were cut for another layout than the one guessed now.
+
+    Seek thumbnails from before `cut_for` was recorded, and videos without
+    their frame size in the media info, are kept.
+    """
+    cut_for = store.seek.get(fingerprint, {}).get("cut_for")
+    media = store.media.get(fingerprint) or {}
+    width, height = media.get("width"), media.get("height")
+    if cut_for is None or not isinstance(width, int) or not isinstance(height, int):
+        return False
+    return cut_for != guess_screen_type(name, width, height)
 
 
 def generate_seek_thumbnails(videos_path: Path, thumbnails_path: Path) -> list[Path]:
@@ -192,7 +209,7 @@ def generate_seek_thumbnails(videos_path: Path, thumbnails_path: Path) -> list[P
             failed.append(video_file)
             continue
         seek_file = store.seek_path(fingerprint)
-        if fingerprint in store.seek and seek_file.exists():
+        if fingerprint in store.seek and seek_file.exists() and not seek_outdated(store, fingerprint, relative_path.name):
             continue
         thumbnails_path.mkdir(parents=True, exist_ok=True)
         print(f"Generating seek thumbnails for: {video_file}")

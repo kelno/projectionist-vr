@@ -13,17 +13,10 @@
 // `onClose(text)` when they close the keyboard, `onFail()` instead of both if
 // the keyboard didn't show within FAIL_MS, so the caller can use its own.
 const FAIL_MS = 1500;
-//
-// probe({ onInput }), an experiment (2026-11-26) for browsers without Meta's
-// way, such as Wolvic: while the app's own keyboard shows, the field is
-// focused anyway, in case the browser brings up a keyboard of its own over
-// VR; `onInput(text)` gets what is typed there. Everything that happens is
-// reported. It returns a function that ends it.
 
 export interface SystemKeyboard {
     isAvailable(): boolean;
     open(handlers: { onInput: (text: string) => void; onClose: (text: string) => void; onFail: () => void }): void;
-    probe(handlers: { onInput: (text: string) => void }): () => void;
 }
 
 export function createSystemKeyboard(
@@ -101,34 +94,7 @@ export function createSystemKeyboard(
         input.focus();
     }
 
-    function probe({ onInput }: { onInput: (text: string) => void }): () => void {
-        const session = getSession();
-        if (!session) {
-            return () => {};
-        }
-        const input = (field ??= makeField());
-        input.value = "";
-        const started = performance.now();
-        const since = () => `${Math.round(performance.now() - started)} ms`;
-        const onVisibilityChange = () =>
-            report(`probe: visibility=${session.visibilityState} after ${since()}; ${browser()}`);
-        session.addEventListener("visibilitychange", onVisibilityChange);
-        input.oninput = () => {
-            report(`probe: typed on the browser's keyboard; ${browser()}`);
-            onInput(input.value);
-        };
-        input.onblur = () => report(`probe: field blurred after ${since()}; ${browser()}`);
-        input.focus();
-        report(`probe: field focused=${document.activeElement === input}; ${browser()}`);
-        return () => {
-            session.removeEventListener("visibilitychange", onVisibilityChange);
-            input.oninput = null;
-            input.onblur = null;
-            input.blur();
-        };
-    }
-
-    return { isAvailable, open, probe };
+    return { isAvailable, open };
 }
 
 // The browser and its version, from its user agent, and the languages it

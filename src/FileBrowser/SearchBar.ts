@@ -46,8 +46,6 @@ export class SearchBar {
     // The on-screen keyboard's panel.
     keyboard: Container;
     isTyping = false;
-    // Ends the experiment's focus on a text field, if one runs.
-    endProbe: () => void = () => {};
 
     constructor({
         onSearch,
@@ -86,9 +84,6 @@ export class SearchBar {
                     this.typeOnSystemKeyboard();
                 } else {
                     this.startTyping();
-                    // The experiment in input/systemKeyboard.ts: whether the
-                    // browser shows a keyboard of its own anyway.
-                    this.endProbe = this.systemKeyboard.probe({ onInput: (text) => this.setPhrase(text) });
                 }
             },
         });
@@ -116,10 +111,6 @@ export class SearchBar {
     }
 
     setTyping(typing: boolean): void {
-        if (!typing) {
-            this.endProbe();
-            this.endProbe = () => {};
-        }
         this.isTyping = typing;
         this.keyboard.visible = typing;
         this.onTargetsChange();

@@ -157,7 +157,7 @@ export function resetZoomPosition(): void {
 let currentTilt = 0;
 
 // `value` is in radians; the picture turns by as much.
-export function tilt(up_or_down: "up" | "down" | "reset", value = 0.005): void {
+export function tilt(up_or_down: "up" | "down" | "reset", value = 0.0075): void {
     const angle = { up: -value, down: value, reset: -currentTilt }[up_or_down];
     const turn = new Quaternion().setFromAxisAngle(X_AXIS, angle);
     for (const screen of panels.meshes.panels) {

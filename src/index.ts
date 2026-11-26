@@ -407,7 +407,7 @@ function runControllerAction(action: ControllerAction): void {
             ScreenManager.zoom(action.direction, 0.5);
             break;
         case "tilt":
-            ScreenManager.tilt(action.direction, 0.0025);
+            ScreenManager.tilt(action.direction, 0.00375);
             break;
         case "seek":
             playMenuPanel.videoPlaybackFFRew(action.seconds > 0 ? "FF" : "Rew", Math.abs(action.seconds));
